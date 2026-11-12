@@ -326,6 +326,14 @@ function AMSTrayPanel({ printer }: { printer: PrinterConfig }) {
   const { t } = useTranslation()
   const qc = useQueryClient()
   const [activeUnit, setActiveUnit] = useState(1)
+  // Sort order of the spool dropdowns: by name (brand/material/colour) or by spool number
+  const [spoolSort, setSpoolSort] = useState<'name' | 'number'>(() => {
+    try { return localStorage.getItem('fm_ams_spool_sort') === 'number' ? 'number' : 'name' } catch { return 'name' }
+  })
+  const changeSpoolSort = (v: 'name' | 'number') => {
+    setSpoolSort(v)
+    try { localStorage.setItem('fm_ams_spool_sort', v) } catch { /* ignore */ }
+  }
 
   const { data: trays, isLoading, refetch } = useQuery<AMSTray[]>({
     queryKey: ['printer-ams', printer.id],
@@ -442,7 +450,23 @@ function AMSTrayPanel({ printer }: { printer: PrinterConfig }) {
             </div>
           )}
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 flex-wrap justify-end">
+          <div className="flex items-center gap-1 text-xs text-gray-500 mr-1">
+            <span>{t('settings.printers.sortBy')}</span>
+            <div className="flex rounded overflow-hidden border border-surface-3">
+              {(['name', 'number'] as const).map(v => (
+                <button
+                  key={v}
+                  onClick={() => changeSpoolSort(v)}
+                  className={`px-2 py-0.5 transition-colors ${
+                    spoolSort === v ? 'bg-blue-700 text-white' : 'text-gray-400 hover:text-gray-200'
+                  }`}
+                >
+                  {v === 'name' ? t('settings.printers.sortName') : t('settings.printers.sortNumber')}
+                </button>
+              ))}
+            </div>
+          </div>
           <button
             className="btn-ghost px-2 py-0.5 text-xs flex items-center gap-1"
             onClick={() => autoMatchAllMut.mutate()}
@@ -484,6 +508,7 @@ function AMSTrayPanel({ printer }: { printer: PrinterConfig }) {
               syncingWeight={syncingSlot === tray.slot_key}
               canSync={tray.ha_remaining != null && parseFloat(tray.ha_remaining) >= 0}
               excludeIds={otherAssigned}
+              sortBy={spoolSort}
             />
           )
         })}
@@ -501,6 +526,7 @@ function AMSTrayRow({
   syncingWeight,
   canSync,
   excludeIds,
+  sortBy = 'name',
 }: {
   tray: AMSTray
   spools: Spool[]
@@ -510,6 +536,7 @@ function AMSTrayRow({
   syncingWeight: boolean
   canSync: boolean
   excludeIds?: Set<number>
+  sortBy?: 'name' | 'number'
 }) {
   const { t } = useTranslation()
   const selectedId = tray.spool?.id ?? null
@@ -546,6 +573,11 @@ function AMSTrayRow({
         {spools
           .filter(s => Math.round(s.remaining_pct) > 0)
           .sort((a, b) => {
+            if (sortBy === 'number') {
+              // Spools without a number go last
+              if (a.custom_id != null && b.custom_id != null && a.custom_id !== b.custom_id) return a.custom_id - b.custom_id
+              if ((a.custom_id == null) !== (b.custom_id == null)) return a.custom_id == null ? 1 : -1
+            }
             const bc = a.brand.localeCompare(b.brand)
             if (bc !== 0) return bc
             const mc = a.material.localeCompare(b.material)

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.0
+
+- Feature: **Assign AMS trays directly from the spool list** — the AMS Slot column (table) and the card view now hold a dropdown of all trays of the active cloud printers, so a spool can be put into or taken out of a tray without opening the edit form. Trays held by another spool show that spool ("in use: #3 SUNLU PLA+ · Black"); picking one moves the tray. When the printer is offline the trays fall back to `ams_unit_count` × 4, so assignment still works
+- Feature: **AMS Slot in the spool form is a dropdown** instead of free text (`ams1_tray1`), using the same tray list; stored values stay `"<printer>:ams<unit>_tray<n>"`, unknown legacy values remain selectable. Slots are shown as "A1 · Tray 1" instead of the raw key, and the column filter matches both
+- Feature: **AMS assignment (Settings → Printers) can sort the spool dropdowns by name or by spool number** (#), remembered per browser
+- Fix: **A tray can no longer hold two spools** — saving a spool with an AMS slot (create or edit) now frees that slot on any other spool, matching the full and the legacy bare key like the AMS assign endpoint already did. Before, the form allowed two spools in one tray and slot lookups (auto-deduct, AMS view) picked an arbitrary one
+
 ## 1.0.1
 
 - Fix: **Data import no longer drops local calibration runs** — Bambu printers report `task_id` "0" for every local run (auto calibrations, flow calibrations, SD-card prints). The JSON import used `task_id` as a unique key, so all of these runs after the first one were treated as duplicates and skipped together with their filament usages (30 of 669 jobs in a real export). `task_id` "0" and empty values are no longer used as a dedup key; these jobs fall back to the (name, started_at, printer_name) fingerprint, so re-importing the same bundle still creates no duplicates

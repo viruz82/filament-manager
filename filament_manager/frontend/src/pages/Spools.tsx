@@ -8,6 +8,7 @@ import Modal from '../components/Modal'
 import { formatDateOnly, formatDateTimeTZ } from '../utils/time'
 import { useHATZ, useCurrencyFormatter, useCurrencySymbol } from '../hooks/useHATZ'
 import { parseDecimal } from '../utils/number'
+import { AmsSlotSelect, useAmsSlotLabel } from '../hooks/useAmsSlots'
 
 // ── Spool Form ────────────────────────────────────────────────────────────────
 
@@ -63,6 +64,7 @@ function SpoolForm({
   const { data: locations = [] } = useQuery<{ id: number; name: string }[]>({ queryKey: ['purchase-locations'], queryFn: api.getPurchaseLocations })
   const { data: storageLocations = [] } = useQuery<{ id: number; name: string }[]>({ queryKey: ['storage-locations'], queryFn: api.getStorageLocations })
   const { data: filamentCatalog = [] } = useQuery<FilamentCatalog[]>({ queryKey: ['filament-catalog'], queryFn: api.getFilamentCatalog })
+  const { data: activeSpools = [] } = useQuery<Spool[]>({ queryKey: ['spools', false], queryFn: () => api.getSpools(false) })
 
   const matchedBrand = brandWeights.find(b => b.brand.toLowerCase() === form.brand.toLowerCase())
   const tareG = matchedBrand?.spool_weight_g ?? 0
@@ -391,7 +393,12 @@ function SpoolForm({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="label">{t('spools.form.amsSlot')}</label>
-              <input className="input" value={form.ams_slot ?? ''} onChange={set('ams_slot')} placeholder="ams1_tray1" />
+              <AmsSlotSelect
+                spoolId={isNew ? undefined : initial?.id}
+                value={form.ams_slot || null}
+                onChange={slot => setForm(f => ({ ...f, ams_slot: slot ?? '' }))}
+                spools={activeSpools}
+              />
             </div>
             <div>
               <label className="label">{t('spools.form.lastDried')}</label>
@@ -548,9 +555,9 @@ function SpoolAuditModal({ spool, onClose }: { spool: Spool; onClose: () => void
 
 // ── Spool Card ────────────────────────────────────────────────────────────────
 
-function SpoolCard({ spool, onEdit, onDuplicate, onHistory, onDelete, onArchive, onUnarchive }: {
-  spool: Spool; onEdit: () => void; onDuplicate: () => void; onHistory: () => void; onDelete: () => void
-  onArchive: () => void; onUnarchive: () => void
+function SpoolCard({ spool, spools, onEdit, onDuplicate, onHistory, onDelete, onArchive, onUnarchive, onAssignSlot }: {
+  spool: Spool; spools: Spool[]; onEdit: () => void; onDuplicate: () => void; onHistory: () => void; onDelete: () => void
+  onArchive: () => void; onUnarchive: () => void; onAssignSlot: (slot: string | null) => void
 }) {
   const { t } = useTranslation()
   const fmtCurrency = useCurrencyFormatter()
@@ -617,8 +624,19 @@ function SpoolCard({ spool, onEdit, onDuplicate, onHistory, onDelete, onArchive,
         {spool.purchase_price != null && <span>{fmtCurrency(spool.purchase_price)}</span>}
         {spool.purchased_at && <span>{formatDateOnly(spool.purchased_at)}</span>}
         {spool.storage_location && <span className="text-green-400">{spool.storage_location}</span>}
-        {spool.ams_slot && <span className="text-blue-400">{spool.ams_slot}</span>}
       </div>
+      {!spool.archived && (
+        <div className="flex items-center gap-2 mt-3 text-xs">
+          <span className="text-gray-500 shrink-0">{t('spools.table.amsSlot')}</span>
+          <AmsSlotSelect
+            spoolId={spool.id}
+            value={spool.ams_slot}
+            onChange={onAssignSlot}
+            spools={spools}
+            className={`input text-xs py-1 flex-1 min-w-0 ${spool.ams_slot ? 'text-blue-400' : 'text-gray-400'}`}
+          />
+        </div>
+      )}
     </div>
   )
 }
@@ -640,11 +658,12 @@ function SortIcon({ col, sort }: { col: SortKey; sort: { key: SortKey; dir: Sort
     : <ChevronDown size={12} className="text-accent" />
 }
 
-function SpoolTable({ spools, onEdit, onDuplicate, onHistory, onDelete, onArchive, onUnarchive }: {
+function SpoolTable({ spools, onEdit, onDuplicate, onHistory, onDelete, onArchive, onUnarchive, onAssignSlot }: {
   spools: Spool[]; onEdit: (s: Spool) => void; onDuplicate: (s: Spool) => void; onHistory: (s: Spool) => void; onDelete: (s: Spool) => void
-  onArchive: (s: Spool) => void; onUnarchive: (s: Spool) => void
+  onArchive: (s: Spool) => void; onUnarchive: (s: Spool) => void; onAssignSlot: (s: Spool, slot: string | null) => void
 }) {
   const { t } = useTranslation()
+  const slotLabel = useAmsSlotLabel()
   const fmtCurrency = useCurrencyFormatter()
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: 'ams_slot', dir: 'asc' })
   const actionsLast = localStorage.getItem('fm_actions_last') === 'true'
@@ -732,6 +751,10 @@ function SpoolTable({ spools, onEdit, onDuplicate, onHistory, onDelete, onArchiv
           if (op === '<')  return cmpVal <  threshold
           return cmpVal === threshold
         })
+      } else if (key === 'ams_slot') {
+        const lower = v.toLowerCase()
+        rows = rows.filter(s => s.ams_slot != null &&
+          (s.ams_slot.toLowerCase().includes(lower) || slotLabel(s.ams_slot).toLowerCase().includes(lower)))
       } else {
         const lower = v.toLowerCase()
         rows = rows.filter(s => {
@@ -836,7 +859,19 @@ function SpoolTable({ spools, onEdit, onDuplicate, onHistory, onDelete, onArchiv
       case 'last_dried_at':    return <td key={c.key} className="px-3 py-2 whitespace-nowrap text-gray-400">{s.last_dried_at ? formatDateOnly(s.last_dried_at) : '—'}</td>
       case 'purchase_location':return <td key={c.key} className="px-3 py-2 whitespace-nowrap">{s.purchase_location ? <span className="text-xs bg-surface-3 px-1.5 py-0.5 rounded text-gray-400">{s.purchase_location}</span> : <span className="text-gray-600">—</span>}</td>
       case 'storage_location': return <td key={c.key} className="px-3 py-2 whitespace-nowrap">{s.storage_location ? <span className="text-xs bg-surface-3 px-1.5 py-0.5 rounded text-green-400">{s.storage_location}</span> : <span className="text-gray-600">—</span>}</td>
-      case 'ams_slot':         return <td key={c.key} className="px-3 py-2 whitespace-nowrap text-blue-400">{s.ams_slot ?? '—'}</td>
+      case 'ams_slot':         return (
+        <td key={c.key} className="px-2 py-1 whitespace-nowrap">
+          {s.archived
+            ? <span className="text-gray-600">{slotLabel(s.ams_slot)}</span>
+            : <AmsSlotSelect
+                spoolId={s.id}
+                value={s.ams_slot}
+                onChange={slot => onAssignSlot(s, slot)}
+                spools={spools}
+                className={`bg-transparent rounded px-1 py-0.5 text-xs max-w-[9rem] hover:bg-surface-3 focus:outline-none focus:ring-1 focus:ring-accent ${s.ams_slot ? 'text-blue-400' : 'text-gray-600'}`}
+              />}
+        </td>
+      )
       default:                 return <td key={c.key} />
     }
   }
@@ -980,9 +1015,16 @@ export default function Spools() {
   const createMut = useMutation({ mutationFn: api.createSpool, onSuccess: invalidate })
   const updateMut = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<Spool> }) => api.updateSpool(id, data),
-    onSuccess: () => { invalidate(); setEditing(null) },
+    onSuccess: () => { invalidate(); qc.invalidateQueries({ queryKey: ['printer-ams'] }); setEditing(null) },
   })
   const deleteMut = useMutation({ mutationFn: api.deleteSpool, onSuccess: invalidate })
+  // Direct AMS slot assignment from the list — the backend frees the slot on
+  // whichever spool held it before.
+  const assignSlotMut = useMutation({
+    mutationFn: ({ id, slot }: { id: number; slot: string | null }) => api.updateSpool(id, { ams_slot: slot }),
+    onSuccess: () => { invalidate(); qc.invalidateQueries({ queryKey: ['printer-ams'] }) },
+    onError: (err) => alert(err instanceof Error ? err.message : 'Saving failed'),
+  })
   const archiveMut = useMutation({ mutationFn: (id: number) => api.archiveSpool(id), onSuccess: invalidate })
   const unarchiveMut = useMutation({ mutationFn: (id: number) => api.unarchiveSpool(id), onSuccess: invalidate })
 
@@ -1071,6 +1113,8 @@ export default function Spools() {
               <SpoolCard
                 key={spool.id}
                 spool={spool}
+                spools={spools}
+                onAssignSlot={slot => assignSlotMut.mutate({ id: spool.id, slot })}
                 onEdit={() => setEditing(spool)}
                 onDuplicate={() => setDuplicating(spool)}
                 onHistory={() => setAuditSpool(spool)}
@@ -1090,6 +1134,7 @@ export default function Spools() {
           onDelete={handleDelete}
           onArchive={s => archiveMut.mutate(s.id)}
           onUnarchive={s => unarchiveMut.mutate(s.id)}
+          onAssignSlot={(s, slot) => assignSlotMut.mutate({ id: s.id, slot })}
         />
       )}
 

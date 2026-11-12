@@ -336,3 +336,45 @@ class TestSpoolDeleteCascade:
         assert r.status_code == 204
         session.expire_all()
         assert session.query(SpoolAudit).filter_by(spool_id=spool["id"]).count() == 0
+
+
+# ---------------------------------------------------------------------------
+# AMS slot: one spool per tray
+# ---------------------------------------------------------------------------
+
+class TestAmsSlotUnique:
+    def test_patch_frees_slot_on_previous_spool(self, client):
+        a = client.post("/api/spools", json=make_spool_payload(ams_slot="A1:ams1_tray1")).json()
+        b = client.post("/api/spools", json=make_spool_payload(color_name="Blue")).json()
+        r = client.patch(f"/api/spools/{b['id']}", json={"ams_slot": "A1:ams1_tray1"})
+        assert r.status_code == 200
+        assert r.json()["ams_slot"] == "A1:ams1_tray1"
+        assert client.get(f"/api/spools/{a['id']}").json()["ams_slot"] is None
+
+    def test_patch_frees_legacy_bare_slot(self, client):
+        a = client.post("/api/spools", json=make_spool_payload(ams_slot="ams1_tray2")).json()
+        b = client.post("/api/spools", json=make_spool_payload(color_name="Blue")).json()
+        client.patch(f"/api/spools/{b['id']}", json={"ams_slot": "A1:ams1_tray2"})
+        assert client.get(f"/api/spools/{a['id']}").json()["ams_slot"] is None
+
+    def test_create_frees_slot_on_previous_spool(self, client):
+        a = client.post("/api/spools", json=make_spool_payload(ams_slot="A1:ams1_tray3")).json()
+        b = client.post("/api/spools", json=make_spool_payload(color_name="Blue", ams_slot="A1:ams1_tray3")).json()
+        assert b["ams_slot"] == "A1:ams1_tray3"
+        assert client.get(f"/api/spools/{a['id']}").json()["ams_slot"] is None
+
+    def test_other_slots_untouched(self, client):
+        a = client.post("/api/spools", json=make_spool_payload(ams_slot="A1:ams1_tray1")).json()
+        b = client.post("/api/spools", json=make_spool_payload(color_name="Blue")).json()
+        client.patch(f"/api/spools/{b['id']}", json={"ams_slot": "A1:ams1_tray4"})
+        assert client.get(f"/api/spools/{a['id']}").json()["ams_slot"] == "A1:ams1_tray1"
+
+    def test_resaving_same_spool_keeps_slot(self, client):
+        a = client.post("/api/spools", json=make_spool_payload(ams_slot="A1:ams1_tray1")).json()
+        r = client.patch(f"/api/spools/{a['id']}", json={"ams_slot": "A1:ams1_tray1", "notes": "x"})
+        assert r.json()["ams_slot"] == "A1:ams1_tray1"
+
+    def test_empty_string_clears_slot(self, client):
+        a = client.post("/api/spools", json=make_spool_payload(ams_slot="A1:ams1_tray1")).json()
+        r = client.patch(f"/api/spools/{a['id']}", json={"ams_slot": ""})
+        assert r.json()["ams_slot"] is None

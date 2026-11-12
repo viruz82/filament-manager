@@ -1,6 +1,6 @@
 name: "Filament Manager (Fork)"
 description: "Track filament inventory, print history and costs. Integrates with Bambu Lab via Home Assistant."
-version: "1.0.1"
+version: "1.1.0"
 slug: "filament_manager"
 url: "https://github.com/viruz82/filament-manager"
 init: false

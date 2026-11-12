@@ -17,6 +17,26 @@ def _resolve_spool_weight(brand: str | None, db: Session) -> float:
     ).first()
     return entry.spool_weight_g if entry else 0.0
 
+def _claim_ams_slot(slot: str | None, spool_id: int | None, db: Session) -> str | None:
+    """Normalise an AMS slot value and free it on every other spool.
+
+    A tray can only hold one spool. The AMS assignment endpoint already clears
+    the previous holder; the spool form must do the same, otherwise two spools
+    end up in one tray and slot lookups pick an arbitrary one. Matches both the
+    full key ("Printer:ams1_tray1") and the legacy bare key ("ams1_tray1"),
+    like the lookups in printers.py and print_monitor.py.
+    """
+    slot = (slot or "").strip() or None
+    if slot is None:
+        return None
+    bare = slot.split(":", 1)[1] if ":" in slot else slot
+    q = db.query(Spool).filter((Spool.ams_slot == slot) | (Spool.ams_slot == bare))
+    if spool_id is not None:
+        q = q.filter(Spool.id != spool_id)
+    q.update({"ams_slot": None}, synchronize_session=False)
+    return slot
+
+
 router = APIRouter(prefix="/api/spools", tags=["spools"])
 
 
@@ -38,6 +58,8 @@ def list_spools(
 def create_spool(body: SpoolCreate, db: Session = Depends(get_db)):
     data = body.model_dump()
     data["spool_weight_g"] = _resolve_spool_weight(data.get("brand"), db)
+    if "ams_slot" in data:
+        data["ams_slot"] = _claim_ams_slot(data["ams_slot"], None, db)
     spool = Spool(**data)
     db.add(spool)
     db.commit()
@@ -67,6 +89,8 @@ def update_spool(spool_id: int, body: SpoolUpdate, background_tasks: BackgroundT
         updates["spool_weight_g"] = _resolve_spool_weight(updates["brand"], db)
     else:
         updates.pop("spool_weight_g", None)
+    if "ams_slot" in updates:
+        updates["ams_slot"] = _claim_ams_slot(updates["ams_slot"], spool.id, db)
     weight_before = spool.current_weight_g
     for field, value in updates.items():
         setattr(spool, field, value)
