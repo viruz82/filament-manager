@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.1
+
+- Fix: **price sensor suggestions are narrower** — only sensors with a price unit (…/kWh, not CO2 intensity or plain costs) and number helpers whose name contains price/tariff are offered (1.3.0 listed ~400 unrelated number entities)
+
 ## 1.3.0
 
 - Feature: **Sensor suggestions in the printer form** — the energy sensor and price sensor fields are now filtered suggestion lists backed by Home Assistant (`GET /api/settings/ha-entities?kind=energy|price`): energy shows only cumulative kWh/Wh meters, price shows price sensors (…/kWh, monetary) and number helpers, each with name and current value. Typing narrows the list; any entity ID can still be typed. The energy hint now warns not to use a daily/monthly counter (these reset at midnight and lose the energy of prints that cross it)

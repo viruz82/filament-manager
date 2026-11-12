@@ -84,13 +84,14 @@ async def push_ha_state(entity_id: str, state: int | str, attributes: dict) -> b
 
 
 _ENERGY_UNITS = {"kwh", "wh", "mwh"}
+_PRICE_WORDS = ("preis", "price", "tarif", "kwh")
 
 
 def filter_ha_entities(states: list[dict], kind: str) -> list[dict]:
     """Pick the entities that make sense for a settings field.
 
     kind "energy": cumulative energy meters (device class energy or unit kWh/Wh/MWh).
-    kind "price":  price sensors (unit …/kWh, monetary) and number helpers.
+    kind "price":  price sensors (unit …/kWh) and number helpers whose name looks like a price.
     Only entities with a numeric state are returned, sorted by entity id.
     """
     out: list[dict] = []
@@ -109,11 +110,14 @@ def filter_ha_entities(states: list[dict], kind: str) -> list[dict]:
         if kind == "energy":
             ok = domain == "sensor" and (device_class == "energy" or unit.lower() in _ENERGY_UNITS)
         elif kind == "price":
-            ok = (
-                "/kwh" in unit.lower()
-                or device_class == "monetary"
-                or domain in ("input_number", "number")
-            )
+            low = unit.lower()
+            if domain == "sensor":
+                # price per kWh (EUR/kWh, ct/kWh) — not CO2 intensity or plain costs
+                ok = "/kwh" in low and "co2" not in low
+            else:
+                # number helpers have no unit: only those that look like a price
+                ident = (entity_id + " " + str(attrs.get("friendly_name") or "")).lower()
+                ok = "/kwh" in low or any(w in ident for w in _PRICE_WORDS)
         else:
             ok = False
         if ok:

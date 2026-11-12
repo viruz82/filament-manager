@@ -11,6 +11,9 @@ STATES = [
     _s("sensor.drucker_power", "7.0", unit_of_measurement="W", device_class="power"),
     _s("sensor.preis", "0.3316", unit_of_measurement="EUR/kWh", device_class="monetary"),
     _s("input_number.strompreis", "0.30"),
+    _s("input_number.abschlag_strom", "90"),
+    _s("sensor.co2", "80", unit_of_measurement="gCO2eq/kWh"),
+    _s("sensor.kosten_heute", "1.2", unit_of_measurement="EUR", device_class="monetary"),
     _s("sensor.defekt", "unavailable", unit_of_measurement="kWh", device_class="energy"),
     _s("light.lampe", "on"),
 ]
@@ -21,7 +24,7 @@ def test_energy_only_energy_meters_with_numeric_state():
     assert ids == ["sensor.drucker_energy", "sensor.heizung_wh"]
 
 
-def test_price_takes_price_sensors_and_number_helpers():
+def test_price_takes_price_sensors_and_price_like_helpers():
     ids = [e["entity_id"] for e in filter_ha_entities(STATES, "price")]
     assert ids == ["input_number.strompreis", "sensor.preis"]
 
