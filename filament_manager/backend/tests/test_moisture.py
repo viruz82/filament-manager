@@ -246,3 +246,18 @@ def test_ha_low_stock_has_almost_empty(client, session):
     assert len(attrs["spools"]) == 2
     assert len(attrs["almost_empty"]) == 1
     assert "AlmostEmpty" in attrs["almost_empty"][0]
+
+
+def test_patch_sets_moisture_state_for_migration(client):
+    s = _spool(client, packaging="open")
+    anchor = (utcnow() - timedelta(days=5)).isoformat()
+    r = client.patch(f"/api/spools/{s['id']}", json={
+        "last_dried_at": (utcnow() - timedelta(days=40)).isoformat(),
+        "moisture_anchor_at": anchor, "moisture_anchor_pct": 100,
+    })
+    body = r.json()
+    # anchor wins over the drying date: 100 − 5 × 1 × 1 × 3 = 85
+    assert body["moisture"]["pct"] == pytest.approx(85.0, abs=0.1)
+    assert body["moisture"]["days_since_dried"] == pytest.approx(40, abs=0.1)
+    r = client.patch(f"/api/spools/{s['id']}", json={"is_drying": True})
+    assert r.json()["moisture"]["level"] == "drying"

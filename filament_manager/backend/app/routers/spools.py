@@ -101,6 +101,9 @@ def update_spool(spool_id: int, body: SpoolUpdate, background_tasks: BackgroundT
     if "ams_slot" in updates:
         updates["ams_slot"] = _claim_ams_slot(updates["ams_slot"], spool.id, db)
     weight_before = spool.current_weight_g
+    explicit = {k: updates.pop(k) for k in
+                ("is_drying", "drying_started_at", "moisture_anchor_at", "moisture_anchor_pct")
+                if k in updates}
     # Storage changes keep the reached dryness value (only the rate changes);
     # material is applied first only when the storage does not change with it.
     if "packaging" in updates:
@@ -119,6 +122,8 @@ def update_spool(spool_id: int, body: SpoolUpdate, background_tasks: BackgroundT
             spool.moisture_anchor_pct = None
     for field, value in updates.items():
         setattr(spool, field, value)
+    for field, value in explicit.items():      # migration: exact moisture state
+        setattr(spool, field, bool(value) if field == "is_drying" else value)
     spool.updated_at = utcnow()
     if "current_weight_g" in updates:
         weight_after = spool.current_weight_g

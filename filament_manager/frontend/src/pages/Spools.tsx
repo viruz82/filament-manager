@@ -1354,8 +1354,13 @@ export default function Spools() {
   const archiveMut = useMutation({ mutationFn: (id: number) => api.archiveSpool(id), onSuccess: invalidate })
   const unarchiveMut = useMutation({ mutationFn: (id: number) => api.unarchiveSpool(id), onSuccess: invalidate })
 
-  const buildPayload = (form: typeof EMPTY_FORM): Partial<Spool> => ({
-    ...form,
+  const buildPayload = (form: typeof EMPTY_FORM): Partial<Spool> => {
+    // the form state is seeded with the whole spool: never send the moisture
+    // state back (the dryer buttons own it; a stale copy would overwrite it)
+    const { is_drying: _d, drying_started_at: _ds, moisture: _m, ...rest } = form as typeof form & Partial<Spool>
+    void _d; void _ds; void _m
+    return {
+    ...rest,
     custom_id: form.custom_id !== '' ? parseInt(form.custom_id as string, 10) || null : null,
     diameter_mm: form.diameter_mm !== '' ? parseFloat(form.diameter_mm as string) : 1.75,
     purchase_price: parseDecimal(form.purchase_price as string),
@@ -1374,7 +1379,8 @@ export default function Spools() {
     notes: form.notes || null,
     // null → backend takes the tare from the brand config
     spool_weight_g: parseDecimal(form.spool_weight_g as string),
-  } as unknown as Partial<Spool>)
+  } as unknown as Partial<Spool>
+  }
 
   const handleSave = async (form: typeof EMPTY_FORM, quantity: number) => {
     const payload = buildPayload(form)

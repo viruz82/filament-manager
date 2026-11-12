@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.1
+
+- Feature: **moisture state can be set via `PATCH /api/spools/{id}`** (`is_drying`, `drying_started_at`, `moisture_anchor_at`, `moisture_anchor_pct`) — for migrating from another tool with the exact estimate; applied after all other fields. The dryer buttons stay the normal way
+- Fix: the spool form never sends the dryer state back (a stale copy could have overwritten it)
+
 ## 1.4.0
 
 - Feature: **Moisture estimate per spool** — every spool gets an estimated dryness in % from material, storage and the time since it was last dried (nothing is measured): `100 − days × material factor × storage factor × 3`. Storage ("packaging") per spool: open on the shelf, factory sealed, sealed bag, vacuum sealed, dry box with silica; while a spool sits in an AMS tray the AMS factor applies, and a factory-sealed spool counts as open once loaded. A storage change keeps the reached value and only changes the rate from then on. Levels: dry (≥ 80 %), good, dry soon (below the warning threshold, default 50 %), critical (below the critical threshold, default 25 %), drying, unknown (never marked as dried — no guessing). Factors for materials and storage types are editable (Settings → Appearance → Moisture estimate)

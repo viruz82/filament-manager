@@ -88,6 +88,12 @@ class SpoolUpdate(BaseModel):
     notes: str | None = None
     archived: bool | None = None
     is_refill_pack: bool | None = None
+    # Moisture state, set directly only when migrating from another tool
+    # (the dryer endpoints are the normal way). Applied after all other fields.
+    is_drying: bool | None = None
+    drying_started_at: datetime | None = None
+    moisture_anchor_at: datetime | None = None
+    moisture_anchor_pct: float | None = Field(default=None, ge=0, le=100)
 
 
 class SpoolOut(SpoolBase):
