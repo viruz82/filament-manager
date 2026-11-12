@@ -540,27 +540,35 @@ function AMSTrayRow({
 }) {
   const { t } = useTranslation()
   const selectedId = tray.spool?.id ?? null
+  const [showInfo, setShowInfo] = useState(false)
+
+  // Tray badge: AMS colour with the tray number, outer ring = remaining %
+  const pct = tray.ha_remaining != null ? Math.max(0, Math.min(100, Math.round(parseFloat(tray.ha_remaining)))) : null
+  const hex = tray.ha_color_hex ? tray.ha_color_hex.slice(0, 7) : null
+  const lum = hex && /^#[0-9a-fA-F]{6}$/.test(hex)
+    ? (0.299 * parseInt(hex.slice(1, 3), 16) + 0.587 * parseInt(hex.slice(3, 5), 16) + 0.114 * parseInt(hex.slice(5, 7), 16)) / 255
+    : 0
+  const info = `${tray.ha_material ?? '—'} · ${pct != null ? `${pct}%` : '—'}`
 
   return (
-    <div className="flex items-center gap-2 bg-surface-3/40 rounded-lg px-3 py-2">
-      <span className="text-xs font-mono text-gray-400 w-6 shrink-0">T{tray.tray}</span>
-
-      <div className="flex items-center gap-1.5 min-w-0 w-28 shrink-0">
-        {tray.ha_color_hex ? (
-          <span
-            className="w-3 h-3 rounded-full border border-white/20 shrink-0"
-            style={{ background: tray.ha_color_hex }}
-          />
-        ) : (
-          <span className="w-3 h-3 rounded-full bg-surface-3 border border-white/10 shrink-0" />
-        )}
-        <span className="text-xs text-gray-500 truncate">
-          {tray.ha_material ?? '—'}
+    <div className="flex items-center gap-2 bg-surface-3/40 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2">
+      <button
+        type="button"
+        onClick={() => setShowInfo(v => !v)}
+        title={`T${tray.tray} · ${info}`}
+        className="w-7 h-7 rounded-full shrink-0 grid place-items-center"
+        style={{ background: pct != null ? `conic-gradient(#3b82f6 ${pct * 3.6}deg, rgba(255,255,255,0.12) 0)` : 'rgba(255,255,255,0.12)' }}
+      >
+        <span
+          className="w-[22px] h-[22px] rounded-full grid place-items-center text-[11px] font-semibold border border-black/30"
+          style={{ background: hex ?? '#2a2a2e', color: hex ? (lum > 0.6 ? '#111' : '#fff') : '#9ca3af' }}
+        >
+          {tray.tray}
         </span>
-      </div>
+      </button>
 
-      <span className="text-xs text-gray-500 w-10 shrink-0 text-right">
-        {tray.ha_remaining != null ? `${Math.round(parseFloat(tray.ha_remaining))}%` : '—'}
+      <span className={`text-xs text-gray-500 shrink-0 whitespace-nowrap ${showInfo ? 'inline' : 'hidden'} sm:inline sm:w-20`}>
+        {info}
       </span>
 
       <select
@@ -616,7 +624,7 @@ function AMSTrayRow({
       {tray.spool ? (
         <>
           <span
-            className="w-3 h-3 rounded-full border border-white/20 shrink-0"
+            className="hidden sm:block w-3 h-3 rounded-full border border-white/20 shrink-0"
             style={{ background: tray.spool.color_hex }}
             title={tray.spool.color_name}
           />
@@ -634,7 +642,7 @@ function AMSTrayRow({
           )}
         </>
       ) : (
-        <span className="w-3 h-3 shrink-0" />
+        <span className="hidden sm:block w-3 h-3 shrink-0" />
       )}
     </div>
   )

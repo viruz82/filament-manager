@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.1
+
+- Fix: **AMS assignment rows fit on phones** — the tray label, material and remaining % used fixed widths, leaving the spool dropdown only a few pixels wide on narrow screens. Each tray is now one compact badge (AMS colour with the tray number, outer ring = remaining %); material and % sit next to it from tablet width up and appear on tap on phones; the extra spool colour dot is hidden on phones since the dropdown already names the spool
+
 ## 1.1.0
 
 - Feature: **Assign AMS trays directly from the spool list** — the AMS Slot column (table) and the card view now hold a dropdown of all trays of the active cloud printers, so a spool can be put into or taken out of a tray without opening the edit form. Trays held by another spool show that spool ("in use: #3 SUNLU PLA+ · Black"); picking one moves the tray. When the printer is offline the trays fall back to `ams_unit_count` × 4, so assignment still works
