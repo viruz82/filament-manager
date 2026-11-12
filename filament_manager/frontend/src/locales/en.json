@@ -138,7 +138,8 @@
       "qty": "Qty",
       "addN": "Add {{n}} spools",
       "brandPlaceholder": "SUNLU, Bambu, …",
-      "colorPlaceholder": "Fire Red, Black, …"
+      "colorPlaceholder": "Fire Red, Black, …",
+      "tareOwn": "Own value for this spool (empty = brand value)"
     },
     "table": {
       "brand": "Brand",
@@ -468,7 +469,10 @@
       "weight": "Spool Weight (g)",
       "add": "Add Brand",
       "noEntries": "No brand weights configured.",
-      "brandPlaceholder": "Brand name (e.g. SUNLU)"
+      "brandPlaceholder": "Brand name (e.g. SUNLU)",
+      "apply": "Apply to all spools of this brand",
+      "applyConfirm": "Set the tare of all “{{brand}}” spools to {{g}} g?",
+      "applied": "{{count}} spools updated"
     },
     "materials": {
       "title": "Filament Materials",

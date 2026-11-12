@@ -217,14 +217,46 @@ class TestUpdateSpool:
         r = client.patch(f"/api/spools/{spool_id}", json={"brand": "SUNLU"})
         assert r.json()["spool_weight_g"] == 300.0
 
-    def test_update_cannot_set_spool_weight_g_directly(self, client, session):
-        """spool_weight_g stays derived-only — a client-supplied value in a
-        PATCH with no brand change must be ignored, not applied."""
+    def test_update_sets_spool_weight_g_directly(self, client, session):
+        """Fork 1.2.0: a spool can carry its own tare (e.g. SUNLU V1/V2 spools)."""
         session.add(BrandSpoolWeight(brand="SUNLU", spool_weight_g=225.0))
         session.commit()
         spool_id = client.post("/api/spools", json=make_spool_payload(brand="SUNLU")).json()["id"]
-        r = client.patch(f"/api/spools/{spool_id}", json={"spool_weight_g": 999.0})
+        r = client.patch(f"/api/spools/{spool_id}", json={"spool_weight_g": 128.0})
+        assert r.json()["spool_weight_g"] == 128.0
+
+    def test_update_spool_weight_g_none_falls_back_to_brand(self, client, session):
+        session.add(BrandSpoolWeight(brand="SUNLU", spool_weight_g=225.0))
+        session.commit()
+        spool_id = client.post("/api/spools", json=make_spool_payload(brand="SUNLU", spool_weight_g=128.0)).json()["id"]
+        r = client.patch(f"/api/spools/{spool_id}", json={"spool_weight_g": None})
         assert r.json()["spool_weight_g"] == 225.0
+
+    def test_update_brand_and_explicit_tare_keeps_explicit(self, client, session):
+        session.add(BrandSpoolWeight(brand="SUNLU", spool_weight_g=225.0))
+        session.commit()
+        spool_id = client.post("/api/spools", json=make_spool_payload(brand="Other")).json()["id"]
+        r = client.patch(f"/api/spools/{spool_id}", json={"brand": "SUNLU", "spool_weight_g": 250.0})
+        assert r.json()["spool_weight_g"] == 250.0
+
+    def test_create_with_explicit_tare(self, client, session):
+        session.add(BrandSpoolWeight(brand="SUNLU", spool_weight_g=225.0))
+        session.commit()
+        r = client.post("/api/spools", json=make_spool_payload(brand="SUNLU", spool_weight_g=128.0))
+        assert r.json()["spool_weight_g"] == 128.0
+
+    def test_apply_brand_weight_to_all_spools(self, client, session):
+        bw = BrandSpoolWeight(brand="SUNLU", spool_weight_g=225.0)
+        session.add(bw)
+        session.commit()
+        a = client.post("/api/spools", json=make_spool_payload(brand="SUNLU", spool_weight_g=100.0)).json()["id"]
+        b = client.post("/api/spools", json=make_spool_payload(brand="sunlu", spool_weight_g=300.0)).json()["id"]
+        c = client.post("/api/spools", json=make_spool_payload(brand="eSUN", spool_weight_g=170.0)).json()["id"]
+        r = client.post(f"/api/settings/brand-weights/{bw.id}/apply")
+        assert r.status_code == 200 and r.json() == {"updated": 2}
+        assert client.get(f"/api/spools/{a}").json()["spool_weight_g"] == 225.0
+        assert client.get(f"/api/spools/{b}").json()["spool_weight_g"] == 225.0
+        assert client.get(f"/api/spools/{c}").json()["spool_weight_g"] == 170.0
 
     def test_update_nonexistent_returns_404(self, client):
         r = client.patch("/api/spools/9999", json={"color_name": "Blue"})

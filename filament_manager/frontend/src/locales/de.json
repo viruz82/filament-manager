@@ -138,7 +138,8 @@
       "qty": "Anz.",
       "addN": "{{n}} Spulen hinzufügen",
       "brandPlaceholder": "SUNLU, Bambu, …",
-      "colorPlaceholder": "Feuerrot, Schwarz, …"
+      "colorPlaceholder": "Feuerrot, Schwarz, …",
+      "tareOwn": "Eigener Wert dieser Spule (leer = Wert der Marke)"
     },
     "table": {
       "brand": "Marke",
@@ -468,7 +469,10 @@
       "weight": "Spulengewicht (g)",
       "add": "Marke hinzufügen",
       "noEntries": "Keine Spulengewichte konfiguriert.",
-      "brandPlaceholder": "Markenname (z.B. SUNLU)"
+      "brandPlaceholder": "Markenname (z.B. SUNLU)",
+      "apply": "Auf alle Spulen dieser Marke anwenden",
+      "applyConfirm": "Leergewicht {{g}} g für alle Spulen der Marke „{{brand}}“ übernehmen?",
+      "applied": "{{count}} Spulen übernommen"
     },
     "materials": {
       "title": "Filamentmaterialien",

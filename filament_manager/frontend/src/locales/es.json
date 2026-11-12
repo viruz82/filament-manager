@@ -138,7 +138,8 @@
       "qty": "Cant.",
       "addN": "Añadir {{n}} bobinas",
       "brandPlaceholder": "SUNLU, Bambu, …",
-      "colorPlaceholder": "Rojo fuego, Negro, …"
+      "colorPlaceholder": "Rojo fuego, Negro, …",
+      "tareOwn": "Valor propio de esta bobina (vacío = valor de la marca)"
     },
     "table": {
       "brand": "Marca",
@@ -468,7 +469,10 @@
       "weight": "Peso de bobina (g)",
       "add": "Añadir marca",
       "noEntries": "No hay pesos de bobina configurados.",
-      "brandPlaceholder": "Nombre de marca (ej. SUNLU)"
+      "brandPlaceholder": "Nombre de marca (ej. SUNLU)",
+      "apply": "Aplicar a todas las bobinas de esta marca",
+      "applyConfirm": "¿Aplicar la tara de {{g}} g a todas las bobinas de «{{brand}}»?",
+      "applied": "{{count}} bobinas actualizadas"
     },
     "materials": {
       "title": "Materiales de filamento",

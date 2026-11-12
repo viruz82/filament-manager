@@ -57,7 +57,9 @@ def list_spools(
 @router.post("", response_model=SpoolOut, status_code=201)
 def create_spool(body: SpoolCreate, db: Session = Depends(get_db)):
     data = body.model_dump()
-    data["spool_weight_g"] = _resolve_spool_weight(data.get("brand"), db)
+    # An explicit per-spool tare wins; otherwise take it from the brand config.
+    if not data.get("spool_weight_g"):
+        data["spool_weight_g"] = _resolve_spool_weight(data.get("brand"), db)
     if "ams_slot" in data:
         data["ams_slot"] = _claim_ams_slot(data["ams_slot"], None, db)
     spool = Spool(**data)
@@ -81,14 +83,16 @@ def update_spool(spool_id: int, body: SpoolUpdate, background_tasks: BackgroundT
     if not spool:
         raise HTTPException(404, "Spool not found")
     updates = body.model_dump(exclude_unset=True)
-    # Only re-resolve the brand tare when brand is actually changing — otherwise
-    # every unrelated PATCH (color, notes, weight, ...) would silently reset a
-    # spool's stored tare back to the current brand config (issue #71). The client
-    # can never set spool_weight_g directly either way — it's derived-only.
-    if "brand" in updates and updates["brand"] != spool.brand:
+    # Tare rules:
+    # - an explicit spool_weight_g in the PATCH is applied as the spool's own
+    #   tare (None → take it from the brand config again);
+    # - otherwise the brand tare is only re-resolved when the brand actually
+    #   changes, so unrelated PATCHes never reset a stored tare (issue #71).
+    if "spool_weight_g" in updates:
+        if updates["spool_weight_g"] is None:
+            updates["spool_weight_g"] = _resolve_spool_weight(updates.get("brand", spool.brand), db)
+    elif "brand" in updates and updates["brand"] != spool.brand:
         updates["spool_weight_g"] = _resolve_spool_weight(updates["brand"], db)
-    else:
-        updates.pop("spool_weight_g", None)
     if "ams_slot" in updates:
         updates["ams_slot"] = _claim_ams_slot(updates["ams_slot"], spool.id, db)
     weight_before = spool.current_weight_g

@@ -45,7 +45,8 @@ class SpoolCreate(SpoolBase):
     diameter_mm: float = Field(default=1.75, gt=0)
     initial_weight_g: float = Field(gt=0)
     current_weight_g: float = Field(ge=0)
-    spool_weight_g: float = Field(default=0, ge=0)
+    # Empty-spool tare. None/0 → taken from the brand config.
+    spool_weight_g: float | None = Field(default=None, ge=0)
     purchase_price: float | None = Field(default=None, ge=0)
 
 

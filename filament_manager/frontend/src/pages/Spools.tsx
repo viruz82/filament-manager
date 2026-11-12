@@ -17,6 +17,7 @@ const EMPTY_FORM = {
   brand: '', material: 'PLA', subtype: '', subtype2: '', color_name: '', color_hex: '#888888',
   color2_hex: '', color3_hex: '', color4_hex: '',
   diameter_mm: '', initial_weight_g: 1000, current_weight_g: 1000,
+  spool_weight_g: '',   // own empty-spool tare; '' = take it from the brand config
   purchase_price: '', purchased_at: '', purchase_location: '', storage_location: '',
   article_number: '', last_dried_at: '', ams_slot: '', notes: '',
   is_refill_pack: false,
@@ -48,6 +49,7 @@ function SpoolForm({
     last_dried_at: initial?.last_dried_at ? initial.last_dried_at.slice(0, 10) : '',
     initial_weight_g: initial?.initial_weight_g ?? 1000,
     current_weight_g: initial?.current_weight_g ?? 1000,
+    spool_weight_g: initial?.spool_weight_g ? String(initial.spool_weight_g) : '',
     color2_hex: initial?.color2_hex ?? '',
     color3_hex: initial?.color3_hex ?? '',
     color4_hex: initial?.color4_hex ?? '',
@@ -67,20 +69,35 @@ function SpoolForm({
   const { data: activeSpools = [] } = useQuery<Spool[]>({ queryKey: ['spools', false], queryFn: () => api.getSpools(false) })
 
   const matchedBrand = brandWeights.find(b => b.brand.toLowerCase() === form.brand.toLowerCase())
-  const tareG = matchedBrand?.spool_weight_g ?? 0
+  const brandTareG = matchedBrand?.spool_weight_g ?? 0
+  const ownTareG = parseDecimal(form.spool_weight_g as string)
+  const tareG = ownTareG ?? brandTareG
+  // Tare variants of the same brand, e.g. "SUNLU (V1)" / "SUNLU (V2)"
+  const tareVariants = form.brand.trim()
+    ? brandWeights.filter(b => b.brand.toLowerCase().startsWith(form.brand.trim().toLowerCase()))
+    : []
+
+  const recalcFromScale = (total: string, tare: number) => {
+    const totalG = parseFloat(total)
+    if (!isNaN(totalG)) {
+      setForm(f => ({ ...f, current_weight_g: Math.max(0, Math.round((totalG - tare) * 10) / 10) }))
+    }
+  }
 
   const onBrandChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm(f => ({ ...f, brand: e.target.value }))
+    // A new brand brings its own tare: drop the per-spool value
+    setForm(f => ({ ...f, brand: e.target.value, spool_weight_g: '' }))
+  }
+
+  const setOwnTare = (val: string) => {
+    setForm(f => ({ ...f, spool_weight_g: val }))
+    if (measuredTotal) recalcFromScale(measuredTotal, parseDecimal(val) ?? brandTareG)
   }
 
   const onMeasuredChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value
     setMeasuredTotal(val)
-    const totalG = parseFloat(val)
-    if (!isNaN(totalG)) {
-      const remaining = Math.max(0, totalG - tareG)
-      setForm(f => ({ ...f, current_weight_g: remaining }))
-    }
+    recalcFromScale(val, tareG)
   }
 
   const set = (k: keyof typeof EMPTY_FORM) => (
@@ -290,15 +307,39 @@ function SpoolForm({
               <div>
                 <label className="label">{t('spools.form.emptySpoolTare')}</label>
                 <div className="flex items-center gap-2">
-                  <div className="input bg-surface-3/50 text-gray-300 cursor-default select-none flex-1">
-                    {tareG > 0 ? `${tareG} g` : '—'}
-                  </div>
+                  <input
+                    className="input"
+                    type="text"
+                    inputMode="decimal"
+                    value={form.spool_weight_g as string}
+                    onChange={e => setOwnTare(e.target.value)}
+                    placeholder={brandTareG > 0 ? String(brandTareG) : '—'}
+                  />
+                  <span className="text-xs text-gray-500 shrink-0">g</span>
                 </div>
-                {matchedBrand ? (
+                {ownTareG != null ? (
+                  <p className="text-xs text-gray-400 mt-0.5">{t('spools.form.tareOwn')}</p>
+                ) : matchedBrand ? (
                   <p className="text-xs text-green-500 mt-0.5">{t('spools.form.brandConfig', { brand: form.brand })}</p>
                 ) : form.brand ? (
                   <p className="text-xs text-gray-500 mt-0.5">{t('spools.form.noBrandConfig')}</p>
                 ) : null}
+                {tareVariants.length > 1 && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {tareVariants.map(v => (
+                      <button
+                        key={v.id}
+                        type="button"
+                        className={`text-[11px] px-1.5 py-0.5 rounded border transition-colors ${
+                          tareG === v.spool_weight_g ? 'border-accent text-white' : 'border-surface-3 text-gray-400 hover:text-white'
+                        }`}
+                        onClick={() => setOwnTare(String(v.spool_weight_g))}
+                      >
+                        {v.brand} · {v.spool_weight_g.toFixed(0)} g
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1045,7 +1086,9 @@ export default function Spools() {
     color4_hex: (form.color4_hex && /^#[0-9a-fA-F]{6}$/.test(form.color4_hex)) ? form.color4_hex : null,
     ams_slot: form.ams_slot || null,
     notes: form.notes || null,
-  } as Partial<Spool>)
+    // null → backend takes the tare from the brand config
+    spool_weight_g: parseDecimal(form.spool_weight_g as string),
+  } as unknown as Partial<Spool>)
 
   const handleSave = async (form: typeof EMPTY_FORM, quantity: number) => {
     const payload = buildPayload(form)

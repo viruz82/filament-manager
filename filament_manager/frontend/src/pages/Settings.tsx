@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { api } from '../api'
 import type { PrinterConfig, AMSTray, Spool, BrandSpoolWeight, FilamentSubtype, BambuCloudStatus, BambuCloudDevice, FilamentCatalog } from '../types'
-import { Plus, Trash2, X, RefreshCw, CheckCircle, AlertCircle, Pencil, ChevronDown, ChevronUp, ChevronsUpDown, Download, Upload, Wifi, WifiOff, Sparkles } from 'lucide-react'
+import { Plus, Trash2, X, RefreshCw, CheckCircle, AlertCircle, Pencil, ChevronDown, ChevronUp, ChevronsUpDown, Download, Upload, Wifi, WifiOff, Sparkles, ArrowDownToLine } from 'lucide-react'
 import Modal from '../components/Modal'
 import BambuCloudSection from '../components/BambuCloudSection'
 import FilamentSyncSection from '../components/FilamentSyncSection'
@@ -852,6 +852,16 @@ function BrandWeightsSection({ actionsLast }: { actionsLast: boolean }) {
     onSuccess: () => { inv(); setEditingId(null) },
   })
   const deleteMut = useMutation({ mutationFn: api.deleteBrandWeight, onSuccess: inv })
+  const [applied, setApplied] = useState<{ id: number; updated: number } | null>(null)
+  const applyMut = useMutation({
+    mutationFn: (id: number) => api.applyBrandWeight(id),
+    onSuccess: (data, id) => { setApplied({ id, updated: data.updated }); qc.invalidateQueries({ queryKey: ['spools'] }) },
+  })
+  const confirmApply = (e: BrandSpoolWeight) => {
+    if (window.confirm(t('settings.brandWeights.applyConfirm', { brand: e.brand, g: e.spool_weight_g.toFixed(0) }))) {
+      applyMut.mutate(e.id)
+    }
+  }
 
   const startEdit = (e: BrandSpoolWeight) => {
     setEditingId(e.id); setEditBrand(e.brand); setEditWeight(e.spool_weight_g.toString())
@@ -928,8 +938,22 @@ function BrandWeightsSection({ actionsLast }: { actionsLast: boolean }) {
                     <button className="btn-ghost p-1 text-red-400" onClick={() => deleteMut.mutate(e.id)}><Trash2 size={12} /></button>
                   </>
                 )}
-                <span className="flex-1 text-sm text-white">{e.brand}</span>
+                <span className="flex-1 min-w-0 text-sm text-white truncate">
+                  {e.brand}
+                  {applied?.id === e.id && (
+                    <span className="ml-2 text-[11px] text-green-400">{t('settings.brandWeights.applied', { count: applied.updated })}</span>
+                  )}
+                </span>
                 <span className="text-sm text-gray-300 tabular-nums">{e.spool_weight_g.toFixed(0)} g</span>
+                <button
+                  className="btn-ghost p-1"
+                  onClick={() => confirmApply(e)}
+                  disabled={applyMut.isPending}
+                  title={t('settings.brandWeights.apply')}
+                  aria-label={t('settings.brandWeights.apply')}
+                >
+                  <ArrowDownToLine size={12} />
+                </button>
                 {actionsLast && (
                   <>
                     <button className="btn-ghost p-1" onClick={() => startEdit(e)}><Pencil size={12} /></button>

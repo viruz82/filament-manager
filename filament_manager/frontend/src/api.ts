@@ -123,6 +123,8 @@ export const api = {
     request<import('./types').BrandSpoolWeight>(`settings/brand-weights/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   deleteBrandWeight: (id: number) =>
     request<void>(`settings/brand-weights/${id}`, { method: 'DELETE' }),
+  applyBrandWeight: (id: number) =>
+    request<{ updated: number }>(`settings/brand-weights/${id}/apply`, { method: 'POST' }),
 
   getFilamentSubtypes: () => request<FilamentSubtype[]>('settings/subtypes'),
   createFilamentSubtype: (name: string) =>

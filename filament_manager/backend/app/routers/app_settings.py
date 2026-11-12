@@ -173,6 +173,21 @@ def update_brand_weight(entry_id: int, body: BrandWeightIn, db: Session = Depend
     return entry
 
 
+@router.post("/brand-weights/{entry_id}/apply")
+def apply_brand_weight(entry_id: int, db: Session = Depends(get_db)):
+    """Set the tare of every spool of this brand (case-insensitive) to the brand value."""
+    from ..models import Spool
+    entry = db.get(BrandSpoolWeight, entry_id)
+    if not entry:
+        raise HTTPException(404, "Not found")
+    spools = db.query(Spool).filter(Spool.brand.ilike(entry.brand)).all()
+    for s in spools:
+        s.spool_weight_g = entry.spool_weight_g
+        s.updated_at = utcnow()
+    db.commit()
+    return {"updated": len(spools)}
+
+
 @router.delete("/brand-weights/{entry_id}", status_code=204)
 def delete_brand_weight(entry_id: int, db: Session = Depends(get_db)):
     entry = db.get(BrandSpoolWeight, entry_id)
