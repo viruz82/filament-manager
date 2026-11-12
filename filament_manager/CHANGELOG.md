@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1
+
+- Fix: **Data import no longer drops local calibration runs** — Bambu printers report `task_id` "0" for every local run (auto calibrations, flow calibrations, SD-card prints). The JSON import used `task_id` as a unique key, so all of these runs after the first one were treated as duplicates and skipped together with their filament usages (30 of 669 jobs in a real export). `task_id` "0" and empty values are no longer used as a dedup key; these jobs fall back to the (name, started_at, printer_name) fingerprint, so re-importing the same bundle still creates no duplicates
+
 ## 1.0.0
 
 - Fork: **Own version series** — personal fork of cgradl/filament-manager based on v0.41.3, no functional changes; add-on repository, URL and panel title (“Filament (Fork)”) point to the fork so it can be installed next to the original
