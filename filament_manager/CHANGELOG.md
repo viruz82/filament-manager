@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.0
+
+- Feature: **Printer wear cost per print hour** — each printer has an optional wear/depreciation rate (e.g. 0.20 €/h, Settings → Printers). When a print ends (or a manual print is saved, or its duration/printer is edited) the cost is calculated from the print duration and stored on the print, so a later rate change does not silently rewrite history; "Apply to all prints" on the printer card recalculates past prints on purpose. Print, project and dashboard totals are now material + energy + wear; wear is shown in the print list and project summaries and included in export/import
+- Feature: **Per-spool empty-spool tare** — the spool form has an editable tare field (empty = brand value) with quick picks for variants of the same brand (e.g. "SUNLU (V1)" / "SUNLU (V2)"). The scale calculator in the form now uses the spool's own tare instead of always the current brand value. `spool_weight_g` can be set via the API; a brand change without an explicit value still takes the brand tare (#71 behaviour kept for unrelated edits)
+- Feature: **Apply a brand tare to all spools of that brand** (Settings → Brand Spool Weights, new button per entry)
+- Feature: **Weigh a spool straight from the list** — scale button in table and card view opens a small dialog: enter the scale reading, see before / new (with %) / change, save. New endpoint `POST /api/spools/{id}/weigh` (remaining = reading − tare, floored at 0) logs the audit action "Weighed"
+
 ## 1.1.1
 
 - Fix: **AMS assignment rows fit on phones** — the tray label, material and remaining % used fixed widths, leaving the spool dropdown only a few pixels wide on narrow screens. Each tray is now one compact badge (AMS colour with the tray number, outer ring = remaining %); material and % sit next to it from tablet width up and appear on tap on phones; the extra spool colour dot is hidden on phones since the dropdown already names the spool
