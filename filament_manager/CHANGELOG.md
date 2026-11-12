@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.0
+
+- Feature: **Sensor suggestions in the printer form** — the energy sensor and price sensor fields are now filtered suggestion lists backed by Home Assistant (`GET /api/settings/ha-entities?kind=energy|price`): energy shows only cumulative kWh/Wh meters, price shows price sensors (…/kWh, monetary) and number helpers, each with name and current value. Typing narrows the list; any entity ID can still be typed. The energy hint now warns not to use a daily/monthly counter (these reset at midnight and lose the energy of prints that cross it)
+- Feature: **Brand suggestions in empty-spool weights** (Settings → Data) — the brand field offers the brands from the brand list that have no weight yet; free text stays possible for variants such as "SUNLU (V1)"
+- Fix: wear cost block on the printer card no longer overlaps the buttons on narrow screens
+
 ## 1.2.2
 
 - Fix: **Energy tracking and wear cost are visible and editable on the printer card** (Settings → Printers) — the energy sensor, the price sensor and the wear rate were only reachable behind a tiny pencil icon. The printer card now shows both sensors with their live value, a clear "Edit" button (labelled pencil at the top and next to the wear rate), and a red warning when a sensor is not set or cannot be read ("energy costs will not be calculated"). The Cloud configuration view shows the same check

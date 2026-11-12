@@ -459,7 +459,7 @@
       "autoMatchResult": "Auto-matched {{count}} tray(s)",
       "energyTracking": "Energy Tracking",
       "energySensor": "Energy Sensor (HA entity ID)",
-      "energySensorHint": "Cumulative kWh sensor, e.g. from a Shelly plug. Read at print start and end to calculate consumption.",
+      "energySensorHint": "Cumulative kWh meter that is never reset (e.g. the total counter of a Shelly plug), not a daily or monthly counter. Read at print start and end to calculate the consumption.",
       "priceSensor": "Electricity Price Sensor (HA entity ID)",
       "priceSensorHint": "Sensor or helper returning the price in €/kWh. Used to calculate energy cost per print.",
       "standbyKwh": "Standby Energy Consumption",
@@ -471,6 +471,7 @@
       "wearRecalcHint": "Recalculates the wear cost of all past prints of this printer with the current rate.",
       "wearRecalcConfirm": "Recalculate the wear cost of all past prints of “{{name}}” with the current rate?",
       "wearRecalcDone": "{{count}} prints recalculated, {{total}} in total",
+      "sensorSuggestions": "{{count}} matching sensors to choose from: click the field or type. The exact entity ID is what counts.",
       "sensorNotSet": "not set – energy costs will not be calculated",
       "sensorMissing": "not found or not a number – energy costs will not be calculated"
     },

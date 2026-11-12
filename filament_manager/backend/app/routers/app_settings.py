@@ -37,6 +37,15 @@ async def get_ha_sensor_value(entity_id: str):
     return {"entity_id": entity_id, "value": value}
 
 
+@router.get("/ha-entities")
+async def get_ha_entities(kind: str):
+    """Suggestions for the energy / price sensor fields (filtered by type)."""
+    if kind not in ("energy", "price"):
+        raise HTTPException(422, "kind must be 'energy' or 'price'")
+    from ..ha_client import list_ha_entities
+    return await list_ha_entities(kind)
+
+
 @router.get("/changelog")
 def get_changelog():
     try:

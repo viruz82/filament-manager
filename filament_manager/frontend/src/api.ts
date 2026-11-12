@@ -182,6 +182,7 @@ export const api = {
   getVersion: () => request<{ version: string }>('settings/version'),
   getChangelog: () => request<{ changelog: string }>('settings/changelog'),
   getHASensorValue: (entityId: string) => request<{ entity_id: string; value: number | null }>(`settings/ha-sensor-value?entity_id=${encodeURIComponent(entityId)}`),
+  getHAEntities: (kind: 'energy' | 'price') => request<{ entity_id: string; name: string; value: string; unit: string }[]>(`settings/ha-entities?kind=${kind}`),
   getHALocale: () => request<{ language: string; time_zone: string; country: string; currency: string }>('settings/ha-locale'),
   getUserPrefs: () => request<{ timezone_override: string | null; currency_override: string | null; country_override: string | null; low_stock_threshold_pct: number }>('settings/user-prefs'),
   saveUserPrefs: (data: { timezone_override: string | null; currency_override: string | null; country_override: string | null; low_stock_threshold_pct: number | null }) =>

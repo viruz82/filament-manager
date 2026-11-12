@@ -459,7 +459,7 @@
       "autoMatchResult": "{{count}} Fach/Fächer automatisch zugeordnet",
       "energyTracking": "Energieverfolgung",
       "energySensor": "Energiesensor (HA-Entity-ID)",
-      "energySensorHint": "Kumulativer kWh-Sensor, z. B. von einem Shelly-Plug. Wird beim Druckstart und -ende ausgelesen, um den Verbrauch zu berechnen.",
+      "energySensorHint": "Kumulativer kWh-Zähler, der nicht zurückgesetzt wird (z. B. Gesamtzähler eines Shelly-Plugs), kein Tages- oder Monatszähler. Wird beim Druckstart und -ende ausgelesen, um den Verbrauch zu berechnen.",
       "priceSensor": "Strompreissensor (HA-Entity-ID)",
       "priceSensorHint": "Sensor oder Helfer, der den Preis in €/kWh liefert. Wird zur Berechnung der Energiekosten pro Druck verwendet.",
       "standbyKwh": "Standby-Energieverbrauch",
@@ -471,6 +471,7 @@
       "wearRecalcHint": "Berechnet die Abnutzung aller bisherigen Drucke dieses Druckers mit dem aktuellen Satz neu.",
       "wearRecalcConfirm": "Abnutzung aller bisherigen Drucke von „{{name}}“ mit dem aktuellen Satz neu berechnen?",
       "wearRecalcDone": "{{count}} Drucke neu berechnet, zusammen {{total}}",
+      "sensorSuggestions": "{{count}} passende Sensoren zur Auswahl: Feld anklicken oder tippen. Es zählt immer die genaue Entity-ID.",
       "sensorNotSet": "nicht eingestellt – Stromkosten werden nicht berechnet",
       "sensorMissing": "nicht gefunden oder keine Zahl – Stromkosten werden nicht berechnet"
     },

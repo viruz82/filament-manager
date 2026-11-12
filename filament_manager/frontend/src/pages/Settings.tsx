@@ -40,6 +40,8 @@ function CloudPrinterFormContent({
   const [energySensorPreview, setEnergySensorPreview] = useState<number | null | undefined>(undefined)
   const [priceSensorPreview, setPriceSensorPreview] = useState<number | null | undefined>(undefined)
   const [activeAmsUnit, setActiveAmsUnit] = useState(1)
+  const { data: energyEntities = [] } = useQuery({ queryKey: ['ha-entities', 'energy'], queryFn: () => api.getHAEntities('energy'), staleTime: 60_000, retry: false })
+  const { data: priceEntities = [] } = useQuery({ queryKey: ['ha-entities', 'price'], queryFn: () => api.getHAEntities('price'), staleTime: 60_000, retry: false })
 
   const fetchSensorPreview = async (entityId: string, setter: (v: number | null | undefined) => void) => {
     if (!entityId.trim()) { setter(undefined); return }
@@ -185,13 +187,21 @@ function CloudPrinterFormContent({
                   onChange={e => { setEnergySensorEntityId(e.target.value); setEnergySensorPreview(undefined) }}
                   onBlur={() => fetchSensorPreview(energySensorEntityId, setEnergySensorPreview)}
                   placeholder="sensor.shelly_energy_total"
+                  list="fm-energy-entities"
+                  autoComplete="off"
                 />
+                <datalist id="fm-energy-entities">
+                  {energyEntities.map(e => <option key={e.entity_id} value={e.entity_id}>{e.name} · {e.value} {e.unit}</option>)}
+                </datalist>
                 {energySensorEntityId && energySensorPreview !== undefined && (
                   <p className={`text-[11px] mt-1 font-mono ${energySensorPreview === null ? 'text-red-400' : 'text-green-400'}`}>
                     {energySensorPreview === null ? '✗ entity not found or not numeric' : `✓ ${energySensorPreview} kWh`}
                   </p>
                 )}
                 <p className="text-[11px] text-gray-500 mt-1">{t('settings.printers.energySensorHint')}</p>
+                {energyEntities.length > 0 && (
+                  <p className="text-[11px] text-gray-500">{t('settings.printers.sensorSuggestions', { count: energyEntities.length })}</p>
+                )}
               </div>
               <div>
                 <label className="label">{t('settings.printers.priceSensor')}</label>
@@ -201,13 +211,21 @@ function CloudPrinterFormContent({
                   onChange={e => { setPriceSensorEntityId(e.target.value); setPriceSensorPreview(undefined) }}
                   onBlur={() => fetchSensorPreview(priceSensorEntityId, setPriceSensorPreview)}
                   placeholder="input_number.electricity_price"
+                  list="fm-price-entities"
+                  autoComplete="off"
                 />
+                <datalist id="fm-price-entities">
+                  {priceEntities.map(e => <option key={e.entity_id} value={e.entity_id}>{e.name} · {e.value} {e.unit}</option>)}
+                </datalist>
                 {priceSensorEntityId && priceSensorPreview !== undefined && (
                   <p className={`text-[11px] mt-1 font-mono ${priceSensorPreview === null ? 'text-red-400' : 'text-green-400'}`}>
                     {priceSensorPreview === null ? '✗ entity not found or not numeric' : `✓ ${priceSensorPreview} ${currencySymbol}/kWh`}
                   </p>
                 )}
                 <p className="text-[11px] text-gray-500 mt-1">{t('settings.printers.priceSensorHint')}</p>
+                {priceEntities.length > 0 && (
+                  <p className="text-[11px] text-gray-500">{t('settings.printers.sensorSuggestions', { count: priceEntities.length })}</p>
+                )}
               </div>
               <div>
                 <label className="label">{t('settings.printers.wearCost')}</label>
@@ -770,8 +788,8 @@ function WearSection({ printer, onEdit }: { printer: PrinterConfig; onEdit?: () 
 
   return (
     <div className="mt-3 border-t border-surface-3 pt-2">
-      <div className="flex items-center justify-between gap-2">
-        <div className="min-w-0">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
           <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wide mb-0.5">{t('settings.printers.wearCost')}</p>
           <p className="text-sm text-gray-200">{rate > 0 ? `${fmtCurrency(rate)} / h` : '—'}</p>
           {result && (
@@ -780,7 +798,7 @@ function WearSection({ printer, onEdit }: { printer: PrinterConfig; onEdit?: () 
             </p>
           )}
         </div>
-        <div className="flex flex-wrap justify-end gap-2 shrink-0">
+        <div className="flex flex-wrap gap-2">
           {onEdit && (
             <button className="btn-ghost text-xs px-3 py-1.5 flex items-center gap-1" onClick={onEdit}>
               <Pencil size={12} /> {t('common.edit')}
@@ -900,6 +918,12 @@ function BrandWeightsSection({ actionsLast }: { actionsLast: boolean }) {
     queryKey: ['brand-weights'],
     queryFn: api.getBrandWeights,
   })
+  // Suggestions: brands from the brand list that have no weight yet (free text stays possible for variants)
+  const { data: brandList = [] } = useQuery<FilamentSubtype[]>({
+    queryKey: ['filament-brands-suggest'],
+    queryFn: api.getFilamentBrands,
+  })
+  const brandOptions = brandList.filter(b => !entries.some(e => e.brand.toLowerCase() === b.name.toLowerCase()))
 
   const inv = () => qc.invalidateQueries({ queryKey: ['brand-weights'] })
 
@@ -934,12 +958,17 @@ function BrandWeightsSection({ actionsLast }: { actionsLast: boolean }) {
       <p className="text-xs text-gray-500 mb-3">{t('settings.brandWeights.hint')}</p>
 
       <div className="card space-y-2">
+        <datalist id="fm-brand-names">
+          {brandOptions.map(b => <option key={b.id} value={b.name} />)}
+        </datalist>
         <div className="flex items-center gap-2 pb-2 border-b border-surface-3">
           <input
             className="input flex-1 text-sm py-1"
             value={newBrand}
             onChange={e => setNewBrand(e.target.value)}
             placeholder={t('settings.brandWeights.brandPlaceholder')}
+            list="fm-brand-names"
+            autoComplete="off"
             onKeyDown={e => e.key === 'Enter' && newBrand.trim() && newWeight && createMut.mutate()}
           />
           <input
@@ -973,6 +1002,8 @@ function BrandWeightsSection({ actionsLast }: { actionsLast: boolean }) {
                   value={editBrand}
                   onChange={ev => setEditBrand(ev.target.value)}
                   placeholder={t('settings.brandWeights.brand')}
+                  list="fm-brand-names"
+                  autoComplete="off"
                   autoFocus
                 />
                 <input

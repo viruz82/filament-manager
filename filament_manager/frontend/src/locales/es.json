@@ -459,7 +459,7 @@
       "autoMatchResult": "{{count}} bandeja(s) asignada(s) automáticamente",
       "energyTracking": "Seguimiento de energía",
       "energySensor": "Sensor de energía (ID de entidad HA)",
-      "energySensorHint": "Sensor kWh acumulativo, p. ej. de un enchufe Shelly. Se lee al inicio y al final de la impresión para calcular el consumo.",
+      "energySensorHint": "Contador acumulado de kWh que nunca se reinicia (p. ej. el contador total de un enchufe Shelly), no un contador diario o mensual. Se lee al inicio y al final de la impresión para calcular el consumo.",
       "priceSensor": "Sensor de precio de electricidad (ID de entidad HA)",
       "priceSensorHint": "Sensor o ayudante que devuelve el precio en €/kWh. Se usa para calcular el coste energético por impresión.",
       "standbyKwh": "Consumo en espera",
@@ -471,6 +471,7 @@
       "wearRecalcHint": "Recalcula el desgaste de todas las impresiones anteriores de esta impresora con la tarifa actual.",
       "wearRecalcConfirm": "¿Recalcular el desgaste de todas las impresiones anteriores de «{{name}}» con la tarifa actual?",
       "wearRecalcDone": "{{count}} impresiones recalculadas, {{total}} en total",
+      "sensorSuggestions": "{{count}} sensores adecuados para elegir: haga clic en el campo o escriba. Cuenta siempre el ID de entidad exacto.",
       "sensorNotSet": "sin configurar – no se calculan los costes de energía",
       "sensorMissing": "no encontrado o no numérico – no se calculan los costes de energía"
     },
