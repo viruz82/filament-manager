@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.0
+
+- Fork: **Own version series** — personal fork of cgradl/filament-manager based on v0.41.3, no functional changes; add-on repository, URL and panel title (“Filament (Fork)”) point to the fork so it can be installed next to the original
+- Dev: **Test requirements resolve again** — `pytest-asyncio` 0.24.0 → 1.5.0, since 0.24.0 requires `pytest<9` and conflicted with the pinned `pytest==9.0.3`
+
 ## 0.41.3
 
 - Fix: **Duplicating a spool no longer carries over the Refill Pack flag** — the Duplicate action already clears other purchase-specific fields (price, date, location, article number, AMS slot) but was missing `is_refill_pack` from that reset, so copies of a refill-pack spool silently stayed marked as refill packs even without checking the box (issue #72)

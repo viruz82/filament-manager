@@ -1,8 +1,8 @@
-name: "Filament Manager"
+name: "Filament Manager (Fork)"
 description: "Track filament inventory, print history and costs. Integrates with Bambu Lab via Home Assistant."
-version: "0.41.3"
+version: "1.0.0"
 slug: "filament_manager"
-url: "https://github.com/cgradl/filament-manager"
+url: "https://github.com/viruz82/filament-manager"
 init: false
 arch:
   - aarch64
@@ -13,6 +13,6 @@ homeassistant_api: true
 ingress: true
 ingress_port: 8099
 panel_icon: mdi:printer-3d-nozzle
-panel_title: "Filament Manager"
+panel_title: "Filament (Fork)"
 options: {}
 schema: {}
