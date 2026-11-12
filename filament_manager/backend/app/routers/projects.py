@@ -42,6 +42,8 @@ def _project_out(project: Project) -> ProjectOut:
     total_energy_kwh = round(sum(energy_values), 4) if energy_values else None
     energy_cost_values = [j.energy_cost for j in jobs if j.energy_cost is not None]
     total_energy_cost = round(sum(energy_cost_values), 4) if energy_cost_values else None
+    wear_values = [j.wear_cost for j in jobs if j.wear_cost is not None]
+    total_wear_cost = round(sum(wear_values), 4) if wear_values else None
 
     # Test / normal split
     test_jobs = [j for j in jobs if pp_by_job.get(j.id, False)]
@@ -52,6 +54,8 @@ def _project_out(project: Project) -> ProjectOut:
     test_total_energy_kwh = round(sum(test_energy_vals), 4) if test_energy_vals else None
     test_energy_cost_vals = [j.energy_cost for j in test_jobs if j.energy_cost is not None]
     test_total_energy_cost = round(sum(test_energy_cost_vals), 4) if test_energy_cost_vals else None
+    test_wear_vals = [j.wear_cost for j in test_jobs if j.wear_cost is not None]
+    test_total_wear_cost = round(sum(test_wear_vals), 4) if test_wear_vals else None
 
     return ProjectOut(
         id=project.id,
@@ -64,6 +68,7 @@ def _project_out(project: Project) -> ProjectOut:
         total_grams=round(total_grams, 2),
         total_energy_kwh=total_energy_kwh,
         total_energy_cost=total_energy_cost,
+        total_wear_cost=total_wear_cost,
         nozzle_diameters=nozzle_diameters,
         materials=materials,
         material_usage=material_usage,
@@ -75,6 +80,7 @@ def _project_out(project: Project) -> ProjectOut:
         test_total_cost=test_total_cost,
         test_total_energy_kwh=test_total_energy_kwh,
         test_total_energy_cost=test_total_energy_cost,
+        test_total_wear_cost=test_total_wear_cost,
     )
 
 

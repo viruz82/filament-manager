@@ -53,7 +53,8 @@ async def get_dashboard(db: Session = Depends(get_db)):
     ).outerjoin(Spool, PrintUsage.spool_id == Spool.id).one()
 
     energy_cost_sum = db.query(func.coalesce(func.sum(PrintJob.energy_cost), 0.0)).scalar() or 0.0
-    total_print_cost = material_cost_sum + energy_cost_sum
+    wear_cost_sum = db.query(func.coalesce(func.sum(PrintJob.wear_cost), 0.0)).scalar() or 0.0
+    total_print_cost = material_cost_sum + energy_cost_sum + wear_cost_sum
 
     # Material breakdown (by current remaining weight)
     mat: dict[str, dict] = defaultdict(lambda: {"count": 0, "current_kg": 0.0})

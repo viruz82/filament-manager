@@ -161,6 +161,7 @@ export interface PrintJob {
   url: string | null
   energy_kwh: number | null
   energy_cost: number | null
+  wear_cost: number | null
 }
 
 export interface Project {
@@ -174,6 +175,7 @@ export interface Project {
   total_grams: number
   total_energy_kwh: number | null
   total_energy_cost: number | null
+  total_wear_cost: number | null
   nozzle_diameters: string[]
   materials: string[]
   material_usage: { material: string; color_name: string; color_hex: string; grams: number }[]
@@ -185,6 +187,7 @@ export interface Project {
   test_total_cost: number
   test_total_energy_kwh: number | null
   test_total_energy_cost: number | null
+  test_total_wear_cost: number | null
 }
 
 export interface ProjectDetail extends Project {
@@ -202,6 +205,7 @@ export interface PrinterConfig {
   energy_sensor_entity_id: string | null
   price_sensor_entity_id: string | null
   standby_kwh: number | null
+  wear_cost_per_hour: number | null
 }
 
 export interface BambuCloudStatus {

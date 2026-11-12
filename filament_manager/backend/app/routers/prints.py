@@ -9,6 +9,7 @@ from ..database import get_db
 from ..models import PrintJob, PrintUsage, Spool, SpoolAudit, Project
 from ..schemas import PrintJobCreate, PrintJobOut, PrintJobUpdate
 from .filament_sync import _sync_spool_weight_to_cloud
+from ..wear import apply_wear_cost
 
 router = APIRouter(prefix="/api/prints", tags=["prints"])
 
@@ -131,6 +132,7 @@ def create_print(body: PrintJobCreate, background_tasks: BackgroundTasks, db: Se
         source="manual",
         fm_project_id=body.fm_project_id,
     )
+    apply_wear_cost(db, job)
     db.add(job)
     db.flush()
 
@@ -182,6 +184,8 @@ def update_print(job_id: int, body: PrintJobUpdate, background_tasks: Background
             raise HTTPException(404, f"Project {updates['fm_project_id']} not found")
     for field, value in updates.items():
         setattr(job, field, value)
+    if "duration_seconds" in updates or "printer_name" in updates:
+        apply_wear_cost(db, job)
 
     synced_spool_ids: set[int] = set()
     if body.usages is not None:

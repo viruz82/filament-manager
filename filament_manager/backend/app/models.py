@@ -139,6 +139,7 @@ class PrintJob(Base):
     url = Column(String, nullable=True)            # user-set URL for the model/print source
     energy_kwh       = Column(Float, nullable=True)  # kWh consumed during this print (from HA sensor delta)
     energy_cost      = Column(Float, nullable=True)  # energy cost in € (energy_kwh × price/kWh)
+    wear_cost        = Column(Float, nullable=True)  # printer wear in € (duration × printer.wear_cost_per_hour)
     energy_start_kwh = Column(Float, nullable=True)  # HA energy sensor reading at print start (persisted for restart recovery)
     # {slot_key: {spool_id, weight_g, material, color}} — spool identity + weight captured at print start
     ams_spool_snapshot = Column(JSON(none_as_null=True), nullable=True)
@@ -161,7 +162,7 @@ class PrintJob(Base):
 
     @property
     def total_cost(self) -> float:
-        return self.material_cost + (self.energy_cost or 0)
+        return self.material_cost + (self.energy_cost or 0) + (self.wear_cost or 0)
 
     @property
     def duration_hours(self) -> float | None:
@@ -319,6 +320,9 @@ class PrinterConfig(Base):
     # HA sensor entity IDs for energy tracking (optional)
     energy_sensor_entity_id = Column(String, nullable=True)   # cumulative kWh sensor (e.g. sensor.shelly_energy_total)
     price_sensor_entity_id  = Column(String, nullable=True)   # €/kWh price sensor (e.g. input_number.electricity_price)
+
+    # Wear / depreciation cost per print hour (e.g. 0.20 €/h); None or 0 = off
+    wear_cost_per_hour = Column(Float, nullable=True)
 
     # Standby energy tracking: kWh consumed while printer is IDLE between prints
     standby_kwh       = Column(Float, nullable=True)   # total accumulated standby consumption

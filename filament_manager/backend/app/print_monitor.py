@@ -90,6 +90,10 @@ async def _on_print_end(
         printer.standby_start_kwh = energy_now
         log.info("Standby: started measuring from %.4f kWh for %s", energy_now, printer.name)
 
+    # Printer wear cost from the final print duration
+    from .wear import wear_cost_for
+    job.wear_cost = wear_cost_for(job, printer)
+
     auto_deduct = getattr(printer, "auto_deduct", False)
 
     db.commit()
@@ -559,6 +563,8 @@ async def on_cloud_print_start(printer_id: int, subtask_name: str, serial: str, 
                         open_job.duration_seconds = int(
                             (open_job.finished_at - started).total_seconds()
                         )
+                    from .wear import wear_cost_for
+                    open_job.wear_cost = wear_cost_for(open_job, printer)
                     db.commit()
                     # Fall through to create the new job
                 else:

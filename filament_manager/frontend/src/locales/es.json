@@ -283,7 +283,8 @@
       "today": "Hoy",
       "yesterday": "Ayer",
       "clear": "Borrar filtro de fecha"
-    }
+    },
+    "wearCost": "Desgaste"
   },
   "settings": {
     "title": "Ajustes",
@@ -432,7 +433,7 @@
       "slugHint": "ej. my_printer",
       "amsSlugHint": "Dejar vacío si el AMS usa el mismo slug que la impresora",
       "autoDeduct": "Descontar filamento automáticamente al finalizar la impresión",
-      "monitorPrinter":"Monitorear esta impresora",
+      "monitorPrinter": "Monitorear esta impresora",
       "loadingAMS": "Cargando datos AMS…",
       "noAMSData": "No se encontraron datos de bandejas AMS.",
       "amsUnit": "Unidad AMS {{n}}",
@@ -452,7 +453,13 @@
       "priceSensorHint": "Sensor o ayudante que devuelve el precio en €/kWh. Se usa para calcular el coste energético por impresión.",
       "standbyKwh": "Consumo en espera",
       "standbyHint": "Electricidad consumida mientras la impresora está inactiva entre impresiones. Medida desde el fin de la impresión hasta el inicio de la siguiente.",
-      "resetStandby": "Reiniciar"
+      "resetStandby": "Reiniciar",
+      "wearCost": "Desgaste (por hora de impresión)",
+      "wearCostHint": "Desgaste y amortización de la impresora, multiplicado por la duración y guardado en la impresión. Vacío = desactivado.",
+      "wearRecalc": "Aplicar a todas las impresiones",
+      "wearRecalcHint": "Recalcula el desgaste de todas las impresiones anteriores de esta impresora con la tarifa actual.",
+      "wearRecalcConfirm": "¿Recalcular el desgaste de todas las impresiones anteriores de «{{name}}» con la tarifa actual?",
+      "wearRecalcDone": "{{count}} impresiones recalculadas, {{total}} en total"
     },
     "brandWeights": {
       "title": "Pesos de bobina vacía por marca",

@@ -283,7 +283,8 @@
       "today": "Today",
       "yesterday": "Yesterday",
       "clear": "Clear date filter"
-    }
+    },
+    "wearCost": "Wear"
   },
   "settings": {
     "title": "Settings",
@@ -452,7 +453,13 @@
       "priceSensorHint": "Sensor or helper returning the price in €/kWh. Used to calculate energy cost per print.",
       "standbyKwh": "Standby Energy Consumption",
       "standbyHint": "Electricity consumed while the printer is idle between prints. Measured from print end to next print start.",
-      "resetStandby": "Reset"
+      "resetStandby": "Reset",
+      "wearCost": "Wear (per print hour)",
+      "wearCostHint": "Printer wear and depreciation, multiplied by the print duration and stored on the print. Empty = off.",
+      "wearRecalc": "Apply to all prints",
+      "wearRecalcHint": "Recalculates the wear cost of all past prints of this printer with the current rate.",
+      "wearRecalcConfirm": "Recalculate the wear cost of all past prints of “{{name}}” with the current rate?",
+      "wearRecalcDone": "{{count}} prints recalculated, {{total}} in total"
     },
     "brandWeights": {
       "title": "Brand Spool Tare Weights",

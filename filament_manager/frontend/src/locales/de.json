@@ -283,7 +283,8 @@
       "today": "Heute",
       "yesterday": "Gestern",
       "clear": "Datumsfilter löschen"
-    }
+    },
+    "wearCost": "Abnutzung"
   },
   "settings": {
     "title": "Einstellungen",
@@ -432,7 +433,7 @@
       "slugHint": "z.B. my_printer",
       "amsSlugHint": "Leer lassen wenn AMS denselben Slug wie Drucker hat",
       "autoDeduct": "Filament bei Druckabschluss automatisch abziehen",
-      "monitorPrinter":"Diesen Drucker überwachen",
+      "monitorPrinter": "Diesen Drucker überwachen",
       "loadingAMS": "AMS-Daten werden geladen…",
       "noAMSData": "Keine AMS-Fachdaten gefunden.",
       "amsUnit": "AMS-Einheit {{n}}",
@@ -452,7 +453,13 @@
       "priceSensorHint": "Sensor oder Helfer, der den Preis in €/kWh liefert. Wird zur Berechnung der Energiekosten pro Druck verwendet.",
       "standbyKwh": "Standby-Energieverbrauch",
       "standbyHint": "Stromverbrauch während der Drucker zwischen Drucken im Leerlauf ist. Gemessen vom Druckende bis zum nächsten Druckstart.",
-      "resetStandby": "Zurücksetzen"
+      "resetStandby": "Zurücksetzen",
+      "wearCost": "Abnutzung (pro Druckstunde)",
+      "wearCostHint": "Verschleiß und Abschreibung des Druckers, wird mit der Druckdauer verrechnet und am Druck gespeichert. Leer = aus.",
+      "wearRecalc": "Auf alle Drucke anwenden",
+      "wearRecalcHint": "Berechnet die Abnutzung aller bisherigen Drucke dieses Druckers mit dem aktuellen Satz neu.",
+      "wearRecalcConfirm": "Abnutzung aller bisherigen Drucke von „{{name}}“ mit dem aktuellen Satz neu berechnen?",
+      "wearRecalcDone": "{{count}} Drucke neu berechnet, zusammen {{total}}"
     },
     "brandWeights": {
       "title": "Leerspulengewichte je Marke",

@@ -235,6 +235,14 @@ async def lifespan(app: FastAPI):
             conn.execute(text("ALTER TABLE printer_configs ADD COLUMN standby_start_kwh REAL"))
             conn.commit()
             log.info("Migration: added printer_configs.standby_start_kwh")
+        if "wear_cost_per_hour" not in printer_cols:
+            conn.execute(text("ALTER TABLE printer_configs ADD COLUMN wear_cost_per_hour REAL"))
+            conn.commit()
+            log.info("Migration: added printer_configs.wear_cost_per_hour")
+        if "wear_cost" not in job_cols:
+            conn.execute(text("ALTER TABLE print_jobs ADD COLUMN wear_cost REAL"))
+            conn.commit()
+            log.info("Migration: added print_jobs.wear_cost")
 
         # projects: add url if missing
         project_cols = [c["name"] for c in insp.get_columns("projects")]

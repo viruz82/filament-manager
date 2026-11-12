@@ -720,6 +720,7 @@ function PrintRow({ job, printer, onEdit, onDelete, onLogUsage }: {
   onDelete: () => void
   onLogUsage: () => void
 }) {
+  const { t } = useTranslation()
   const tz = useHATZ()
   const fmtCurrency = useCurrencyFormatter()
   const [expanded, setExpanded] = useState(false)
@@ -789,6 +790,9 @@ function PrintRow({ job, printer, onEdit, onDelete, onLogUsage }: {
               {job.energy_kwh.toFixed(2)} kWh
               {job.energy_cost != null && <> · {fmtCurrency(job.energy_cost)}</>}
             </p>
+          )}
+          {job.wear_cost != null && (
+            <p className="text-xs text-gray-500">{t('prints.wearCost')} {fmtCurrency(job.wear_cost)}</p>
           )}
         </div>
         <div className="flex gap-1 ml-2" onClick={e => e.stopPropagation()}>

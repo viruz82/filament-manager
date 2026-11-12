@@ -8,7 +8,8 @@ import Modal from '../components/Modal'
 import BambuCloudSection from '../components/BambuCloudSection'
 import FilamentSyncSection from '../components/FilamentSyncSection'
 import { findBestSpoolMatch } from '../utils/amsMatch'
-import { useCurrencySymbol } from '../hooks/useHATZ'
+import { useCurrencySymbol, useCurrencyFormatter } from '../hooks/useHATZ'
+import { parseDecimal } from '../utils/number'
 
 // ── Cloud Printer Form ────────────────────────────────────────────────────────
 
@@ -33,6 +34,9 @@ function CloudPrinterFormContent({
   const [autoDeduct, setAutoDeduct] = useState(initial?.auto_deduct ?? false)
   const [energySensorEntityId, setEnergySensorEntityId] = useState(initial?.energy_sensor_entity_id ?? '')
   const [priceSensorEntityId, setPriceSensorEntityId] = useState(initial?.price_sensor_entity_id ?? '')
+  const [wearCostPerHour, setWearCostPerHour] = useState(
+    initial?.wear_cost_per_hour != null ? String(initial.wear_cost_per_hour).replace('.', ',') : ''
+  )
   const [energySensorPreview, setEnergySensorPreview] = useState<number | null | undefined>(undefined)
   const [priceSensorPreview, setPriceSensorPreview] = useState<number | null | undefined>(undefined)
   const [activeAmsUnit, setActiveAmsUnit] = useState(1)
@@ -205,6 +209,21 @@ function CloudPrinterFormContent({
                 )}
                 <p className="text-[11px] text-gray-500 mt-1">{t('settings.printers.priceSensorHint')}</p>
               </div>
+              <div>
+                <label className="label">{t('settings.printers.wearCost')}</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    className="input"
+                    type="text"
+                    inputMode="decimal"
+                    value={wearCostPerHour}
+                    onChange={e => setWearCostPerHour(e.target.value)}
+                    placeholder="0,20"
+                  />
+                  <span className="text-xs text-gray-500 shrink-0">{currencySymbol}/h</span>
+                </div>
+                <p className="text-[11px] text-gray-500 mt-1">{t('settings.printers.wearCostHint')}</p>
+              </div>
             </div>
 
             {/* Live preview when a device is selected */}
@@ -279,6 +298,7 @@ function CloudPrinterFormContent({
             auto_deduct: autoDeduct,
             energy_sensor_entity_id: energySensorEntityId.trim() || null,
             price_sensor_entity_id: priceSensorEntityId.trim() || null,
+            wear_cost_per_hour: parseDecimal(wearCostPerHour),
           })}
           disabled={!canSave}
         >
@@ -676,6 +696,53 @@ function StandbySection({ printer }: { printer: PrinterConfig }) {
           title={t('settings.printers.resetStandby')}
         >
           {t('settings.printers.resetStandby')}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── Wear Section (inside PrinterCard) ────────────────────────────────────────
+
+function WearSection({ printer }: { printer: PrinterConfig }) {
+  const { t } = useTranslation()
+  const qc = useQueryClient()
+  const fmtCurrency = useCurrencyFormatter()
+  const [result, setResult] = useState<{ updated: number; total_wear_cost: number } | null>(null)
+
+  const recalcMut = useMutation({
+    mutationFn: () => api.recalculatePrinterWear(printer.id),
+    onSuccess: data => {
+      setResult(data)
+      qc.invalidateQueries({ queryKey: ['prints'] })
+      qc.invalidateQueries({ queryKey: ['projects'] })
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
+    },
+  })
+
+  const rate = printer.wear_cost_per_hour ?? 0
+
+  return (
+    <div className="mt-3 border-t border-surface-3 pt-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wide mb-0.5">{t('settings.printers.wearCost')}</p>
+          <p className="text-sm text-gray-200">{rate > 0 ? `${fmtCurrency(rate)} / h` : '—'}</p>
+          {result && (
+            <p className="text-[10px] text-green-400 mt-0.5">
+              {t('settings.printers.wearRecalcDone', { count: result.updated, total: fmtCurrency(result.total_wear_cost) })}
+            </p>
+          )}
+        </div>
+        <button
+          className="btn-ghost text-xs px-3 py-1.5 shrink-0"
+          onClick={() => {
+            if (window.confirm(t('settings.printers.wearRecalcConfirm', { name: printer.name }))) recalcMut.mutate()
+          }}
+          disabled={recalcMut.isPending}
+          title={t('settings.printers.wearRecalcHint')}
+        >
+          {t('settings.printers.wearRecalc')}
         </button>
       </div>
     </div>
@@ -2095,6 +2162,9 @@ function CloudPrinterStatus({ printer }: { printer: PrinterConfig }) {
       {printer.energy_sensor_entity_id && (
         <StandbySection printer={printer} />
       )}
+
+      {/* Wear / depreciation cost */}
+      <WearSection printer={printer} />
 
       {/* Raw MQTT cache dump */}
       <div className="mt-3 border-t border-surface-3 pt-2">

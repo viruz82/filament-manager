@@ -108,6 +108,8 @@ export const api = {
     ),
   resetPrinterStandby: (id: number) =>
     request<PrinterConfig>(`printers/${id}/reset-standby`, { method: 'POST' }),
+  recalculatePrinterWear: (id: number) =>
+    request<{ updated: number; total_wear_cost: number }>(`printers/${id}/recalculate-wear`, { method: 'POST' }),
 
   // Dashboard
   getDashboard: () => request<DashboardStats>('dashboard'),

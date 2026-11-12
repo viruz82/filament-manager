@@ -272,6 +272,9 @@ function ProjectCard({
               {project.total_energy_cost != null && <> · {fmtCurrency(project.total_energy_cost)}</>}
             </span>
           )}
+          {project.total_wear_cost != null && (
+            <span>{t('prints.wearCost')} {fmtCurrency(project.total_wear_cost)}</span>
+          )}
           {durationH && <span>{durationH}h</span>}
         </div>
 
@@ -320,6 +323,8 @@ function ProjectCard({
               ? project.total_energy_kwh - project.test_total_energy_kwh : project.total_energy_kwh
             const prodEnergyCost = project.total_energy_cost != null && project.test_total_energy_cost != null
               ? project.total_energy_cost - project.test_total_energy_cost : project.total_energy_cost
+            const prodWearCost = project.total_wear_cost != null && project.test_total_wear_cost != null
+              ? project.total_wear_cost - project.test_total_wear_cost : project.total_wear_cost
             return (
               <div className="mt-2 pt-2 border-t border-surface-3 flex gap-6 text-xs flex-wrap">
                 <div>
@@ -330,6 +335,7 @@ function ProjectCard({
                     {' · '}{fmtCurrency(project.total_cost - project.test_total_cost)}
                     {prodEnergyKwh != null && <>{' · '}{prodEnergyKwh.toFixed(3)} kWh</>}
                     {prodEnergyCost != null && <>{' · '}{fmtCurrency(prodEnergyCost)}</>}
+                    {prodWearCost != null && <>{' · '}{t('prints.wearCost')} {fmtCurrency(prodWearCost)}</>}
                   </span>
                 </div>
                 <div>
@@ -340,6 +346,7 @@ function ProjectCard({
                     {' · '}{fmtCurrency(project.test_total_cost)}
                     {project.test_total_energy_kwh != null && <>{' · '}{project.test_total_energy_kwh.toFixed(3)} kWh</>}
                     {project.test_total_energy_cost != null && <>{' · '}{fmtCurrency(project.test_total_energy_cost)}</>}
+                    {project.test_total_wear_cost != null && <>{' · '}{t('prints.wearCost')} {fmtCurrency(project.test_total_wear_cost)}</>}
                   </span>
                 </div>
               </div>
@@ -384,6 +391,9 @@ function PrintJobRow({ job, projectId }: { job: PrintJob; projectId: number }) {
           {job.energy_kwh.toFixed(2)} kWh
           {job.energy_cost != null && <> · {fmtCurrency(job.energy_cost)}</>}
         </span>
+      )}
+      {job.wear_cost != null && (
+        <span className="text-xs text-gray-400 shrink-0">{t('prints.wearCost')} {fmtCurrency(job.wear_cost)}</span>
       )}
       {job.total_cost > 0 && (
         <span className="text-xs text-white shrink-0 font-medium">= {fmtCurrency(job.total_cost)}</span>

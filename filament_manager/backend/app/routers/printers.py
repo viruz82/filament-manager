@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Body
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -21,6 +21,7 @@ class PrinterIn(BaseModel):
     bambu_source: str = "cloud"
     energy_sensor_entity_id: str | None = None
     price_sensor_entity_id: str | None = None
+    wear_cost_per_hour: float | None = Field(default=None, ge=0)
 
 
 class PrinterOut(BaseModel):
@@ -36,6 +37,7 @@ class PrinterOut(BaseModel):
     energy_sensor_entity_id: str | None
     price_sensor_entity_id: str | None
     standby_kwh: float | None = None
+    wear_cost_per_hour: float | None = None
 
 
 # ── AMS tray assignment ───────────────────────────────────────────────────────
@@ -269,6 +271,25 @@ def reset_standby(printer_id: int, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(p)
     return p
+
+
+@router.post("/{printer_id}/recalculate-wear")
+def recalculate_wear(printer_id: int, db: Session = Depends(get_db)):
+    """Apply the printer's current wear rate to all of its past print jobs."""
+    from ..models import PrintJob
+    from ..wear import wear_cost_for
+    p = db.get(PrinterConfig, printer_id)
+    if not p:
+        raise HTTPException(404, "Printer not found")
+    jobs = db.query(PrintJob).filter(PrintJob.printer_name == p.name).all()
+    total = 0.0
+    for j in jobs:
+        j.wear_cost = wear_cost_for(j, p)
+        total += j.wear_cost or 0.0
+    db.commit()
+    from .. import ha_publisher
+    ha_publisher.trigger()
+    return {"updated": len(jobs), "total_wear_cost": round(total, 2)}
 
 
 @router.get("/{printer_id}/status")

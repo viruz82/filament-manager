@@ -109,6 +109,7 @@ def _job_dict(j: PrintJob) -> dict:
         "url": j.url,
         "energy_kwh": j.energy_kwh,
         "energy_cost": j.energy_cost,
+        "wear_cost": j.wear_cost,
         "energy_start_kwh": j.energy_start_kwh,
         "ams_spool_snapshot": j.ams_spool_snapshot,
         "ams_active_trays": j.ams_active_trays,
@@ -157,6 +158,7 @@ def export_data(db: Session = Depends(get_db)):
                 "energy_sensor_entity_id": p.energy_sensor_entity_id,
                 "price_sensor_entity_id": p.price_sensor_entity_id,
                 "standby_kwh": p.standby_kwh,
+                "wear_cost_per_hour": p.wear_cost_per_hour,
             }
             for p in printers
         ],
@@ -732,6 +734,7 @@ def import_data(bundle: ImportBundle, db: Session = Depends(get_db)):
             energy_sensor_entity_id=p.get("energy_sensor_entity_id"),
             price_sensor_entity_id=p.get("price_sensor_entity_id"),
             standby_kwh=p.get("standby_kwh"),
+            wear_cost_per_hour=p.get("wear_cost_per_hour"),
         ))
         if serial:
             existing_serials.add(serial)
@@ -923,6 +926,7 @@ def import_data(bundle: ImportBundle, db: Session = Depends(get_db)):
             url=job_data.get("url"),
             energy_kwh=job_data.get("energy_kwh"),
             energy_cost=job_data.get("energy_cost"),
+            wear_cost=job_data.get("wear_cost"),
             energy_start_kwh=job_data.get("energy_start_kwh"),
             ams_spool_snapshot=job_data.get("ams_spool_snapshot"),
             ams_active_trays=job_data.get("ams_active_trays"),

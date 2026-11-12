@@ -147,6 +147,7 @@ class ProjectOut(BaseModel):
     total_grams: float
     total_energy_kwh: float | None
     total_energy_cost: float | None
+    total_wear_cost: float | None = None
     nozzle_diameters: list[str]
     materials: list[str]
     material_usage: list[MaterialUsageItem] = []
@@ -159,6 +160,7 @@ class ProjectOut(BaseModel):
     test_total_cost: float = 0.0
     test_total_energy_kwh: float | None = None
     test_total_energy_cost: float | None = None
+    test_total_wear_cost: float | None = None
 
 
 class ProjectDetailOut(ProjectOut):
@@ -223,6 +225,8 @@ class PrintJobOut(PrintJobBase):
     # Energy tracking (from HA sensors)
     energy_kwh: float | None = None
     energy_cost: float | None = None
+    # Printer wear (duration × printer rate)
+    wear_cost: float | None = None
 
     # Bambu Cloud / MQTT enrichment fields (None for manual/HA-tracked jobs)
     task_id: str | None = None
