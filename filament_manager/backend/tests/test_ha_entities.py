@@ -6,8 +6,12 @@ def _s(entity_id, state, **attrs):
 
 
 STATES = [
-    _s("sensor.drucker_energy", "70.6", unit_of_measurement="kWh", device_class="energy", friendly_name="Drucker Energie"),
-    _s("sensor.heizung_wh", "1200", unit_of_measurement="Wh"),
+    _s("sensor.drucker_energy", "70.6", unit_of_measurement="kWh", device_class="energy", state_class="total_increasing", friendly_name="Drucker Energie"),
+    _s("sensor.heizung_wh", "1200", unit_of_measurement="Wh", state_class="total"),
+    _s("sensor.drucker_energy_today", "0.07", unit_of_measurement="kWh", device_class="energy", state_class="total_increasing"),
+    _s("sensor.drucker_energy_monthly", "1.8", unit_of_measurement="kWh", device_class="energy", state_class="total_increasing"),
+    _s("sensor.zaehler_zyklus", "5", unit_of_measurement="kWh", state_class="total", meter_period="daily"),
+    _s("sensor.prognose_kwh", "14000", unit_of_measurement="kWh", device_class="energy"),
     _s("sensor.drucker_power", "7.0", unit_of_measurement="W", device_class="power"),
     _s("sensor.preis", "0.3316", unit_of_measurement="EUR/kWh", device_class="monetary"),
     _s("input_number.strompreis", "0.30"),
@@ -19,7 +23,7 @@ STATES = [
 ]
 
 
-def test_energy_only_energy_meters_with_numeric_state():
+def test_energy_only_total_meters_without_period_counters():
     ids = [e["entity_id"] for e in filter_ha_entities(STATES, "energy")]
     assert ids == ["sensor.drucker_energy", "sensor.heizung_wh"]
 

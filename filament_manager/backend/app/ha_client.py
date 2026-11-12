@@ -5,6 +5,7 @@ connectivity check, and sensor-state push.
 """
 import logging
 import os
+import re
 import httpx
 
 log = logging.getLogger(__name__)
@@ -85,12 +86,21 @@ async def push_ha_state(entity_id: str, state: int | str, attributes: dict) -> b
 
 _ENERGY_UNITS = {"kwh", "wh", "mwh"}
 _PRICE_WORDS = ("preis", "price", "tarif", "kwh")
+_PERIOD_RE = re.compile(r"(^|_)(today|daily|weekly|monthly|yearly|quarterly|heute|tag|woche|monat|jahr)(_|$)")
+
+
+def _is_periodic_meter(entity_id: str, attrs: dict) -> bool:
+    """Daily/weekly/monthly/yearly counters reset and would lose the energy of a print that crosses the reset."""
+    if any(k in attrs for k in ("meter_period", "cycle", "last_period")):
+        return True
+    return bool(_PERIOD_RE.search(entity_id.split(".", 1)[1]))
 
 
 def filter_ha_entities(states: list[dict], kind: str) -> list[dict]:
     """Pick the entities that make sense for a settings field.
 
-    kind "energy": cumulative energy meters (device class energy or unit kWh/Wh/MWh).
+    kind "energy": cumulative energy meters (state class total/total_increasing, unit kWh/Wh/MWh),
+    without daily/weekly/monthly/yearly counters.
     kind "price":  price sensors (unit …/kWh) and number helpers whose name looks like a price.
     Only entities with a numeric state are returned, sorted by entity id.
     """
@@ -108,7 +118,12 @@ def filter_ha_entities(states: list[dict], kind: str) -> list[dict]:
         unit = str(attrs.get("unit_of_measurement") or "")
         device_class = attrs.get("device_class")
         if kind == "energy":
-            ok = domain == "sensor" and (device_class == "energy" or unit.lower() in _ENERGY_UNITS)
+            ok = (
+                domain == "sensor"
+                and (device_class == "energy" or unit.lower() in _ENERGY_UNITS)
+                and attrs.get("state_class") in ("total", "total_increasing")
+                and not _is_periodic_meter(entity_id, attrs)
+            )
         elif kind == "price":
             low = unit.lower()
             if domain == "sensor":

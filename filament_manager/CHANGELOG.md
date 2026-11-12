@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.2
+
+- Fix: **energy sensor suggestions list only real meters** — sensors need state class total/total_increasing (like the Home Assistant energy dashboard) and daily/weekly/monthly/yearly counters (entity names such as `…_today`, `…_monthly`, or utility meters with a cycle) are left out, because they reset and would lose the energy of prints crossing the reset. 1.3.1 still offered every kWh sensor (327 in one installation)
+
 ## 1.3.1
 
 - Fix: **price sensor suggestions are narrower** — only sensors with a price unit (…/kWh, not CO2 intensity or plain costs) and number helpers whose name contains price/tariff are offered (1.3.0 listed ~400 unrelated number entities)
