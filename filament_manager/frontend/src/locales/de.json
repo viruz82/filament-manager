@@ -139,7 +139,10 @@
       "addN": "{{n}} Spulen hinzufügen",
       "brandPlaceholder": "SUNLU, Bambu, …",
       "colorPlaceholder": "Feuerrot, Schwarz, …",
-      "tareOwn": "Eigener Wert dieser Spule (leer = Wert der Marke)"
+      "tareOwn": "Eigener Wert dieser Spule (leer = Wert der Marke)",
+      "packaging": "Verpackung",
+      "packagingHint": "Wie die Spule lagert; im AMS gilt automatisch die AMS-Lagerung.",
+      "justDried": "Gerade getrocknet"
     },
     "table": {
       "brand": "Marke",
@@ -203,7 +206,10 @@
       "action_correction": "Korrektur",
       "correctBtn": "Eintrag umkehren",
       "correctConfirm": "Die Änderung von {{delta}} g umkehren? Ein Korrektureintrag von {{reverse}} g wird hinzugefügt und das Spulengewicht aktualisiert.",
-      "action_weigh": "Gewogen"
+      "action_weigh": "Gewogen",
+      "action_drying_start": "In Trockner",
+      "action_dried": "Getrocknet",
+      "action_drying_cancel": "Trocknen abgebrochen"
     },
     "weigh": {
       "title": "Spule wiegen",
@@ -321,7 +327,13 @@
       "regionalSave": "Speichern",
       "regionalSaved": "Gespeichert",
       "lowStockThreshold": "Warnschwelle für niedrigen Bestand",
-      "lowStockHint": "Spulen unterhalb dieses Prozentsatzes werden als niedriger Bestand markiert - im Dashboard und in den HA-Sensoren (1-100)"
+      "lowStockHint": "Spulen unterhalb dieses Prozentsatzes werden als niedriger Bestand markiert - im Dashboard und in den HA-Sensoren (1-100)",
+      "almostEmptyThreshold": "Schwelle „fast leer“",
+      "almostEmptyHint": "Spulen unterhalb dieses Prozentsatzes gelten als fast leer (Attribut almost_empty im Bestandssensor, 1-100)",
+      "moistureWarning": "Feuchte: Warnung unter",
+      "moistureWarningHint": "Geschätzte Trockenheit unter diesem Wert = „Bald trocknen“ (Sensor moisture_spools)",
+      "moistureCritical": "Feuchte: kritisch unter",
+      "moistureCriticalHint": "Geschätzte Trockenheit unter diesem Wert = „Kritisch“"
     },
     "dataTabs": {
       "brandWeights": "Spulengewichte",
@@ -577,6 +589,14 @@
       "importingSpoolman": "Importiere…",
       "importSpoolmanResult": "Spoolman-Import abgeschlossen — {{imported}} importiert, {{skipped}} übersprungen",
       "importSpoolmanHint": "Lade einen Spoolman-JSON-Export hoch (aus Spoolmans Exportfunktion), um alle Spulen in den Bestand zu importieren. Der Import ist additiv — bestehende Spulen werden nicht verändert."
+    },
+    "moisture": {
+      "title": "Feuchte-Schätzung",
+      "formula": "Trockenheit = 100 % − Tage seit dem Trocknen × Material × Lagerung × {{m}}. Gemessen wird nichts. Unbekanntes Material zählt {{d}}.",
+      "storage": "Lagerung",
+      "material": "Material",
+      "addMaterial": "Material hinzufügen",
+      "reset": "Standardwerte"
     }
   },
   "projects": {
@@ -606,5 +626,36 @@
     "unmarkTestPrint": "Testdruck-Markierung entfernen",
     "normalStats": "Produktion",
     "testStats": "Test"
+  },
+  "moisture": {
+    "title": "Feuchte",
+    "level": {
+      "dry": "Trocken",
+      "good": "Gut",
+      "warning": "Bald trocknen",
+      "critical": "Kritisch",
+      "drying": "Trocknet",
+      "unknown": "Unbekannt"
+    },
+    "storage": {
+      "open": "Offen im Regal",
+      "original": "Originalverpackt",
+      "sealed": "Verschlossener Beutel",
+      "vacuum": "Vakuumverpackt",
+      "drybox": "Drybox mit Silika",
+      "ams": "Im AMS",
+      "unknown": "Nicht angegeben"
+    },
+    "neverDried": "Noch nie als getrocknet markiert – keine Schätzung",
+    "driedToday": "Heute getrocknet",
+    "driedDaysAgo": "Getrocknet vor {{n}} Tagen",
+    "inAms": "im AMS",
+    "inDryerHint": "Liegt im Trockner – keine Warnungen",
+    "markDry": "Als trocken markieren",
+    "startDrying": "In Trockner",
+    "finishDrying": "Fertig getrocknet",
+    "cancelDrying": "Abbrechen (nicht getrocknet)",
+    "onlyMoist": "Feucht",
+    "onlyMoistHint": "Nur Spulen mit „Bald trocknen“, „Kritisch“ oder im Trockner"
   }
 }

@@ -6,6 +6,7 @@ Sensors:
   sensor.filament_manager_pending_usages   – auto prints awaiting usage confirmation
   sensor.filament_manager_low_stock_spools – spools below the configurable threshold
   sensor.filament_manager_ams_unmatched    – AMS trays with filament but no matching spool (by material + color)
+  sensor.filament_manager_moisture_spools  – spools whose estimated dryness is below the warning threshold
 
 Every push always writes all three sensors so they remain present in HA
 after an HA restart (the States API creates entities on first write and they
@@ -26,6 +27,7 @@ _ENTITY_UNMATCHED  = "sensor.filament_manager_ams_unmatched"
 _ENTITY_LAST_PRINT      = "sensor.filament_manager_last_print"
 _ENTITY_TOTAL_SPOOLS    = "sensor.filament_manager_total_spools"
 _ENTITY_CONSUMED_SPOOLS = "sensor.filament_manager_consumed_spools"
+_ENTITY_MOISTURE        = "sensor.filament_manager_moisture_spools"
 
 _trigger_event: asyncio.Event | None = None
 _event_loop: asyncio.AbstractEventLoop | None = None
@@ -59,6 +61,7 @@ def _compute(db) -> dict[str, tuple[int, dict]]:
 
     prefs = db.get(UserPreferences, 1)
     threshold = (prefs.low_stock_threshold_pct if prefs else None) or 20
+    almost_empty_threshold = (prefs.almost_empty_threshold_pct if prefs else None) or 8
 
     # ── pending usages ────────────────────────────────────────────────────────
     # Guard against both SQL NULL and JSON text 'null' (stored when none_as_null=False was the default).
@@ -84,6 +87,29 @@ def _compute(db) -> dict[str, tuple[int, dict]]:
         if s.current_weight_g > 0 and 0 < s.remaining_pct < threshold
     ]
     low_names = [f"{s.brand} {s.material} {s.color_name} ({round(s.current_weight_g)}g)".strip() for s in low]
+    almost_empty_names = [
+        f"{s.brand} {s.material} {s.color_name} ({round(s.current_weight_g)}g)".strip()
+        for s in low if s.remaining_pct < almost_empty_threshold and not s.archived
+    ]
+
+    # ── moisture (estimate) ──────────────────────────────────────────────────
+    from . import moisture as _moisture
+    damp: list[dict] = []
+    for s in spools:
+        if s.archived or s.current_weight_g <= 0:
+            continue    # empty spools and spools in the dryer never warn
+        m = s.moisture
+        if m["level"] in ("warning", "critical"):
+            damp.append({
+                "id": s.id,
+                "number": s.custom_id,
+                "name": f"{s.brand} {s.material} {s.color_name}".strip(),
+                "pct": m["pct"],
+                "level": m["level"],
+                "storage": m["storage"],
+            })
+    damp.sort(key=lambda d: d["pct"] if d["pct"] is not None else 0)
+    moisture_cfg = _moisture.get_config()
 
     # ── spool inventory + consumed ───────────────────────────────────────────
     def _count_by_material(spool_list: list) -> dict[str, int]:
@@ -237,6 +263,8 @@ def _compute(db) -> dict[str, tuple[int, dict]]:
                 "unit_of_measurement": "spools",
                 "threshold_pct": threshold,
                 "spools": low_names,
+                "almost_empty_threshold_pct": almost_empty_threshold,
+                "almost_empty": almost_empty_names,
             },
         ),
         _ENTITY_UNMATCHED: (
@@ -246,6 +274,19 @@ def _compute(db) -> dict[str, tuple[int, dict]]:
                 "icon": "mdi:tray-alert",
                 "unit_of_measurement": "trays",
                 "trays": unmatched_trays,
+            },
+        ),
+        _ENTITY_MOISTURE: (
+            len(damp),
+            {
+                "friendly_name": "Filament Manager: Moist Spools",
+                "icon": "mdi:water-percent-alert",
+                "unit_of_measurement": "spools",
+                "warning_pct": moisture_cfg["warning_pct"],
+                "critical_pct": moisture_cfg["critical_pct"],
+                "critical": sum(1 for d in damp if d["level"] == "critical"),
+                "drying": sum(1 for s in spools if s.is_drying and not s.archived),
+                "spools": damp,
             },
         ),
         _ENTITY_LAST_PRINT: (last_print_state, last_print_attrs),

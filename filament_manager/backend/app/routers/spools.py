@@ -6,6 +6,7 @@ from ..database import get_db
 from ..util import utcnow
 from ..models import Spool, BrandSpoolWeight, FilamentSubtype, FilamentMaterial, SpoolAudit
 from ..schemas import SpoolCreate, SpoolOut, SpoolUpdate, SpoolAuditEntry
+from .. import moisture
 from .filament_sync import _sync_spool_weight_to_cloud
 
 
@@ -34,7 +35,8 @@ def _claim_ams_slot(slot: str | None, spool_id: int | None, db: Session) -> str 
     q = db.query(Spool).filter((Spool.ams_slot == slot) | (Spool.ams_slot == bare))
     if spool_id is not None:
         q = q.filter(Spool.id != spool_id)
-    q.update({"ams_slot": None}, synchronize_session=False)
+    for other in q.all():
+        moisture.set_ams_slot(other, None)   # leaves the AMS → keep its dryness value
     return slot
 
 
@@ -63,6 +65,8 @@ def create_spool(body: SpoolCreate, db: Session = Depends(get_db)):
         data["spool_weight_g"] = _resolve_spool_weight(data.get("brand"), db)
     if "ams_slot" in data:
         data["ams_slot"] = _claim_ams_slot(data["ams_slot"], None, db)
+    if data.get("ams_slot") and data.get("packaging") == "original":
+        data["packaging"] = "open"      # loaded into the AMS → no longer sealed
     spool = Spool(**data)
     db.add(spool)
     db.commit()
@@ -97,6 +101,22 @@ def update_spool(spool_id: int, body: SpoolUpdate, background_tasks: BackgroundT
     if "ams_slot" in updates:
         updates["ams_slot"] = _claim_ams_slot(updates["ams_slot"], spool.id, db)
     weight_before = spool.current_weight_g
+    # Storage changes keep the reached dryness value (only the rate changes);
+    # material is applied first only when the storage does not change with it.
+    if "packaging" in updates:
+        moisture.set_packaging(spool, updates.pop("packaging"))
+    if "ams_slot" in updates:
+        moisture.set_ams_slot(spool, updates.pop("ams_slot"))
+    if "last_dried_at" in updates:
+        new_dried = updates["last_dried_at"]
+        old_dried = spool.last_dried_at
+        if new_dried is not None and old_dried is not None and new_dried.date() == old_dried.date():
+            # the form only knows the day: same day → keep the exact stored time
+            updates.pop("last_dried_at")
+        elif new_dried != old_dried:
+            # a new drying date restarts the estimate at 100 % from that date
+            spool.moisture_anchor_at = None
+            spool.moisture_anchor_pct = None
     for field, value in updates.items():
         setattr(spool, field, value)
     spool.updated_at = utcnow()
@@ -150,6 +170,72 @@ def weigh_spool(spool_id: int, body: WeighIn, background_tasks: BackgroundTasks,
     from .. import ha_publisher
     ha_publisher.trigger()
     return spool
+
+
+def _drying_audit(db: Session, spool: Spool, action: str) -> None:
+    db.add(SpoolAudit(
+        spool_id=spool.id, action=action, delta_g=0,
+        weight_before=spool.current_weight_g, weight_after=spool.current_weight_g,
+    ))
+
+
+def _get_spool(db: Session, spool_id: int) -> Spool:
+    spool = db.get(Spool, spool_id)
+    if not spool:
+        raise HTTPException(404, "Spool not found")
+    return spool
+
+
+@router.post("/{spool_id}/drying/start", response_model=SpoolOut)
+def start_drying(spool_id: int, db: Session = Depends(get_db)):
+    """Spool goes into the dryer: level 'drying', no warnings until finished."""
+    spool = _get_spool(db, spool_id)
+    if not spool.is_drying:
+        spool.is_drying = True
+        spool.drying_started_at = utcnow()
+        spool.updated_at = utcnow()
+        _drying_audit(db, spool, "drying_start")
+        db.commit()
+        db.refresh(spool)
+        from .. import ha_publisher
+        ha_publisher.trigger()
+    return spool
+
+
+@router.post("/{spool_id}/drying/finish", response_model=SpoolOut)
+def finish_drying(spool_id: int, db: Session = Depends(get_db)):
+    """Spool comes out of the dryer: the estimate restarts at 100 %."""
+    spool = _get_spool(db, spool_id)
+    moisture.mark_dry(spool)
+    spool.updated_at = utcnow()
+    _drying_audit(db, spool, "dried")
+    db.commit()
+    db.refresh(spool)
+    from .. import ha_publisher
+    ha_publisher.trigger()
+    return spool
+
+
+@router.post("/{spool_id}/drying/cancel", response_model=SpoolOut)
+def cancel_drying(spool_id: int, db: Session = Depends(get_db)):
+    """Taken out of the dryer early: back to the previous estimate."""
+    spool = _get_spool(db, spool_id)
+    if spool.is_drying:
+        spool.is_drying = False
+        spool.drying_started_at = None
+        spool.updated_at = utcnow()
+        _drying_audit(db, spool, "drying_cancel")
+        db.commit()
+        db.refresh(spool)
+        from .. import ha_publisher
+        ha_publisher.trigger()
+    return spool
+
+
+@router.post("/{spool_id}/mark-dry", response_model=SpoolOut)
+def mark_spool_dry(spool_id: int, db: Session = Depends(get_db)):
+    """Dried without the dryer workflow (or freshly unpacked): restart at 100 %."""
+    return finish_drying(spool_id, db)
 
 
 @router.get("/{spool_id}/audit", response_model=list[SpoolAuditEntry])

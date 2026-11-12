@@ -139,7 +139,10 @@
       "addN": "Add {{n}} spools",
       "brandPlaceholder": "SUNLU, Bambu, …",
       "colorPlaceholder": "Fire Red, Black, …",
-      "tareOwn": "Own value for this spool (empty = brand value)"
+      "tareOwn": "Own value for this spool (empty = brand value)",
+      "packaging": "Packaging",
+      "packagingHint": "How the spool is stored; while in the AMS the AMS storage applies.",
+      "justDried": "Just dried"
     },
     "table": {
       "brand": "Brand",
@@ -203,7 +206,10 @@
       "action_correction": "Correction",
       "correctBtn": "Reverse this entry",
       "correctConfirm": "Reverse the {{delta}} g change? A correction entry of {{reverse}} g will be added and the spool weight updated.",
-      "action_weigh": "Weighed"
+      "action_weigh": "Weighed",
+      "action_drying_start": "Into dryer",
+      "action_dried": "Dried",
+      "action_drying_cancel": "Drying cancelled"
     },
     "weigh": {
       "title": "Weigh spool",
@@ -321,7 +327,13 @@
       "regionalSave": "Save",
       "regionalSaved": "Saved",
       "lowStockThreshold": "Low stock alert threshold",
-      "lowStockHint": "Spools below this percentage are flagged as low stock on the dashboard and in HA sensors (1–100)"
+      "lowStockHint": "Spools below this percentage are flagged as low stock on the dashboard and in HA sensors (1–100)",
+      "almostEmptyThreshold": "\"Almost empty\" threshold",
+      "almostEmptyHint": "Spools below this percentage count as almost empty (attribute almost_empty on the low-stock sensor, 1-100)",
+      "moistureWarning": "Moisture: warning below",
+      "moistureWarningHint": "Estimated dryness below this value = \"Dry soon\" (sensor moisture_spools)",
+      "moistureCritical": "Moisture: critical below",
+      "moistureCriticalHint": "Estimated dryness below this value = \"Critical\""
     },
     "dataTabs": {
       "brandWeights": "Spool Weights",
@@ -577,6 +589,14 @@
       "importingSpoolman": "Importing…",
       "importSpoolmanResult": "Spoolman import done — {{imported}} imported, {{skipped}} skipped",
       "importSpoolmanHint": "Upload a Spoolman JSON export (from Spoolman's Export option) to import all spools into your inventory. Import is additive — existing spools are not affected."
+    },
+    "moisture": {
+      "title": "Moisture estimate",
+      "formula": "Dryness = 100 % − days since drying × material × storage × {{m}}. Nothing is measured. Unknown materials count {{d}}.",
+      "storage": "Storage",
+      "material": "Material",
+      "addMaterial": "Add material",
+      "reset": "Defaults"
     }
   },
   "projects": {
@@ -606,5 +626,36 @@
     "unmarkTestPrint": "Unmark as test print",
     "normalStats": "Production",
     "testStats": "Test"
+  },
+  "moisture": {
+    "title": "Moisture",
+    "level": {
+      "dry": "Dry",
+      "good": "Good",
+      "warning": "Dry soon",
+      "critical": "Critical",
+      "drying": "Drying",
+      "unknown": "Unknown"
+    },
+    "storage": {
+      "open": "Open on the shelf",
+      "original": "Factory sealed",
+      "sealed": "Sealed bag",
+      "vacuum": "Vacuum sealed",
+      "drybox": "Dry box with silica",
+      "ams": "In the AMS",
+      "unknown": "Not set"
+    },
+    "neverDried": "Never marked as dried – no estimate",
+    "driedToday": "Dried today",
+    "driedDaysAgo": "Dried {{n}} days ago",
+    "inAms": "in the AMS",
+    "inDryerHint": "In the dryer – no warnings",
+    "markDry": "Mark as dry",
+    "startDrying": "Into dryer",
+    "finishDrying": "Done drying",
+    "cancelDrying": "Cancel (not dried)",
+    "onlyMoist": "Moist",
+    "onlyMoistHint": "Only spools that should be dried soon, are critical or in the dryer"
   }
 }

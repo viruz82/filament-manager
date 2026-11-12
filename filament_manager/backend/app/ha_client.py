@@ -85,7 +85,7 @@ async def push_ha_state(entity_id: str, state: int | str, attributes: dict) -> b
 
 
 _ENERGY_UNITS = {"kwh", "wh", "mwh"}
-_PRICE_WORDS = ("preis", "price", "tarif", "kwh")
+_PRICE_WORDS = ("preis", "price", "tarif", "kosten", "cost")
 _PERIOD_RE = re.compile(r"(^|_)(today|daily|weekly|monthly|yearly|quarterly|heute|tag|woche|monat|jahr)(_|$)")
 
 
@@ -101,7 +101,8 @@ def filter_ha_entities(states: list[dict], kind: str) -> list[dict]:
 
     kind "energy": cumulative energy meters (state class total/total_increasing, unit kWh/Wh/MWh),
     without daily/weekly/monthly/yearly counters.
-    kind "price":  price sensors (unit …/kWh) and number helpers whose name looks like a price.
+    kind "price":  price per kWh in a currency (unit …/kWh, no cent), or unitless number helpers
+                   with an electricity word (kwh/strom/electric) and a price word in their name.
     Only entities with a numeric state are returned, sorted by entity id.
     """
     out: list[dict] = []
@@ -125,14 +126,20 @@ def filter_ha_entities(states: list[dict], kind: str) -> list[dict]:
                 and not _is_periodic_meter(entity_id, attrs)
             )
         elif kind == "price":
+            # price per kWh in a currency (EUR/kWh) — the cost is computed in the
+            # currency, so cent prices, CO2 intensity and plain meters are out
             low = unit.lower()
-            if domain == "sensor":
-                # price per kWh (EUR/kWh, ct/kWh) — not CO2 intensity or plain costs
-                ok = "/kwh" in low and "co2" not in low
-            else:
-                # number helpers have no unit: only those that look like a price
+            cent = any(c in low for c in ("ct", "cent", "¢"))
+            if "/kwh" in low:
+                ok = not cent and "co2" not in low
+            elif not low and domain != "sensor":
+                # unitless number helper: needs an electricity word AND a price word
+                # in its name (keeps out base fees, water/gas prices, meter snapshots)
                 ident = (entity_id + " " + str(attrs.get("friendly_name") or "")).lower()
-                ok = "/kwh" in low or any(w in ident for w in _PRICE_WORDS)
+                ok = (any(w in ident for w in ("kwh", "strom", "electric"))
+                      and any(w in ident for w in _PRICE_WORDS))
+            else:
+                ok = False
         else:
             ok = False
         if ok:

@@ -20,6 +20,12 @@ async def get_dashboard(db: Session = Depends(get_db)):
     active_spools = [s for s in spools if s.current_weight_g > 0]
     empty_spools  = [s for s in spools if s.current_weight_g <= 0]
     low_stock     = [s for s in active_spools if 0 < s.remaining_pct < low_stock_threshold]
+    almost_empty_threshold = (prefs.almost_empty_threshold_pct if prefs else None) or 8
+    almost_empty  = [s for s in low_stock if s.remaining_pct < almost_empty_threshold]
+    moisture_warn = [
+        s for s in active_spools
+        if not s.archived and s.moisture["level"] in ("warning", "critical")
+    ]
 
     # Weight totals
     total_filament_kg  = sum(s.initial_weight_g for s in spools) / 1000
@@ -183,6 +189,8 @@ async def get_dashboard(db: Session = Depends(get_db)):
         active_spools=len(active_spools),
         empty_spools=len(empty_spools),
         low_stock_spools=len(low_stock),
+        almost_empty_spools=len(almost_empty),
+        moisture_warning_spools=len(moisture_warn),
         total_filament_kg=round(total_filament_kg, 3),
         total_printed_kg=round(total_print_grams / 1000, 3),
         total_available_kg=round(total_available_kg, 3),

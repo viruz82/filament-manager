@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.4.0
+
+- Feature: **Moisture estimate per spool** — every spool gets an estimated dryness in % from material, storage and the time since it was last dried (nothing is measured): `100 − days × material factor × storage factor × 3`. Storage ("packaging") per spool: open on the shelf, factory sealed, sealed bag, vacuum sealed, dry box with silica; while a spool sits in an AMS tray the AMS factor applies, and a factory-sealed spool counts as open once loaded. A storage change keeps the reached value and only changes the rate from then on. Levels: dry (≥ 80 %), good, dry soon (below the warning threshold, default 50 %), critical (below the critical threshold, default 25 %), drying, unknown (never marked as dried — no guessing). Factors for materials and storage types are editable (Settings → Appearance → Moisture estimate)
+- Feature: **Dryer workflow** — a drop icon in the spool table (new column "Moisture") and on the cards opens a small dialog: level, %, days since drying, packaging, and the buttons "Into dryer" → "Done drying" (restarts at 100 %), "Cancel" and "Mark as dry". New endpoints `POST /api/spools/{id}/drying/start|finish|cancel` and `/mark-dry`; actions are logged in the spool history. New spools have a "Just dried" switch. Filter button "Moist" in the toolbar
+- Feature: **Home Assistant sensor `sensor.filament_manager_moisture_spools`** — number of spools below the warning threshold, with the list (number, name, %, level, storage), the number of critical spools and of spools in the dryer; empty spools and spools in the dryer never warn
+- Feature: **"Almost empty" threshold** (default 8 %) next to the low-stock threshold; the low-stock sensor gets the attributes `almost_empty` and `almost_empty_threshold_pct`, the dashboard API `almost_empty_spools` and `moisture_warning_spools`
+- Fix: **price sensor suggestions only offer prices per kWh in a currency** — cent prices, base fees, water/gas prices and kWh meter snapshots of number helpers are no longer suggested (unitless helpers need an electricity word and a price word in their name)
+- Fix: saving the spool form no longer resets the exact drying time to midnight (the form only knows the day)
+
 ## 1.3.2
 
 - Fix: **energy sensor suggestions list only real meters** — sensors need state class total/total_increasing (like the Home Assistant energy dashboard) and daily/weekly/monthly/yearly counters (entity names such as `…_today`, `…_monthly`, or utility meters with a cycle) are left out, because they reset and would lose the energy of prints crossing the reset. 1.3.1 still offered every kWh sensor (327 in one installation)

@@ -125,6 +125,14 @@ export const api = {
     request<void>(`settings/brand-weights/${id}`, { method: 'DELETE' }),
   weighSpool: (id: number, gross_g: number) =>
     request<import('./types').Spool>(`spools/${id}/weigh`, { method: 'POST', body: JSON.stringify({ gross_g }) }),
+  startDrying: (id: number) =>
+    request<import('./types').Spool>(`spools/${id}/drying/start`, { method: 'POST' }),
+  finishDrying: (id: number) =>
+    request<import('./types').Spool>(`spools/${id}/drying/finish`, { method: 'POST' }),
+  cancelDrying: (id: number) =>
+    request<import('./types').Spool>(`spools/${id}/drying/cancel`, { method: 'POST' }),
+  markSpoolDry: (id: number) =>
+    request<import('./types').Spool>(`spools/${id}/mark-dry`, { method: 'POST' }),
   applyBrandWeight: (id: number) =>
     request<{ updated: number }>(`settings/brand-weights/${id}/apply`, { method: 'POST' }),
 
@@ -184,9 +192,12 @@ export const api = {
   getHASensorValue: (entityId: string) => request<{ entity_id: string; value: number | null }>(`settings/ha-sensor-value?entity_id=${encodeURIComponent(entityId)}`),
   getHAEntities: (kind: 'energy' | 'price') => request<{ entity_id: string; name: string; value: string; unit: string }[]>(`settings/ha-entities?kind=${kind}`),
   getHALocale: () => request<{ language: string; time_zone: string; country: string; currency: string }>('settings/ha-locale'),
-  getUserPrefs: () => request<{ timezone_override: string | null; currency_override: string | null; country_override: string | null; low_stock_threshold_pct: number }>('settings/user-prefs'),
-  saveUserPrefs: (data: { timezone_override: string | null; currency_override: string | null; country_override: string | null; low_stock_threshold_pct: number | null }) =>
-    request<{ timezone_override: string | null; currency_override: string | null; country_override: string | null; low_stock_threshold_pct: number }>('settings/user-prefs', { method: 'POST', body: JSON.stringify(data) }),
+  getUserPrefs: () => request<import('./types').UserPrefs>('settings/user-prefs'),
+  saveUserPrefs: (data: Partial<import('./types').UserPrefs>) =>
+    request<import('./types').UserPrefs>('settings/user-prefs', { method: 'POST', body: JSON.stringify(data) }),
+  getMoistureSettings: () => request<import('./types').MoistureSettings>('settings/moisture'),
+  saveMoistureFactors: (data: { material_factors?: Record<string, number> | null; storage_factors?: Record<string, number> | null }) =>
+    request<import('./types').MoistureSettings>('settings/moisture', { method: 'PUT', body: JSON.stringify(data) }),
 
   // Bambu Cloud
   getBambuCloudStatus: () =>

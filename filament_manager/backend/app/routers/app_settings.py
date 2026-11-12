@@ -104,6 +104,9 @@ class UserPrefsIn(BaseModel):
     currency_override:       str | None = None
     country_override:        str | None = None
     low_stock_threshold_pct: int | None = None
+    almost_empty_threshold_pct: int | None = None
+    moisture_warning_pct:    int | None = None
+    moisture_critical_pct:   int | None = None
 
 
 class UserPrefsOut(BaseModel):
@@ -112,6 +115,9 @@ class UserPrefsOut(BaseModel):
     currency_override:       str | None
     country_override:        str | None
     low_stock_threshold_pct: int
+    almost_empty_threshold_pct: int = 8
+    moisture_warning_pct:    int = 50
+    moisture_critical_pct:   int = 25
 
 
 @router.get("/user-prefs", response_model=UserPrefsOut)
@@ -140,11 +146,56 @@ def save_user_prefs(body: UserPrefsIn, db: Session = Depends(get_db)):
     if body.low_stock_threshold_pct is not None:
         pct = max(1, min(100, body.low_stock_threshold_pct))
         prefs.low_stock_threshold_pct = pct
+    if body.almost_empty_threshold_pct is not None:
+        prefs.almost_empty_threshold_pct = max(1, min(100, body.almost_empty_threshold_pct))
+    if body.moisture_warning_pct is not None:
+        prefs.moisture_warning_pct = max(1, min(100, body.moisture_warning_pct))
+    if body.moisture_critical_pct is not None:
+        prefs.moisture_critical_pct = max(0, min(100, body.moisture_critical_pct))
     db.commit()
     db.refresh(prefs)
+    from .. import moisture
+    moisture.load_from_prefs(prefs)
     from .. import ha_publisher
     ha_publisher.trigger()
     return prefs
+
+
+# ── Moisture factors ──────────────────────────────────────────────────────────
+
+class MoistureFactorsIn(BaseModel):
+    # None → reset to the built-in defaults
+    material_factors: dict[str, float] | None = None
+    storage_factors:  dict[str, float] | None = None
+
+
+@router.get("/moisture")
+def get_moisture_settings():
+    """Active moisture configuration (factors, multiplier, thresholds)."""
+    from .. import moisture
+    return moisture.get_config()
+
+
+@router.put("/moisture")
+def save_moisture_factors(body: MoistureFactorsIn, db: Session = Depends(get_db)):
+    from .. import moisture
+    def _clean(d: dict[str, float] | None) -> dict[str, float] | None:
+        if not d:
+            return None
+        out = {k.strip(): max(0.0, min(20.0, float(v))) for k, v in d.items() if k.strip()}
+        return out or None
+    prefs = db.get(UserPreferences, 1)
+    if not prefs:
+        prefs = UserPreferences(id=1)
+        db.add(prefs)
+    prefs.moisture_material_factors = _clean(body.material_factors)
+    prefs.moisture_storage_factors = _clean(body.storage_factors)
+    db.commit()
+    db.refresh(prefs)
+    moisture.load_from_prefs(prefs)
+    from .. import ha_publisher
+    ha_publisher.trigger()
+    return moisture.get_config()
 
 
 class BrandWeightIn(BaseModel):

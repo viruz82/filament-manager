@@ -80,6 +80,19 @@ async def lifespan(app: FastAPI):
             conn.commit()
             log.info("Migration: added spools.last_dried_at")
 
+        # spools: moisture estimate fields
+        for col, ddl in (
+            ("packaging", "TEXT"),
+            ("is_drying", "INTEGER NOT NULL DEFAULT 0"),
+            ("drying_started_at", "DATETIME"),
+            ("moisture_anchor_at", "DATETIME"),
+            ("moisture_anchor_pct", "REAL"),
+        ):
+            if col not in spool_cols:
+                conn.execute(text(f"ALTER TABLE spools ADD COLUMN {col} {ddl}"))
+                conn.commit()
+                log.info("Migration: added spools.%s", col)
+
         # spools: add Bambu filament sync fields
         if "bambu_spool_id" not in spool_cols:
             conn.execute(text("ALTER TABLE spools ADD COLUMN bambu_spool_id TEXT"))
@@ -311,6 +324,19 @@ async def lifespan(app: FastAPI):
             conn.commit()
             log.info("Migration: added user_preferences.low_stock_threshold_pct")
 
+        # user_preferences: almost-empty threshold and moisture settings
+        for col, ddl in (
+            ("almost_empty_threshold_pct", "INTEGER NOT NULL DEFAULT 8"),
+            ("moisture_warning_pct", "INTEGER NOT NULL DEFAULT 50"),
+            ("moisture_critical_pct", "INTEGER NOT NULL DEFAULT 25"),
+            ("moisture_material_factors", "JSON"),
+            ("moisture_storage_factors", "JSON"),
+        ):
+            if up_cols and col not in up_cols:
+                conn.execute(text(f"ALTER TABLE user_preferences ADD COLUMN {col} {ddl}"))
+                conn.commit()
+                log.info("Migration: added user_preferences.%s", col)
+
         # user_preferences: add Bambu filament sync settings
         if up_cols and "bambu_filament_sync_enabled" not in up_cols:
             conn.execute(text(
@@ -511,6 +537,13 @@ async def lifespan(app: FastAPI):
             if added:
                 s.commit()
                 log.info("Seeded brand weights: %s", added)
+
+    # Moisture settings (thresholds, factor overrides) from the user preferences
+    from . import moisture as _moisture
+    from .models import UserPreferences as _UP
+    from sqlalchemy.orm import Session as _SessionM
+    with _SessionM(engine) as s:
+        _moisture.load_from_prefs(s.get(_UP, 1))
 
     await bambu_cloud_client.startup()
 

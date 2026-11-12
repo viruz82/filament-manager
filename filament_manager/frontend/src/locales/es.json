@@ -139,7 +139,10 @@
       "addN": "Añadir {{n}} bobinas",
       "brandPlaceholder": "SUNLU, Bambu, …",
       "colorPlaceholder": "Rojo fuego, Negro, …",
-      "tareOwn": "Valor propio de esta bobina (vacío = valor de la marca)"
+      "tareOwn": "Valor propio de esta bobina (vacío = valor de la marca)",
+      "packaging": "Embalaje",
+      "packagingHint": "Cómo se guarda la bobina; en el AMS se aplica el almacenamiento del AMS.",
+      "justDried": "Recién secada"
     },
     "table": {
       "brand": "Marca",
@@ -203,7 +206,10 @@
       "action_correction": "Corrección",
       "correctBtn": "Revertir esta entrada",
       "correctConfirm": "¿Revertir el cambio de {{delta}} g? Se añadirá una entrada de corrección de {{reverse}} g y se actualizará el peso del carrete.",
-      "action_weigh": "Pesada"
+      "action_weigh": "Pesada",
+      "action_drying_start": "Al secador",
+      "action_dried": "Secada",
+      "action_drying_cancel": "Secado cancelado"
     },
     "weigh": {
       "title": "Pesar bobina",
@@ -321,7 +327,13 @@
       "regionalSave": "Guardar",
       "regionalSaved": "Guardado",
       "lowStockThreshold": "Umbral de alerta de stock bajo",
-      "lowStockHint": "Las bobinas por debajo de este porcentaje se marcan como stock bajo en el panel y en los sensores de HA (1–100)"
+      "lowStockHint": "Las bobinas por debajo de este porcentaje se marcan como stock bajo en el panel y en los sensores de HA (1–100)",
+      "almostEmptyThreshold": "Umbral \"casi vacía\"",
+      "almostEmptyHint": "Las bobinas por debajo de este porcentaje cuentan como casi vacías (atributo almost_empty, 1-100)",
+      "moistureWarning": "Humedad: aviso por debajo de",
+      "moistureWarningHint": "Sequedad estimada por debajo de este valor = \"Secar pronto\"",
+      "moistureCritical": "Humedad: crítico por debajo de",
+      "moistureCriticalHint": "Sequedad estimada por debajo de este valor = \"Crítico\""
     },
     "dataTabs": {
       "brandWeights": "Pesos de Bobina",
@@ -577,6 +589,14 @@
       "importingSpoolman": "Importando…",
       "importSpoolmanResult": "Importación de Spoolman completada — {{imported}} importadas, {{skipped}} omitidas",
       "importSpoolmanHint": "Sube un JSON exportado de Spoolman (desde la opción de exportación de Spoolman) para importar todas las bobinas a tu inventario. La importación es aditiva — las bobinas existentes no se ven afectadas."
+    },
+    "moisture": {
+      "title": "Estimación de humedad",
+      "formula": "Sequedad = 100 % − días desde el secado × material × almacenamiento × {{m}}. No se mide nada. Material desconocido cuenta {{d}}.",
+      "storage": "Almacenamiento",
+      "material": "Material",
+      "addMaterial": "Añadir material",
+      "reset": "Valores por defecto"
     }
   },
   "projects": {
@@ -606,5 +626,36 @@
     "unmarkTestPrint": "Quitar marca de impresión de prueba",
     "normalStats": "Producción",
     "testStats": "Prueba"
+  },
+  "moisture": {
+    "title": "Humedad",
+    "level": {
+      "dry": "Seca",
+      "good": "Bien",
+      "warning": "Secar pronto",
+      "critical": "Crítico",
+      "drying": "Secando",
+      "unknown": "Desconocido"
+    },
+    "storage": {
+      "open": "Abierta en la estantería",
+      "original": "Precintada de fábrica",
+      "sealed": "Bolsa cerrada",
+      "vacuum": "Al vacío",
+      "drybox": "Caja seca con sílice",
+      "ams": "En el AMS",
+      "unknown": "Sin indicar"
+    },
+    "neverDried": "Nunca marcada como seca – sin estimación",
+    "driedToday": "Secada hoy",
+    "driedDaysAgo": "Secada hace {{n}} días",
+    "inAms": "en el AMS",
+    "inDryerHint": "En el secador – sin avisos",
+    "markDry": "Marcar como seca",
+    "startDrying": "Al secador",
+    "finishDrying": "Secado terminado",
+    "cancelDrying": "Cancelar (sin secar)",
+    "onlyMoist": "Húmedas",
+    "onlyMoistHint": "Solo bobinas para secar pronto, críticas o en el secador"
   }
 }

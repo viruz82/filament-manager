@@ -20,6 +20,14 @@ STATES = [
     _s("sensor.kosten_heute", "1.2", unit_of_measurement="EUR", device_class="monetary"),
     _s("sensor.defekt", "unavailable", unit_of_measurement="kWh", device_class="energy"),
     _s("light.lampe", "on"),
+    # real-world noise from a Home Assistant install (all must stay out of "price")
+    _s("input_number.kosten_je_kwh", "33.16", unit_of_measurement="Cent"),
+    _s("input_number.grundpreis_je_monat", "17.88"),
+    _s("input_number.abwasserpreis_m3", "2.97"),
+    _s("input_number.spulmaschine_start_kwh", "261.5", unit_of_measurement="kWh"),
+    _s("input_number.heizkosten_warmwasser_kwh_tag", "7.4", unit_of_measurement="kWh/Tag"),
+    _s("sensor.preis_cent", "33.16", unit_of_measurement="ct/kWh"),
+    _s("input_number.strom_eur_kwh", "0.33", unit_of_measurement="€/kWh"),
 ]
 
 
@@ -30,7 +38,16 @@ def test_energy_only_total_meters_without_period_counters():
 
 def test_price_takes_price_sensors_and_price_like_helpers():
     ids = [e["entity_id"] for e in filter_ha_entities(STATES, "price")]
-    assert ids == ["input_number.strompreis", "sensor.preis"]
+    assert ids == ["input_number.strom_eur_kwh", "input_number.strompreis", "sensor.preis"]
+
+
+def test_price_drops_cent_prices_base_fees_and_meter_snapshots():
+    ids = {e["entity_id"] for e in filter_ha_entities(STATES, "price")}
+    for bad in ("input_number.kosten_je_kwh", "input_number.grundpreis_je_monat",
+                "input_number.abwasserpreis_m3", "input_number.spulmaschine_start_kwh",
+                "input_number.heizkosten_warmwasser_kwh_tag", "sensor.preis_cent",
+                "input_number.abschlag_strom"):
+        assert bad not in ids
 
 
 def test_entry_has_name_value_unit():

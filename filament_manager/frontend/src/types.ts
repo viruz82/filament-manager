@@ -20,6 +20,10 @@ export interface Spool {
   storage_location: string | null
   article_number: string | null
   last_dried_at: string | null
+  packaging: Packaging | null
+  is_drying: boolean
+  drying_started_at: string | null
+  moisture: MoistureInfo
   ams_slot: string | null
   notes: string | null
   archived: boolean
@@ -31,6 +35,37 @@ export interface Spool {
   updated_at: string
   bambu_spool_id: string | null
   bambu_synced_at: string | null
+}
+
+export type Packaging = 'open' | 'original' | 'sealed' | 'vacuum' | 'drybox'
+export const PACKAGING_TYPES: Packaging[] = ['open', 'original', 'sealed', 'vacuum', 'drybox']
+
+export type MoistureLevel = 'dry' | 'good' | 'warning' | 'critical' | 'drying' | 'unknown'
+
+export interface MoistureInfo {
+  pct: number | null
+  level: MoistureLevel
+  storage: Packaging | 'ams' | 'unknown'
+  days_since_dried: number | null
+}
+
+export interface MoistureSettings {
+  material_factors: Record<string, number>
+  storage_factors: Record<string, number>
+  default_material_factor: number
+  multiplier: number
+  warning_pct: number
+  critical_pct: number
+}
+
+export interface UserPrefs {
+  timezone_override: string | null
+  currency_override: string | null
+  country_override: string | null
+  low_stock_threshold_pct: number
+  almost_empty_threshold_pct: number
+  moisture_warning_pct: number
+  moisture_critical_pct: number
 }
 
 export type SyncMode = 'off' | 'pull' | 'push' | 'bidirectional'

@@ -48,6 +48,12 @@ class Spool(Base):
     storage_location = Column(String)
     article_number = Column(String, nullable=True)
     last_dried_at = Column(DateTime, nullable=True)
+    # Moisture estimate (see moisture.py)
+    packaging = Column(String, nullable=True)           # open | original | sealed | vacuum | drybox
+    is_drying = Column(Boolean, default=False, nullable=False, server_default='0')
+    drying_started_at = Column(DateTime, nullable=True)
+    moisture_anchor_at = Column(DateTime, nullable=True)  # value frozen at a storage change …
+    moisture_anchor_pct = Column(Float, nullable=True)    # … and decays from here on
     ams_slot = Column(String)
     bambu_spool_id = Column(String, nullable=True)   # Bambu Cloud filament spool ID (int64 stored as str)
     bambu_synced_at = Column(DateTime, nullable=True)  # last successful Bambu sync timestamp
@@ -64,6 +70,11 @@ class Spool(Base):
         if self.initial_weight_g:
             return max(0.0, round(self.current_weight_g / self.initial_weight_g * 100, 1))
         return 0.0
+
+    @property
+    def moisture(self) -> dict:
+        from .moisture import info
+        return info(self)
 
     @property
     def price_per_kg(self) -> float | None:
@@ -296,6 +307,12 @@ class UserPreferences(Base):
     currency_override       = Column(String,  nullable=True)   # ISO 4217, e.g. "EUR"
     country_override        = Column(String,  nullable=True)   # ISO 3166-1 alpha-2, e.g. "DE"
     low_stock_threshold_pct = Column(Integer, nullable=False, default=20)  # 1–100
+    almost_empty_threshold_pct = Column(Integer, nullable=False, default=8)  # 1–100, below low stock
+    # Moisture estimate: thresholds and factor overrides (None → defaults in moisture.py)
+    moisture_warning_pct      = Column(Integer, nullable=False, default=50)
+    moisture_critical_pct     = Column(Integer, nullable=False, default=25)
+    moisture_material_factors = Column(JSON(none_as_null=True), nullable=True)
+    moisture_storage_factors  = Column(JSON(none_as_null=True), nullable=True)
     # Bambu Filament Sync settings
     # sync_mode: 'off' | 'pull' | 'push' | 'bidirectional'
     # Stored in bambu_filament_sync_direction for DB compat; bambu_filament_sync_enabled is legacy.

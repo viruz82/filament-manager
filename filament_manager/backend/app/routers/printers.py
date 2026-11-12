@@ -179,10 +179,13 @@ def assign_ams_tray(
     if not p:
         raise HTTPException(404, "Printer not found")
 
+    from .. import moisture
     full_key = f"{p.name}:{slot_key}"
-    db.query(Spool).filter(
+    for holder in db.query(Spool).filter(
         (Spool.ams_slot == full_key) | (Spool.ams_slot == slot_key)
-    ).update({"ams_slot": None})
+    ).all():
+        if holder.id != spool_id:
+            moisture.set_ams_slot(holder, None)   # leaves the AMS → keep its dryness value
 
     previous_slot: str | None = None
     if spool_id is not None:
@@ -191,7 +194,7 @@ def assign_ams_tray(
             raise HTTPException(404, "Spool not found")
         if spool.ams_slot and spool.ams_slot != full_key:
             previous_slot = spool.ams_slot
-        spool.ams_slot = full_key
+        moisture.set_ams_slot(spool, full_key)
 
     db.commit()
     from .. import ha_publisher

@@ -30,13 +30,25 @@ class SpoolBase(BaseModel):
     storage_location: str | None = None
     article_number: str | None = None
     last_dried_at: datetime | None = None
+    packaging: str | None = None
     ams_slot: str | None = None
     notes: str | None = None
     archived: bool = False
     is_refill_pack: bool = False
 
 
+PACKAGING_PATTERN = r"^(open|original|sealed|vacuum|drybox)$"
+
+
+class MoistureInfo(BaseModel):
+    pct: float | None = None
+    level: str                       # dry | good | warning | critical | drying | unknown
+    storage: str                     # effective storage (ams while loaded, else packaging)
+    days_since_dried: float | None = None
+
+
 class SpoolCreate(SpoolBase):
+    packaging: str | None = Field(default=None, pattern=PACKAGING_PATTERN)
     custom_id: int | None = Field(default=None, ge=1, le=9999)
     color_hex: str = Field(default="#888888", pattern=HEX_COLOR)
     color2_hex: str | None = Field(default=None, pattern=HEX_COLOR)
@@ -71,6 +83,7 @@ class SpoolUpdate(BaseModel):
     storage_location: str | None = None
     article_number: str | None = None
     last_dried_at: datetime | None = None
+    packaging: str | None = Field(default=None, pattern=PACKAGING_PATTERN)
     ams_slot: str | None = None
     notes: str | None = None
     archived: bool | None = None
@@ -90,6 +103,9 @@ class SpoolOut(SpoolBase):
     updated_at: datetime
     bambu_spool_id: str | None = None
     bambu_synced_at: datetime | None = None
+    is_drying: bool = False
+    drying_started_at: datetime | None = None
+    moisture: MoistureInfo
 
 
 # ── PrintUsage ───────────────────────────────────────────────────────────────
@@ -278,6 +294,8 @@ class DashboardStats(BaseModel):
     active_spools: int
     empty_spools: int
     low_stock_spools: int
+    almost_empty_spools: int = 0
+    moisture_warning_spools: int = 0   # level warning or critical (estimate)
 
     # Weight
     total_filament_kg: float       # total purchased (initial weight)

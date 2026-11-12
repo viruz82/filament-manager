@@ -64,6 +64,11 @@ def _spool_dict(s: Spool) -> dict:
         "purchase_location": s.purchase_location,
         "article_number": s.article_number,
         "last_dried_at": _dt(s.last_dried_at),
+        "packaging": s.packaging,
+        "is_drying": bool(s.is_drying),
+        "drying_started_at": _dt(s.drying_started_at),
+        "moisture_anchor_at": _dt(s.moisture_anchor_at),
+        "moisture_anchor_pct": s.moisture_anchor_pct,
         "storage_location": s.storage_location,
         "ams_slot": s.ams_slot,
         "notes": s.notes,
@@ -167,6 +172,11 @@ def export_data(db: Session = Depends(get_db)):
             "currency_override":       user_prefs.currency_override       if user_prefs else None,
             "country_override":        user_prefs.country_override        if user_prefs else None,
             "low_stock_threshold_pct": user_prefs.low_stock_threshold_pct if user_prefs else 20,
+            "almost_empty_threshold_pct": user_prefs.almost_empty_threshold_pct if user_prefs else 8,
+            "moisture_warning_pct":       user_prefs.moisture_warning_pct if user_prefs else 50,
+            "moisture_critical_pct":      user_prefs.moisture_critical_pct if user_prefs else 25,
+            "moisture_material_factors":  user_prefs.moisture_material_factors if user_prefs else None,
+            "moisture_storage_factors":   user_prefs.moisture_storage_factors if user_prefs else None,
         },
         "settings": {
             "brand_weights":      [{"brand": b.brand, "spool_weight_g": b.spool_weight_g} for b in bw],
@@ -715,6 +725,12 @@ def import_data(bundle: ImportBundle, db: Session = Depends(get_db)):
             prefs.country_override = up["country_override"]
         if up.get("low_stock_threshold_pct") is not None:
             prefs.low_stock_threshold_pct = max(1, min(100, int(up["low_stock_threshold_pct"])))
+        for key in ("almost_empty_threshold_pct", "moisture_warning_pct", "moisture_critical_pct"):
+            if up.get(key) is not None:
+                setattr(prefs, key, max(0, min(100, int(up[key]))))
+        for key in ("moisture_material_factors", "moisture_storage_factors"):
+            if up.get(key):
+                setattr(prefs, key, up[key])
 
     db.flush()
 
@@ -791,6 +807,11 @@ def import_data(bundle: ImportBundle, db: Session = Depends(get_db)):
             purchased_at=_parse_dt(sp.get("purchased_at")),
             article_number=sp.get("article_number"),
             last_dried_at=_parse_dt(sp.get("last_dried_at")),
+            packaging=sp.get("packaging"),
+            is_drying=bool(sp.get("is_drying", False)),
+            drying_started_at=_parse_dt(sp.get("drying_started_at")),
+            moisture_anchor_at=_parse_dt(sp.get("moisture_anchor_at")),
+            moisture_anchor_pct=sp.get("moisture_anchor_pct"),
             purchase_location=sp.get("purchase_location"),
             storage_location=sp.get("storage_location"),
             ams_slot=sp.get("ams_slot"),
@@ -1013,6 +1034,8 @@ def import_data(bundle: ImportBundle, db: Session = Depends(get_db)):
             stats["project_prints"] += 1
 
     db.commit()
+    from .. import moisture
+    moisture.load_from_prefs(db.get(UserPreferences, 1))
     return {"ok": True, "imported": stats}
 
 

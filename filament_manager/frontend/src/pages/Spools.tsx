@@ -2,8 +2,9 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { api } from '../api'
-import type { Spool, BrandSpoolWeight, FilamentCatalog, SpoolAuditEntry } from '../types'
-import { Plus, Pencil, Trash2, X, LayoutGrid, Table2, ChevronUp, ChevronDown, ChevronsUpDown, Copy, History, RotateCcw, Archive, ArchiveRestore, Columns3, Cloud, Recycle, Scale } from 'lucide-react'
+import type { Spool, BrandSpoolWeight, FilamentCatalog, SpoolAuditEntry, Packaging } from '../types'
+import { PACKAGING_TYPES } from '../types'
+import { Plus, Pencil, Trash2, X, LayoutGrid, Table2, ChevronUp, ChevronDown, ChevronsUpDown, Copy, History, RotateCcw, Archive, ArchiveRestore, Columns3, Cloud, Recycle, Scale, Droplet, Flame } from 'lucide-react'
 import Modal from '../components/Modal'
 import { formatDateOnly, formatDateTimeTZ } from '../utils/time'
 import { useHATZ, useCurrencyFormatter, useCurrencySymbol } from '../hooks/useHATZ'
@@ -19,7 +20,7 @@ const EMPTY_FORM = {
   diameter_mm: '', initial_weight_g: 1000, current_weight_g: 1000,
   spool_weight_g: '',   // own empty-spool tare; '' = take it from the brand config
   purchase_price: '', purchased_at: '', purchase_location: '', storage_location: '',
-  article_number: '', last_dried_at: '', ams_slot: '', notes: '',
+  article_number: '', last_dried_at: '', packaging: '' as Packaging | '', ams_slot: '', notes: '',
   is_refill_pack: false,
 }
 
@@ -47,6 +48,7 @@ function SpoolForm({
     storage_location: initial?.storage_location ?? '',
     article_number: initial?.article_number ?? '',
     last_dried_at: initial?.last_dried_at ? initial.last_dried_at.slice(0, 10) : '',
+    packaging: (initial?.packaging ?? '') as Packaging | '',
     initial_weight_g: initial?.initial_weight_g ?? 1000,
     current_weight_g: initial?.current_weight_g ?? 1000,
     spool_weight_g: initial?.spool_weight_g ? String(initial.spool_weight_g) : '',
@@ -444,6 +446,28 @@ function SpoolForm({
             <div>
               <label className="label">{t('spools.form.lastDried')}</label>
               <input className="input" type="date" value={form.last_dried_at ?? ''} onChange={set('last_dried_at')} />
+              {isNew && (
+                <label className="flex items-center gap-2 mt-1.5 text-xs text-gray-400 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="accent-accent"
+                    checked={form.last_dried_at === new Date().toISOString().slice(0, 10)}
+                    onChange={e => setForm(f => ({ ...f, last_dried_at: e.target.checked ? new Date().toISOString().slice(0, 10) : '' }))}
+                  />
+                  {t('spools.form.justDried')}
+                </label>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="label">{t('spools.form.packaging')}</label>
+              <select className="input" value={form.packaging ?? ''} onChange={e => setForm(f => ({ ...f, packaging: e.target.value as Packaging | '' }))}>
+                <option value="">{t('common.select')}</option>
+                {PACKAGING_TYPES.map(k => <option key={k} value={k}>{t(`moisture.storage.${k}`)}</option>)}
+              </select>
+              <p className="text-xs text-gray-500 mt-0.5">{t('spools.form.packagingHint')}</p>
             </div>
           </div>
 
@@ -594,6 +618,136 @@ function SpoolAuditModal({ spool, onClose }: { spool: Spool; onClose: () => void
   )
 }
 
+// ── Moisture ──────────────────────────────────────────────────────────────────
+
+const MOISTURE_COLOR: Record<string, string> = {
+  dry: 'text-green-400', good: 'text-sky-400', warning: 'text-amber-400',
+  critical: 'text-red-400', drying: 'text-orange-400', unknown: 'text-gray-500',
+}
+const MOISTURE_BAR: Record<string, string> = {
+  dry: '#4ade80', good: '#38bdf8', warning: '#fbbf24', critical: '#f87171', drying: '#fb923c', unknown: '#6b7280',
+}
+
+function MoistureBadge({ spool, onClick, showPct = true }: { spool: Spool; onClick: () => void; showPct?: boolean }) {
+  const { t } = useTranslation()
+  const m = spool.moisture
+  const label = t(`moisture.level.${m.level}`)
+  return (
+    <button
+      onClick={onClick}
+      className={`btn-ghost px-1 py-0.5 inline-flex items-center gap-1 text-xs ${MOISTURE_COLOR[m.level]}`}
+      title={`${t('moisture.title')}: ${label}${m.pct != null ? ` (${Math.round(m.pct)} %)` : ''}`}
+      aria-label={`${t('moisture.title')}: ${label}`}
+    >
+      {m.level === 'drying' ? <Flame size={12} /> : <Droplet size={12} />}
+      {showPct && (m.pct != null ? <span>{Math.round(m.pct)}%</span> : m.level === 'drying' ? <span>{label}</span> : null)}
+    </button>
+  )
+}
+
+function MoistureModal({ spool, onClose }: { spool: Spool; onClose: () => void }) {
+  const { t } = useTranslation()
+  const qc = useQueryClient()
+  const { data: fresh } = useQuery<Spool>({ queryKey: ['spool', spool.id], queryFn: () => api.getSpool(spool.id), initialData: spool })
+  const s = fresh ?? spool
+  const m = s.moisture
+  const done = () => {
+    qc.invalidateQueries({ queryKey: ['spools'] })
+    qc.invalidateQueries({ queryKey: ['spool', spool.id] })
+    qc.invalidateQueries({ queryKey: ['dashboard'] })
+  }
+  const act = useMutation({
+    mutationFn: (what: 'start' | 'finish' | 'cancel' | 'dry') =>
+      what === 'start' ? api.startDrying(s.id)
+      : what === 'finish' ? api.finishDrying(s.id)
+      : what === 'cancel' ? api.cancelDrying(s.id)
+      : api.markSpoolDry(s.id),
+    onSuccess: done,
+  })
+  const pack = useMutation({
+    mutationFn: (packaging: Packaging | null) => api.updateSpool(s.id, { packaging }),
+    onSuccess: done,
+  })
+  const days = m.days_since_dried
+  const daysText = days == null ? t('moisture.neverDried')
+    : days < 1 ? t('moisture.driedToday')
+    : t('moisture.driedDaysAgo', { n: Math.round(days) })
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-surface-2 border border-surface-3 rounded-2xl w-full max-w-sm" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-surface-3">
+          <h2 className="font-semibold flex items-center gap-2"><Droplet size={16} /> {t('moisture.title')}</h2>
+          <button onClick={onClose} className="btn-ghost p-1"><X size={16} /></button>
+        </div>
+        <div className="p-5 space-y-4">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="w-4 h-4 rounded-full shrink-0 ring-1 ring-white/10" style={{ background: s.color_hex }} />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-white truncate">
+                {s.custom_id ? `#${s.custom_id} ` : ''}{s.brand} {s.material}{s.subtype ? ` ${s.subtype}` : ''}
+              </p>
+              <p className="text-xs text-gray-400 truncate">{s.color_name}</p>
+            </div>
+          </div>
+
+          <div>
+            <div className={`flex items-center justify-between text-sm font-semibold ${MOISTURE_COLOR[m.level]}`}>
+              <span className="flex items-center gap-1.5">
+                {m.level === 'drying' ? <Flame size={14} /> : <Droplet size={14} />}
+                {t(`moisture.level.${m.level}`)}
+              </span>
+              {m.pct != null && <span>{Math.round(m.pct)} %</span>}
+            </div>
+            <div className="h-1.5 rounded-full bg-surface-3 overflow-hidden mt-1.5">
+              <div className="h-full rounded-full" style={{ width: `${m.pct ?? (m.level === 'drying' ? 100 : 0)}%`, background: MOISTURE_BAR[m.level] }} />
+            </div>
+            <p className="text-xs text-gray-400 mt-1.5">
+              {m.level === 'drying' ? t('moisture.inDryerHint') : daysText}
+              {m.storage === 'ams' && m.level !== 'drying' ? ` · ${t('moisture.inAms')}` : ''}
+            </p>
+          </div>
+
+          <div>
+            <label className="label">{t('spools.form.packaging')}</label>
+            <select
+              className="input"
+              value={s.packaging ?? ''}
+              disabled={pack.isPending}
+              onChange={e => pack.mutate((e.target.value || null) as Packaging | null)}
+            >
+              <option value="">{t('moisture.storage.unknown')}</option>
+              {PACKAGING_TYPES.map(k => <option key={k} value={k}>{t(`moisture.storage.${k}`)}</option>)}
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            {s.is_drying ? (
+              <>
+                <button className="btn-primary w-full flex items-center justify-center gap-1.5" disabled={act.isPending} onClick={() => act.mutate('finish')}>
+                  <Droplet size={14} /> {t('moisture.finishDrying')}
+                </button>
+                <button className="btn-ghost w-full text-xs" disabled={act.isPending} onClick={() => act.mutate('cancel')}>
+                  {t('moisture.cancelDrying')}
+                </button>
+              </>
+            ) : (
+              <>
+                <button className="btn-primary w-full flex items-center justify-center gap-1.5" disabled={act.isPending} onClick={() => act.mutate('dry')}>
+                  <Droplet size={14} /> {t('moisture.markDry')}
+                </button>
+                <button className="btn-ghost w-full flex items-center justify-center gap-1.5 border border-surface-3" disabled={act.isPending} onClick={() => act.mutate('start')}>
+                  <Flame size={14} /> {t('moisture.startDrying')}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Weigh Modal ───────────────────────────────────────────────────────────────
 
 function WeighModal({ spool, onClose }: { spool: Spool; onClose: () => void }) {
@@ -690,8 +844,8 @@ function WeighModal({ spool, onClose }: { spool: Spool; onClose: () => void }) {
 
 // ── Spool Card ────────────────────────────────────────────────────────────────
 
-function SpoolCard({ spool, spools, onEdit, onWeigh, onDuplicate, onHistory, onDelete, onArchive, onUnarchive, onAssignSlot }: {
-  spool: Spool; spools: Spool[]; onEdit: () => void; onWeigh: () => void; onDuplicate: () => void; onHistory: () => void; onDelete: () => void
+function SpoolCard({ spool, spools, onEdit, onWeigh, onMoisture, onDuplicate, onHistory, onDelete, onArchive, onUnarchive, onAssignSlot }: {
+  spool: Spool; spools: Spool[]; onEdit: () => void; onWeigh: () => void; onMoisture: () => void; onDuplicate: () => void; onHistory: () => void; onDelete: () => void
   onArchive: () => void; onUnarchive: () => void; onAssignSlot: (slot: string | null) => void
 }) {
   const { t } = useTranslation()
@@ -746,9 +900,12 @@ function SpoolCard({ spool, spools, onEdit, onWeigh, onDuplicate, onHistory, onD
         </div>
       </div>
       <div className="mb-2">
-        <div className="flex justify-between text-xs text-gray-400 mb-1">
+        <div className="flex justify-between items-center text-xs text-gray-400 mb-1">
           <span>{(spool.current_weight_g / 1000).toFixed(5)} kg {t('spools.remaining')}</span>
-          <span>{pct}%</span>
+          <span className="flex items-center gap-1">
+            {!spool.archived && <MoistureBadge spool={spool} onClick={onMoisture} />}
+            <span>{pct}%</span>
+          </span>
         </div>
         <div className="h-1.5 rounded-full bg-surface-3 overflow-hidden">
           <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: barColor }} />
@@ -782,7 +939,7 @@ function SpoolCard({ spool, spools, onEdit, onWeigh, onDuplicate, onHistory, onD
 type SortKey = 'custom_id' | 'brand' | 'material' | 'subtype' | 'color_name' | 'color2_hex' | 'color3_hex' | 'color4_hex' |
                'article_number' | 'remaining_pct' |
                'current_weight_g' | 'initial_weight_g' | 'purchase_price' |
-               'price_per_kg' | 'purchased_at' | 'purchase_location' | 'storage_location' | 'last_dried_at' | 'ams_slot' | 'is_refill_pack'
+               'price_per_kg' | 'purchased_at' | 'purchase_location' | 'storage_location' | 'last_dried_at' | 'moisture' | 'ams_slot' | 'is_refill_pack'
 type SortDir = 'asc' | 'desc'
 
 type ColDef = { key: SortKey; label: string; width?: string; always?: boolean }
@@ -794,8 +951,8 @@ function SortIcon({ col, sort }: { col: SortKey; sort: { key: SortKey; dir: Sort
     : <ChevronDown size={12} className="text-accent" />
 }
 
-function SpoolTable({ spools, onEdit, onWeigh, onDuplicate, onHistory, onDelete, onArchive, onUnarchive, onAssignSlot }: {
-  spools: Spool[]; onEdit: (s: Spool) => void; onWeigh: (s: Spool) => void; onDuplicate: (s: Spool) => void; onHistory: (s: Spool) => void; onDelete: (s: Spool) => void
+function SpoolTable({ spools, onEdit, onWeigh, onMoisture, onDuplicate, onHistory, onDelete, onArchive, onUnarchive, onAssignSlot }: {
+  spools: Spool[]; onEdit: (s: Spool) => void; onWeigh: (s: Spool) => void; onMoisture: (s: Spool) => void; onDuplicate: (s: Spool) => void; onHistory: (s: Spool) => void; onDelete: (s: Spool) => void
   onArchive: (s: Spool) => void; onUnarchive: (s: Spool) => void; onAssignSlot: (s: Spool, slot: string | null) => void
 }) {
   const { t } = useTranslation()
@@ -848,6 +1005,7 @@ function SpoolTable({ spools, onEdit, onWeigh, onDuplicate, onHistory, onDelete,
   const DATE_COLS    = new Set<SortKey>(['purchased_at', 'last_dried_at'])
 
   const filterPlaceholder = (key: SortKey): string => {
+    if (key === 'moisture')    return t('spools.table.filterNumPct')
     if (DATE_COLS.has(key))    return t('spools.table.filterDate')
     if (WEIGHT_COLS.has(key))  return t('spools.table.filterNumKg')
     if (PRICE_COLS.has(key))   return t('spools.table.filterNumEur')
@@ -863,7 +1021,24 @@ function SpoolTable({ spools, onEdit, onWeigh, onDuplicate, onHistory, onDelete,
       const v = raw as string
       const key = k as SortKey
 
-      if (DATE_COLS.has(key)) {
+      if (key === 'moisture') {
+        const op = v.startsWith('>=') ? '>=' : v.startsWith('<=') ? '<=' : v.startsWith('>') ? '>' : v.startsWith('<') ? '<' : '='
+        const threshold = parseFloat(v.replace(/^[><=]+/, '').trim().replace(',', '.'))
+        if (isNaN(threshold)) {
+          const lower = v.toLowerCase()
+          rows = rows.filter(s => t(`moisture.level.${s.moisture.level}`).toLowerCase().includes(lower))
+        } else {
+          rows = rows.filter(s => {
+            const num = s.moisture.pct
+            if (num == null) return false
+            if (op === '>=') return num >= threshold
+            if (op === '<=') return num <= threshold
+            if (op === '>')  return num >  threshold
+            if (op === '<')  return num <  threshold
+            return Math.round(num) === threshold
+          })
+        }
+      } else if (DATE_COLS.has(key)) {
         // filter against the displayed formatted value (DD.MM.YYYY), not the raw ISO string
         const lower = v.toLowerCase()
         rows = rows.filter(s => {
@@ -910,6 +1085,11 @@ function SpoolTable({ spools, onEdit, onWeigh, onDuplicate, onHistory, onDelete,
         if (slotCmp !== 0) return sort.dir === 'asc' ? slotCmp : -slotCmp
         return b.remaining_pct - a.remaining_pct
       }
+      if (sort.key === 'moisture') {
+        const ap = a.moisture.pct ?? 999
+        const bp = b.moisture.pct ?? 999
+        return sort.dir === 'asc' ? ap - bp : bp - ap
+      }
       const av = a[sort.key] ?? ''
       const bv = b[sort.key] ?? ''
       const cmp = typeof av === 'number' && typeof bv === 'number'
@@ -938,6 +1118,7 @@ function SpoolTable({ spools, onEdit, onWeigh, onDuplicate, onHistory, onDelete,
     { key: 'is_refill_pack',    label: t('spools.table.refill'),            width: 'w-16' },
     { key: 'purchased_at',      label: t('spools.table.purchaseDate'),      width: 'w-24' },
     { key: 'last_dried_at',     label: t('spools.table.lastDried'),         width: 'w-24' },
+    { key: 'moisture',          label: t('moisture.title'),                 width: 'w-20' },
     { key: 'purchase_location', label: t('spools.table.location'),          width: 'w-24' },
     { key: 'storage_location',  label: t('spools.table.storageLocation'),   width: 'w-24' },
     { key: 'ams_slot',          label: t('spools.table.amsSlot'),           width: 'w-24' },
@@ -994,6 +1175,7 @@ function SpoolTable({ spools, onEdit, onWeigh, onDuplicate, onHistory, onDelete,
       case 'is_refill_pack':   return <td key={c.key} className="px-3 py-2 whitespace-nowrap">{s.is_refill_pack ? <span className="text-xs bg-purple-900/40 px-1.5 py-0.5 rounded text-purple-400">{t('spools.table.refill')}</span> : <span className="text-gray-600">—</span>}</td>
       case 'purchased_at':     return <td key={c.key} className="px-3 py-2 whitespace-nowrap text-gray-400">{s.purchased_at ? formatDateOnly(s.purchased_at) : '—'}</td>
       case 'last_dried_at':    return <td key={c.key} className="px-3 py-2 whitespace-nowrap text-gray-400">{s.last_dried_at ? formatDateOnly(s.last_dried_at) : '—'}</td>
+      case 'moisture':         return <td key={c.key} className="px-2 py-1 whitespace-nowrap">{s.archived ? <span className="text-gray-600">—</span> : <MoistureBadge spool={s} onClick={() => onMoisture(s)} />}</td>
       case 'purchase_location':return <td key={c.key} className="px-3 py-2 whitespace-nowrap">{s.purchase_location ? <span className="text-xs bg-surface-3 px-1.5 py-0.5 rounded text-gray-400">{s.purchase_location}</span> : <span className="text-gray-600">—</span>}</td>
       case 'storage_location': return <td key={c.key} className="px-3 py-2 whitespace-nowrap">{s.storage_location ? <span className="text-xs bg-surface-3 px-1.5 py-0.5 rounded text-green-400">{s.storage_location}</span> : <span className="text-gray-600">—</span>}</td>
       case 'ams_slot':         return (
@@ -1149,6 +1331,12 @@ export default function Spools() {
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['spools'] })
   const [weighing, setWeighing] = useState<Spool | null>(null)
+  const [moistureSpool, setMoistureSpool] = useState<Spool | null>(null)
+  const [onlyMoist, setOnlyMoist] = useState(false)
+  const shown = onlyMoist
+    ? spools.filter(s => !s.archived && (s.moisture.level === 'warning' || s.moisture.level === 'critical' || s.moisture.level === 'drying'))
+    : spools
+  const moistCount = spools.filter(s => !s.archived && (s.moisture.level === 'warning' || s.moisture.level === 'critical')).length
 
   const createMut = useMutation({ mutationFn: api.createSpool, onSuccess: invalidate })
   const updateMut = useMutation({
@@ -1176,6 +1364,7 @@ export default function Spools() {
     storage_location: form.storage_location || null,
     article_number: form.article_number || null,
     last_dried_at: form.last_dried_at || null,
+    packaging: form.packaging || null,
     subtype: form.subtype || null,
     subtype2: form.subtype2 || null,
     color2_hex: (form.color2_hex && /^#[0-9a-fA-F]{6}$/.test(form.color2_hex)) ? form.color2_hex : null,
@@ -1212,7 +1401,15 @@ export default function Spools() {
       {/* Toolbar */}
       <div className="flex-none flex items-center justify-between flex-wrap gap-3">
         <h2 className="text-lg font-bold">{t('spools.title')} ({spools.filter(s => !s.archived).length})</h2>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            className={`btn-ghost px-2.5 py-1.5 text-xs flex items-center gap-1 transition-colors ${onlyMoist ? 'text-amber-400' : 'text-gray-400'}`}
+            onClick={() => setOnlyMoist(v => !v)}
+            title={t('moisture.onlyMoistHint')}
+          >
+            <Droplet size={13} />
+            {t('moisture.onlyMoist')}{moistCount > 0 ? ` (${moistCount})` : ''}
+          </button>
           <button
             className={`btn-ghost px-2.5 py-1.5 text-xs flex items-center gap-1 transition-colors ${showArchived ? 'text-amber-400' : 'text-gray-400'}`}
             onClick={() => setShowArchived(v => !v)}
@@ -1249,7 +1446,7 @@ export default function Spools() {
       {view === 'cards' ? (
         <div className="flex-1 min-h-0 overflow-y-auto">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {spools.map(spool => (
+            {shown.map(spool => (
               <SpoolCard
                 key={spool.id}
                 spool={spool}
@@ -1257,6 +1454,7 @@ export default function Spools() {
                 onAssignSlot={slot => assignSlotMut.mutate({ id: spool.id, slot })}
                 onEdit={() => setEditing(spool)}
                 onWeigh={() => setWeighing(spool)}
+                onMoisture={() => setMoistureSpool(spool)}
                 onDuplicate={() => setDuplicating(spool)}
                 onHistory={() => setAuditSpool(spool)}
                 onDelete={() => handleDelete(spool)}
@@ -1268,9 +1466,10 @@ export default function Spools() {
         </div>
       ) : (
         <SpoolTable
-          spools={spools}
+          spools={shown}
           onEdit={s => setEditing(s)}
           onWeigh={s => setWeighing(s)}
+          onMoisture={s => setMoistureSpool(s)}
           onDuplicate={s => setDuplicating(s)}
           onHistory={s => setAuditSpool(s)}
           onDelete={handleDelete}
@@ -1332,6 +1531,12 @@ export default function Spools() {
       {weighing && (
         <Modal>
           <WeighModal spool={weighing} onClose={() => setWeighing(null)} />
+        </Modal>
+      )}
+
+      {moistureSpool && (
+        <Modal>
+          <MoistureModal spool={moistureSpool} onClose={() => setMoistureSpool(null)} />
         </Modal>
       )}
     </div>
