@@ -820,6 +820,9 @@ function PrinterCard({ printer, onEdit, onDelete }: {
 
       {/* AMS tray assignment — always visible */}
       <AMSTrayPanel printer={printer} />
+
+      {/* Wear / depreciation cost */}
+      <WearSection printer={printer} />
     </div>
   )
 }
@@ -2186,9 +2189,6 @@ function CloudPrinterStatus({ printer }: { printer: PrinterConfig }) {
       {printer.energy_sensor_entity_id && (
         <StandbySection printer={printer} />
       )}
-
-      {/* Wear / depreciation cost */}
-      <WearSection printer={printer} />
 
       {/* Raw MQTT cache dump */}
       <div className="mt-3 border-t border-surface-3 pt-2">

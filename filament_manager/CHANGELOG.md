@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.1
+
+- Fix: **Wear cost section shows on the printer card in Settings → Printers** — in 1.2.0 it was only rendered in the cloud status view (Cloud configuration tab), next to the standby section
+
 ## 1.2.0
 
 - Feature: **Printer wear cost per print hour** — each printer has an optional wear/depreciation rate (e.g. 0.20 €/h, Settings → Printers). When a print ends (or a manual print is saved, or its duration/printer is edited) the cost is calculated from the print duration and stored on the print, so a later rate change does not silently rewrite history; "Apply to all prints" on the printer card recalculates past prints on purpose. Print, project and dashboard totals are now material + energy + wear; wear is shown in the print list and project summaries and included in export/import
