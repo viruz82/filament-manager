@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.2
+
+- Fix: **Energy tracking and wear cost are visible and editable on the printer card** (Settings → Printers) — the energy sensor, the price sensor and the wear rate were only reachable behind a tiny pencil icon. The printer card now shows both sensors with their live value, a clear "Edit" button (labelled pencil at the top and next to the wear rate), and a red warning when a sensor is not set or cannot be read ("energy costs will not be calculated"). The Cloud configuration view shows the same check
+
 ## 1.2.1
 
 - Fix: **Wear cost section shows on the printer card in Settings → Printers** — in 1.2.0 it was only rendered in the cloud status view (Cloud configuration tab), next to the standby section

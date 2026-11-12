@@ -470,7 +470,9 @@
       "wearRecalc": "Aplicar a todas las impresiones",
       "wearRecalcHint": "Recalcula el desgaste de todas las impresiones anteriores de esta impresora con la tarifa actual.",
       "wearRecalcConfirm": "¿Recalcular el desgaste de todas las impresiones anteriores de «{{name}}» con la tarifa actual?",
-      "wearRecalcDone": "{{count}} impresiones recalculadas, {{total}} en total"
+      "wearRecalcDone": "{{count}} impresiones recalculadas, {{total}} en total",
+      "sensorNotSet": "sin configurar – no se calculan los costes de energía",
+      "sensorMissing": "no encontrado o no numérico – no se calculan los costes de energía"
     },
     "brandWeights": {
       "title": "Pesos de bobina vacía por marca",

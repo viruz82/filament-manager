@@ -702,9 +702,55 @@ function StandbySection({ printer }: { printer: PrinterConfig }) {
   )
 }
 
+// ── Energy configuration (sensors + status), shown on the printer card ──────
+
+function SensorLine({ label, entityId, unit }: { label: string; entityId: string | null; unit: string }) {
+  const { t } = useTranslation()
+  const { data, isPending } = useQuery({
+    queryKey: ['ha-sensor-value', entityId],
+    queryFn: () => api.getHASensorValue(entityId!),
+    enabled: !!entityId,
+    staleTime: 30_000,
+    retry: false,
+  })
+
+  let status: React.ReactNode
+  if (!entityId) {
+    status = <span className="text-red-400">✗ {t('settings.printers.sensorNotSet')}</span>
+  } else if (isPending) {
+    status = <span className="text-gray-500">…</span>
+  } else if (data?.value == null) {
+    status = <span className="text-red-400">✗ {t('settings.printers.sensorMissing')}</span>
+  } else {
+    status = <span className="text-green-400">✓ {data.value} {unit}</span>
+  }
+
+  return (
+    <div className="text-xs">
+      <p className="text-gray-500">{label}</p>
+      <p className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+        {entityId && <span className="font-mono text-gray-300 break-all">{entityId}</span>}
+        {status}
+      </p>
+    </div>
+  )
+}
+
+function EnergyConfigSection({ printer }: { printer: PrinterConfig }) {
+  const { t } = useTranslation()
+  const currencySymbol = useCurrencySymbol()
+  return (
+    <div className="mt-3 border-t border-surface-3 pt-2 space-y-2">
+      <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">{t('settings.printers.energyTracking')}</p>
+      <SensorLine label={t('settings.printers.energySensor')} entityId={printer.energy_sensor_entity_id} unit="kWh" />
+      <SensorLine label={t('settings.printers.priceSensor')} entityId={printer.price_sensor_entity_id} unit={`${currencySymbol}/kWh`} />
+    </div>
+  )
+}
+
 // ── Wear Section (inside PrinterCard) ────────────────────────────────────────
 
-function WearSection({ printer }: { printer: PrinterConfig }) {
+function WearSection({ printer, onEdit }: { printer: PrinterConfig; onEdit?: () => void }) {
   const { t } = useTranslation()
   const qc = useQueryClient()
   const fmtCurrency = useCurrencyFormatter()
@@ -734,16 +780,23 @@ function WearSection({ printer }: { printer: PrinterConfig }) {
             </p>
           )}
         </div>
-        <button
-          className="btn-ghost text-xs px-3 py-1.5 shrink-0"
-          onClick={() => {
-            if (window.confirm(t('settings.printers.wearRecalcConfirm', { name: printer.name }))) recalcMut.mutate()
-          }}
-          disabled={recalcMut.isPending}
-          title={t('settings.printers.wearRecalcHint')}
-        >
-          {t('settings.printers.wearRecalc')}
-        </button>
+        <div className="flex flex-wrap justify-end gap-2 shrink-0">
+          {onEdit && (
+            <button className="btn-ghost text-xs px-3 py-1.5 flex items-center gap-1" onClick={onEdit}>
+              <Pencil size={12} /> {t('common.edit')}
+            </button>
+          )}
+          <button
+            className="btn-ghost text-xs px-3 py-1.5"
+            onClick={() => {
+              if (window.confirm(t('settings.printers.wearRecalcConfirm', { name: printer.name }))) recalcMut.mutate()
+            }}
+            disabled={recalcMut.isPending}
+            title={t('settings.printers.wearRecalcHint')}
+          >
+            {t('settings.printers.wearRecalc')}
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -795,7 +848,9 @@ function PrinterCard({ printer, onEdit, onDelete }: {
           <button className="btn-ghost p-1" onClick={() => refetch()} title="Refresh">
             <RefreshCw size={12} className={isFetching ? 'animate-spin' : ''} />
           </button>
-          <button className="btn-ghost p-1" onClick={onEdit}><Pencil size={12} /></button>
+          <button className="btn-ghost px-2 py-1 text-xs flex items-center gap-1" onClick={onEdit}>
+            <Pencil size={12} /> {t('common.edit')}
+          </button>
           <button className="btn-ghost p-1 text-red-400" onClick={onDelete}><Trash2 size={12} /></button>
         </div>
       </div>
@@ -821,8 +876,11 @@ function PrinterCard({ printer, onEdit, onDelete }: {
       {/* AMS tray assignment — always visible */}
       <AMSTrayPanel printer={printer} />
 
+      {/* Energy sensors (with live check) */}
+      <EnergyConfigSection printer={printer} />
+
       {/* Wear / depreciation cost */}
-      <WearSection printer={printer} />
+      <WearSection printer={printer} onEdit={onEdit} />
     </div>
   )
 }
@@ -1964,7 +2022,7 @@ type DataSubTab = 'brandWeights' | 'brands' | 'materials' | 'subtypes' | 'locati
 
 // ── Cloud printer live status (used in Experiments tab) ───────────────────────
 
-function CloudPrinterStatus({ printer }: { printer: PrinterConfig }) {
+function CloudPrinterStatus({ printer, onEdit }: { printer: PrinterConfig; onEdit?: () => void }) {
   const { t } = useTranslation()
   const qc = useQueryClient()
   const [reconnecting, setReconnecting] = useState(false)
@@ -2172,16 +2230,13 @@ function CloudPrinterStatus({ printer }: { printer: PrinterConfig }) {
         </div>
       )}
 
-      {/* Energy sensor config summary */}
-      {(printer.energy_sensor_entity_id || printer.price_sensor_entity_id) && (
-        <div className="mt-3 border-t border-surface-3 pt-2 space-y-0.5">
-          <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wide mb-1">{t('settings.printers.energyTracking')}</p>
-          {printer.energy_sensor_entity_id && (
-            <p className="text-xs text-gray-400 font-mono">{printer.energy_sensor_entity_id}</p>
-          )}
-          {printer.price_sensor_entity_id && (
-            <p className="text-xs text-gray-400 font-mono">{printer.price_sensor_entity_id}</p>
-          )}
+      {/* Energy sensor config (with live check and edit button) */}
+      <EnergyConfigSection printer={printer} />
+      {onEdit && (
+        <div className="mt-2">
+          <button className="btn-ghost text-xs px-3 py-1.5 flex items-center gap-1" onClick={onEdit}>
+            <Pencil size={12} /> {t('common.edit')}
+          </button>
         </div>
       )}
 
@@ -2683,7 +2738,7 @@ export default function Settings() {
                 {t('settings.bambuCloud.liveStatus')}
               </p>
               {cloudPrinters.map(p => (
-                <CloudPrinterStatus key={p.id} printer={p} />
+                <CloudPrinterStatus key={p.id} printer={p} onEdit={() => setEditing(p)} />
               ))}
             </div>
           )}

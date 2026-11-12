@@ -470,7 +470,9 @@
       "wearRecalc": "Auf alle Drucke anwenden",
       "wearRecalcHint": "Berechnet die Abnutzung aller bisherigen Drucke dieses Druckers mit dem aktuellen Satz neu.",
       "wearRecalcConfirm": "Abnutzung aller bisherigen Drucke von „{{name}}“ mit dem aktuellen Satz neu berechnen?",
-      "wearRecalcDone": "{{count}} Drucke neu berechnet, zusammen {{total}}"
+      "wearRecalcDone": "{{count}} Drucke neu berechnet, zusammen {{total}}",
+      "sensorNotSet": "nicht eingestellt – Stromkosten werden nicht berechnet",
+      "sensorMissing": "nicht gefunden oder keine Zahl – Stromkosten werden nicht berechnet"
     },
     "brandWeights": {
       "title": "Leerspulengewichte je Marke",

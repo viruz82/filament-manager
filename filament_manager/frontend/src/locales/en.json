@@ -470,7 +470,9 @@
       "wearRecalc": "Apply to all prints",
       "wearRecalcHint": "Recalculates the wear cost of all past prints of this printer with the current rate.",
       "wearRecalcConfirm": "Recalculate the wear cost of all past prints of “{{name}}” with the current rate?",
-      "wearRecalcDone": "{{count}} prints recalculated, {{total}} in total"
+      "wearRecalcDone": "{{count}} prints recalculated, {{total}} in total",
+      "sensorNotSet": "not set – energy costs will not be calculated",
+      "sensorMissing": "not found or not a number – energy costs will not be calculated"
     },
     "brandWeights": {
       "title": "Brand Spool Tare Weights",
