@@ -1,4 +1,5 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -111,6 +112,40 @@ def update_spool(spool_id: int, body: SpoolUpdate, background_tasks: BackgroundT
     db.commit()
     db.refresh(spool)
     if "current_weight_g" in updates and spool.bambu_spool_id:
+        background_tasks.add_task(_sync_spool_weight_to_cloud, spool.id)
+    from .. import ha_publisher
+    ha_publisher.trigger()
+    return spool
+
+
+class WeighIn(BaseModel):
+    gross_g: float = Field(ge=0)   # scale reading: filament + empty spool
+
+
+@router.post("/{spool_id}/weigh", response_model=SpoolOut)
+def weigh_spool(spool_id: int, body: WeighIn, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    """Set the remaining filament from a scale reading.
+
+    remaining = scale reading − empty-spool tare (the spool's own tare, else the
+    brand config), floored at 0. Logged as audit action 'weigh'.
+    """
+    spool = db.get(Spool, spool_id)
+    if not spool:
+        raise HTTPException(404, "Spool not found")
+    tare = spool.spool_weight_g or _resolve_spool_weight(spool.brand, db)
+    weight_before = spool.current_weight_g
+    spool.current_weight_g = round(max(0.0, body.gross_g - tare), 1)
+    spool.updated_at = utcnow()
+    db.add(SpoolAudit(
+        spool_id=spool.id,
+        action="weigh",
+        delta_g=spool.current_weight_g - weight_before,
+        weight_before=weight_before,
+        weight_after=spool.current_weight_g,
+    ))
+    db.commit()
+    db.refresh(spool)
+    if spool.bambu_spool_id:
         background_tasks.add_task(_sync_spool_weight_to_cloud, spool.id)
     from .. import ha_publisher
     ha_publisher.trigger()

@@ -176,7 +176,8 @@
       "edit": "Bearbeiten",
       "history": "Gewichtsverlauf",
       "archive": "Archivieren",
-      "unarchive": "Wiederherstellen"
+      "unarchive": "Wiederherstellen",
+      "weigh": "Wiegen"
     },
     "archived": "Archiviert",
     "showArchived": "Archivierte anzeigen",
@@ -201,7 +202,16 @@
       "action_spool_edit": "Manuelle Bearbeitung",
       "action_correction": "Korrektur",
       "correctBtn": "Eintrag umkehren",
-      "correctConfirm": "Die Änderung von {{delta}} g umkehren? Ein Korrektureintrag von {{reverse}} g wird hinzugefügt und das Spulengewicht aktualisiert."
+      "correctConfirm": "Die Änderung von {{delta}} g umkehren? Ein Korrektureintrag von {{reverse}} g wird hinzugefügt und das Spulengewicht aktualisiert.",
+      "action_weigh": "Gewogen"
+    },
+    "weigh": {
+      "title": "Spule wiegen",
+      "tare": "Abzüglich Leergewicht {{g}} g",
+      "noTare": "Kein Leergewicht hinterlegt – der Waagenwert zählt komplett als Filament",
+      "before": "Bisher",
+      "after": "Neu",
+      "delta": "Differenz"
     }
   },
   "prints": {

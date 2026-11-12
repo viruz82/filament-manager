@@ -176,7 +176,8 @@
       "edit": "Editar",
       "history": "Historial de peso",
       "archive": "Archivar",
-      "unarchive": "Restaurar"
+      "unarchive": "Restaurar",
+      "weigh": "Pesar"
     },
     "archived": "Archivada",
     "showArchived": "Mostrar archivadas",
@@ -201,7 +202,16 @@
       "action_spool_edit": "Edición manual",
       "action_correction": "Corrección",
       "correctBtn": "Revertir esta entrada",
-      "correctConfirm": "¿Revertir el cambio de {{delta}} g? Se añadirá una entrada de corrección de {{reverse}} g y se actualizará el peso del carrete."
+      "correctConfirm": "¿Revertir el cambio de {{delta}} g? Se añadirá una entrada de corrección de {{reverse}} g y se actualizará el peso del carrete.",
+      "action_weigh": "Pesada"
+    },
+    "weigh": {
+      "title": "Pesar bobina",
+      "tare": "Menos bobina vacía {{g}} g",
+      "noTare": "Sin tara – toda la lectura cuenta como filamento",
+      "before": "Antes",
+      "after": "Nuevo",
+      "delta": "Diferencia"
     }
   },
   "prints": {

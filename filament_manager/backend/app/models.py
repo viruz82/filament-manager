@@ -278,7 +278,7 @@ class SpoolAudit(Base):
     id           = Column(Integer, primary_key=True, index=True)
     spool_id     = Column(Integer, ForeignKey("spools.id", ondelete="CASCADE"), nullable=False, index=True)
     changed_at   = Column(DateTime, nullable=False, default=utcnow)
-    # 'print_auto' | 'print_manual' | 'print_delete' | 'spool_edit' | 'correction'
+    # 'print_auto' | 'print_manual' | 'print_delete' | 'spool_edit' | 'weigh' | 'correction'
     action       = Column(String, nullable=False)
     delta_g      = Column(Float, nullable=False)   # negative = used, positive = restored/corrected
     weight_before = Column(Float)

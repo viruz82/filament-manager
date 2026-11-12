@@ -176,7 +176,8 @@
       "edit": "Edit",
       "history": "Weight History",
       "archive": "Archive",
-      "unarchive": "Unarchive"
+      "unarchive": "Unarchive",
+      "weigh": "Weigh"
     },
     "archived": "Archived",
     "showArchived": "Show archived",
@@ -201,7 +202,16 @@
       "action_spool_edit": "Manual edit",
       "action_correction": "Correction",
       "correctBtn": "Reverse this entry",
-      "correctConfirm": "Reverse the {{delta}} g change? A correction entry of {{reverse}} g will be added and the spool weight updated."
+      "correctConfirm": "Reverse the {{delta}} g change? A correction entry of {{reverse}} g will be added and the spool weight updated.",
+      "action_weigh": "Weighed"
+    },
+    "weigh": {
+      "title": "Weigh spool",
+      "tare": "Minus empty spool {{g}} g",
+      "noTare": "No tare set – the full scale reading counts as filament",
+      "before": "Before",
+      "after": "New",
+      "delta": "Change"
     }
   },
   "prints": {

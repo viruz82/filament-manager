@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { api } from '../api'
 import type { Spool, BrandSpoolWeight, FilamentCatalog, SpoolAuditEntry } from '../types'
-import { Plus, Pencil, Trash2, X, LayoutGrid, Table2, ChevronUp, ChevronDown, ChevronsUpDown, Copy, History, RotateCcw, Archive, ArchiveRestore, Columns3, Cloud, Recycle } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, LayoutGrid, Table2, ChevronUp, ChevronDown, ChevronsUpDown, Copy, History, RotateCcw, Archive, ArchiveRestore, Columns3, Cloud, Recycle, Scale } from 'lucide-react'
 import Modal from '../components/Modal'
 import { formatDateOnly, formatDateTimeTZ } from '../utils/time'
 import { useHATZ, useCurrencyFormatter, useCurrencySymbol } from '../hooks/useHATZ'
@@ -594,10 +594,104 @@ function SpoolAuditModal({ spool, onClose }: { spool: Spool; onClose: () => void
   )
 }
 
+// ── Weigh Modal ───────────────────────────────────────────────────────────────
+
+function WeighModal({ spool, onClose }: { spool: Spool; onClose: () => void }) {
+  const { t } = useTranslation()
+  const qc = useQueryClient()
+  const [gross, setGross] = useState('')
+  const { data: brandWeights = [] } = useQuery<BrandSpoolWeight[]>({ queryKey: ['brand-weights'], queryFn: api.getBrandWeights })
+  const brandTare = brandWeights.find(b => b.brand.toLowerCase() === spool.brand.toLowerCase())?.spool_weight_g ?? 0
+  const tare = spool.spool_weight_g || brandTare
+  const grossG = parseDecimal(gross)
+  const remaining = grossG != null ? Math.max(0, Math.round((grossG - tare) * 10) / 10) : null
+  const delta = remaining != null ? Math.round((remaining - spool.current_weight_g) * 10) / 10 : null
+  const pct = remaining != null && spool.initial_weight_g ? (remaining / spool.initial_weight_g) * 100 : null
+
+  const weighMut = useMutation({
+    mutationFn: () => api.weighSpool(spool.id, grossG!),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['spools'] })
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
+      onClose()
+    },
+  })
+  const canSave = grossG != null && grossG >= 0 && !weighMut.isPending
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-surface-2 border border-surface-3 rounded-2xl w-full max-w-sm" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-surface-3">
+          <h2 className="font-semibold flex items-center gap-2"><Scale size={16} /> {t('spools.weigh.title')}</h2>
+          <button onClick={onClose} className="btn-ghost p-1"><X size={16} /></button>
+        </div>
+        <div className="p-5 space-y-4">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="w-4 h-4 rounded-full shrink-0 ring-1 ring-white/10" style={{ background: spool.color_hex }} />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-white truncate">
+                {spool.custom_id ? `#${spool.custom_id} ` : ''}{spool.brand} {spool.material}{spool.subtype ? ` ${spool.subtype}` : ''}
+              </p>
+              <p className="text-xs text-gray-400 truncate">{spool.color_name}</p>
+            </div>
+          </div>
+
+          <div>
+            <label className="label">{t('spools.form.scaleReading')}</label>
+            <div className="flex items-center gap-2">
+              <input
+                className="input text-lg"
+                type="text"
+                inputMode="decimal"
+                autoFocus
+                value={gross}
+                onChange={e => setGross(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && canSave && weighMut.mutate()}
+                placeholder={String(Math.round(spool.current_weight_g + tare))}
+              />
+              <span className="text-xs text-gray-500 shrink-0">g</span>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              {tare > 0
+                ? t('spools.weigh.tare', { g: tare.toFixed(0) })
+                : t('spools.weigh.noTare')}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="bg-surface-3/40 rounded-lg py-2">
+              <p className="text-[10px] text-gray-500 uppercase tracking-wide">{t('spools.weigh.before')}</p>
+              <p className="text-sm text-gray-300 tabular-nums">{spool.current_weight_g.toFixed(0)} g</p>
+            </div>
+            <div className="bg-surface-3/40 rounded-lg py-2">
+              <p className="text-[10px] text-gray-500 uppercase tracking-wide">{t('spools.weigh.after')}</p>
+              <p className="text-sm text-white font-semibold tabular-nums">
+                {remaining != null ? `${remaining.toFixed(0)} g` : '—'}
+              </p>
+              {pct != null && <p className="text-[10px] text-gray-500 tabular-nums">{pct.toFixed(0)} %</p>}
+            </div>
+            <div className="bg-surface-3/40 rounded-lg py-2">
+              <p className="text-[10px] text-gray-500 uppercase tracking-wide">{t('spools.weigh.delta')}</p>
+              <p className={`text-sm tabular-nums ${delta == null || delta === 0 ? 'text-gray-400' : delta < 0 ? 'text-amber-400' : 'text-green-400'}`}>
+                {delta != null ? `${delta > 0 ? '+' : ''}${delta.toFixed(0)} g` : '—'}
+              </p>
+            </div>
+          </div>
+          {weighMut.isError && <p className="text-xs text-red-400">{String(weighMut.error)}</p>}
+        </div>
+        <div className="flex justify-end gap-2 px-5 py-4 border-t border-surface-3">
+          <button className="btn-ghost" onClick={onClose}>{t('common.cancel')}</button>
+          <button className="btn-primary" onClick={() => weighMut.mutate()} disabled={!canSave}>{t('common.save')}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Spool Card ────────────────────────────────────────────────────────────────
 
-function SpoolCard({ spool, spools, onEdit, onDuplicate, onHistory, onDelete, onArchive, onUnarchive, onAssignSlot }: {
-  spool: Spool; spools: Spool[]; onEdit: () => void; onDuplicate: () => void; onHistory: () => void; onDelete: () => void
+function SpoolCard({ spool, spools, onEdit, onWeigh, onDuplicate, onHistory, onDelete, onArchive, onUnarchive, onAssignSlot }: {
+  spool: Spool; spools: Spool[]; onEdit: () => void; onWeigh: () => void; onDuplicate: () => void; onHistory: () => void; onDelete: () => void
   onArchive: () => void; onUnarchive: () => void; onAssignSlot: (slot: string | null) => void
 }) {
   const { t } = useTranslation()
@@ -641,6 +735,7 @@ function SpoolCard({ spool, spools, onEdit, onDuplicate, onHistory, onDelete, on
         </div>
         <div className="grid grid-cols-2 gap-0.5 shrink-0 ml-2">
           <button onClick={onEdit} className="btn-ghost p-1" title={t('spools.actions.edit')}><Pencil size={13} /></button>
+          <button onClick={onWeigh} className="btn-ghost p-1 text-emerald-400" title={t('spools.actions.weigh')} aria-label={t('spools.actions.weigh')}><Scale size={13} /></button>
           <button onClick={onDuplicate} className="btn-ghost p-1 text-blue-400" title={t('spools.actions.duplicate')}><Copy size={13} /></button>
           <button onClick={onHistory} className="btn-ghost p-1 text-amber-400" title={t('spools.actions.history')}><History size={13} /></button>
           {spool.archived
@@ -699,8 +794,8 @@ function SortIcon({ col, sort }: { col: SortKey; sort: { key: SortKey; dir: Sort
     : <ChevronDown size={12} className="text-accent" />
 }
 
-function SpoolTable({ spools, onEdit, onDuplicate, onHistory, onDelete, onArchive, onUnarchive, onAssignSlot }: {
-  spools: Spool[]; onEdit: (s: Spool) => void; onDuplicate: (s: Spool) => void; onHistory: (s: Spool) => void; onDelete: (s: Spool) => void
+function SpoolTable({ spools, onEdit, onWeigh, onDuplicate, onHistory, onDelete, onArchive, onUnarchive, onAssignSlot }: {
+  spools: Spool[]; onEdit: (s: Spool) => void; onWeigh: (s: Spool) => void; onDuplicate: (s: Spool) => void; onHistory: (s: Spool) => void; onDelete: (s: Spool) => void
   onArchive: (s: Spool) => void; onUnarchive: (s: Spool) => void; onAssignSlot: (s: Spool, slot: string | null) => void
 }) {
   const { t } = useTranslation()
@@ -866,6 +961,7 @@ function SpoolTable({ spools, onEdit, onDuplicate, onHistory, onDelete, onArchiv
     <td className="px-3 py-2 whitespace-nowrap">
       <div className="flex items-center gap-0.5">
         <button onClick={() => onEdit(s)} className="btn-ghost p-1" title={t('spools.actions.edit')}><Pencil size={12} /></button>
+        <button onClick={() => onWeigh(s)} className="btn-ghost p-1 text-emerald-400" title={t('spools.actions.weigh')} aria-label={t('spools.actions.weigh')}><Scale size={12} /></button>
         <button onClick={() => onDuplicate(s)} className="btn-ghost p-1 text-blue-400" title={t('spools.actions.duplicate')}><Copy size={12} /></button>
         <button onClick={() => onHistory(s)} className="btn-ghost p-1 text-amber-400" title={t('spools.actions.history')}><History size={12} /></button>
         {s.archived
@@ -1052,6 +1148,7 @@ export default function Spools() {
   })
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['spools'] })
+  const [weighing, setWeighing] = useState<Spool | null>(null)
 
   const createMut = useMutation({ mutationFn: api.createSpool, onSuccess: invalidate })
   const updateMut = useMutation({
@@ -1159,6 +1256,7 @@ export default function Spools() {
                 spools={spools}
                 onAssignSlot={slot => assignSlotMut.mutate({ id: spool.id, slot })}
                 onEdit={() => setEditing(spool)}
+                onWeigh={() => setWeighing(spool)}
                 onDuplicate={() => setDuplicating(spool)}
                 onHistory={() => setAuditSpool(spool)}
                 onDelete={() => handleDelete(spool)}
@@ -1172,6 +1270,7 @@ export default function Spools() {
         <SpoolTable
           spools={spools}
           onEdit={s => setEditing(s)}
+          onWeigh={s => setWeighing(s)}
           onDuplicate={s => setDuplicating(s)}
           onHistory={s => setAuditSpool(s)}
           onDelete={handleDelete}
@@ -1227,6 +1326,12 @@ export default function Spools() {
       {auditSpool && (
         <Modal>
           <SpoolAuditModal spool={auditSpool} onClose={() => setAuditSpool(null)} />
+        </Modal>
+      )}
+
+      {weighing && (
+        <Modal>
+          <WeighModal spool={weighing} onClose={() => setWeighing(null)} />
         </Modal>
       )}
     </div>

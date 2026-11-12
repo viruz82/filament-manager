@@ -123,6 +123,8 @@ export const api = {
     request<import('./types').BrandSpoolWeight>(`settings/brand-weights/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   deleteBrandWeight: (id: number) =>
     request<void>(`settings/brand-weights/${id}`, { method: 'DELETE' }),
+  weighSpool: (id: number, gross_g: number) =>
+    request<import('./types').Spool>(`spools/${id}/weigh`, { method: 'POST', body: JSON.stringify({ gross_g }) }),
   applyBrandWeight: (id: number) =>
     request<{ updated: number }>(`settings/brand-weights/${id}/apply`, { method: 'POST' }),
 
