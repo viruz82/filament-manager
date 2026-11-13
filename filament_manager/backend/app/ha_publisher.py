@@ -308,8 +308,56 @@ def _compute(db) -> dict[str, tuple[int, dict]]:
                 "by_material": _count_by_material(empty_spools),
             },
         ),
+        **_statistics_sensors(db),
         **printer_sensors,
     }
+
+
+# Long-term statistics: HA records any sensor whose state carries a
+# state_class, also entities created through the States API.  "total" (not
+# "total_increasing") because a corrected or deleted print may lower a value,
+# which total_increasing would misread as a meter reset.
+_STAT_SENSORS = (
+    # key,            entity suffix,     name,                         unit,  device_class, state_class, icon
+    ("filament_used_g", "filament_used", "Filament Used",              "g",   "weight",   "total",       "mdi:printer-3d-nozzle"),
+    ("prints",          "prints",        "Prints",                     "prints", None,    "total",       "mdi:printer-3d"),
+    ("print_hours",     "print_hours",   "Print Hours",                "h",   "duration", "total",       "mdi:timer-outline"),
+    ("cost_total",      "cost_total",    "Print Costs",                "EUR", "monetary", "total",       "mdi:cash"),
+    ("cost_material",   "cost_material", "Print Costs Material",       "EUR", "monetary", "total",       "mdi:cash"),
+    ("cost_energy",     "cost_energy",   "Print Costs Energy",         "EUR", "monetary", "total",       "mdi:cash"),
+    ("cost_wear",       "cost_wear",     "Print Costs Wear",           "EUR", "monetary", "total",       "mdi:cash"),
+    ("stock_g",         "stock_weight",  "Stock Weight",               "g",   "weight",   "measurement", "mdi:package-variant"),
+    # monetary + measurement is not a valid HA combination → no device_class
+    ("stock_value",     "stock_value",   "Stock Value",                "EUR", None,       "measurement", "mdi:package-variant"),
+)
+STATISTICS_ENTITY = "sensor.filament_manager_statistics"
+
+
+def _statistics_sensors(db) -> dict[str, tuple]:
+    from . import statistics as _stats
+
+    out: dict[str, tuple] = {}
+    values = _stats.counters(db)
+    for key, suffix, name, unit, dev_cls, st_cls, icon in _STAT_SENSORS:
+        attrs = {
+            "friendly_name": f"Filament Manager: {name}",
+            "icon": icon,
+            "unit_of_measurement": unit,
+            "state_class": st_cls,
+        }
+        if dev_cls:
+            attrs["device_class"] = dev_cls
+        out[f"sensor.filament_manager_{suffix}"] = (values[key], attrs)
+
+    # Snapshot for dashboards. Large and changing every push — exclude it
+    # from the HA recorder (no state_class, so no statistics either).
+    snap = _stats.compute(db)
+    out[STATISTICS_ENTITY] = (
+        snap["uebersicht"]["drucke"],
+        {"friendly_name": "Filament Manager: Statistics", "icon": "mdi:chart-bar",
+         "unit_of_measurement": "prints", **snap},
+    )
+    return out
 
 
 # Printer entity ids from the previous push — used to retire sensors whose

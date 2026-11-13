@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.5.0
+
+- Feature: **Home Assistant long-term statistics** — new sensors with `state_class`, so Home Assistant keeps hourly/daily/monthly history and statistics graphs work: `sensor.filament_manager_filament_used` (g), `_prints`, `_print_hours` (h), `_cost_total`, `_cost_material`, `_cost_energy`, `_cost_wear` (EUR, all `total`; `total` instead of `total_increasing` because correcting or deleting a print may lower a value) and `_stock_weight` (g) / `_stock_value` (EUR, `measurement`)
+- Feature: **`sensor.filament_manager_statistics` and `GET /api/dashboard/statistics?days=30`** — snapshot for dashboards: overview, 7/30/90/365-day windows with the previous window for a trend, stock levels (full/medium/low/empty/archived), low-stock list, moisture levels, spools by type/brand/colour, storage locations with weight and value, top filaments, last 12 months (prints, grams, hours, material/energy/wear cost, purchases), prints per weekday, costs (stock value, used value, per print, price per gram by brand) and a **per-spool forecast** (grams per week over the last 30 days → weeks and date until empty). Grouping uses local time (timezone override → `TZ`). The sensor changes on every push — exclude it from the recorder
+
 ## 1.4.1
 
 - Feature: **moisture state can be set via `PATCH /api/spools/{id}`** (`is_drying`, `drying_started_at`, `moisture_anchor_at`, `moisture_anchor_pct`) — for migrating from another tool with the exact estimate; applied after all other fields. The dryer buttons stay the normal way

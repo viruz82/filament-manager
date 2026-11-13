@@ -212,6 +212,14 @@ async def get_dashboard(db: Session = Depends(get_db)):
     )
 
 
+@router.get("/statistics")
+def get_statistics(days: int = 30, db: Session = Depends(get_db)):
+    """Breakdowns + per-spool forecast (same data as sensor.filament_manager_statistics)."""
+    from .. import statistics
+    days = max(1, min(days, 365))
+    return {"counters": statistics.counters(db), **statistics.compute(db, forecast_days=days)}
+
+
 @router.get("/ha-status")
 async def ha_status():
     from .. import ha_client
