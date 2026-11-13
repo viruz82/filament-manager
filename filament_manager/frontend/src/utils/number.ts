@@ -12,3 +12,12 @@ export function parseDecimal(raw: string): number | null {
   const n = Number(s)
   return Number.isFinite(n) ? n : null
 }
+
+/**
+ * Format a number with a fixed number of decimals in the document locale
+ * (same locale source as useCurrencyFormatter), so German shows "438,7".
+ */
+export function fmtNum(n: number, digits = 1): string {
+  const locale = typeof document !== 'undefined' ? document.documentElement.lang || undefined : undefined
+  return n.toLocaleString(locale, { minimumFractionDigits: digits, maximumFractionDigits: digits })
+}

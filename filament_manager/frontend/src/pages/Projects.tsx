@@ -7,6 +7,7 @@ import { Plus, Pencil, Trash2, X, FolderOpen, ChevronDown, ChevronRight, Layers,
 import { useHATZ, useCurrencyFormatter, useHACurrency } from '../hooks/useHATZ'
 import { saveBlob, fileSlug } from '../utils/download'
 import { formatDateTimeTZ } from '../utils/time'
+import { fmtNum } from '../utils/number'
 import Modal from '../components/Modal'
 
 // ── Inline modal shell (matches Prints.tsx pattern) ───────────────────────────
@@ -222,7 +223,7 @@ function CostReportModal({ project, onClose }: { project: Project; onClose: () =
           {isError && <div className="text-red-400 text-xs">{t('projects.report.previewFailed')}</div>}
           {sum && (
             <>
-              <Row label={t('projects.prints')} value={`${sum.prints}${sum.test_prints_excluded ? ` (−${sum.test_prints_excluded} ${t('projects.testStats')})` : ''} · ${sum.grams.toFixed(1)} g · ${sum.hours.toFixed(1)} h`} />
+              <Row label={t('projects.prints')} value={`${sum.prints}${sum.test_prints_excluded ? ` (−${sum.test_prints_excluded} ${t('projects.testStats')})` : ''} · ${fmtNum(sum.grams, 1)} g · ${fmtNum(sum.hours, 1)} h`} />
               {sum.material !== null && <Row label={t('projects.report.material') + (sum.material_estimated ? ` (${t('projects.report.estimated')} ${fmtCurrency(sum.material_estimated)})` : '')} value={fmtCurrency(sum.material)} />}
               {sum.energy !== null && <Row label={t('projects.report.energy')} value={fmtCurrency(sum.energy)} />}
               {sum.wear !== null && <Row label={t('projects.report.wear')} value={fmtCurrency(sum.wear)} />}
@@ -324,7 +325,7 @@ function AssignPrintsModal({
                 <div className="text-xs text-gray-400">
                   {formatDateTimeTZ(job.started_at, tz)}
                   {job.printer_name && ` · ${job.printer_name}`}
-                  {job.total_grams > 0 && ` · ${job.total_grams.toFixed(1)}g`}
+                  {job.total_grams > 0 && ` · ${fmtNum(job.total_grams, 1)}g`}
                 </div>
               </div>
             </label>
@@ -373,7 +374,7 @@ function ProjectCard({
   })
 
   const durationH = project.total_duration_seconds > 0
-    ? (project.total_duration_seconds / 3600).toFixed(1)
+    ? fmtNum((project.total_duration_seconds / 3600), 1)
     : null
 
   return (
@@ -416,14 +417,14 @@ function ProjectCard({
 
         <div className="hidden sm:flex items-center gap-4 text-xs text-gray-400 shrink-0">
           {project.total_grams > 0 && (
-            <span>{(project.total_grams / 1000).toFixed(2)} {t('common.kg')}</span>
+            <span>{fmtNum((project.total_grams / 1000), 2)} {t('common.kg')}</span>
           )}
           {project.total_cost > 0 && (
             <span>{fmtCurrency(project.total_cost)}</span>
           )}
           {project.total_energy_kwh != null && (
             <span>
-              {project.total_energy_kwh.toFixed(2)} kWh
+              {fmtNum(project.total_energy_kwh, 2)} kWh
               {project.total_energy_cost != null && <> · {fmtCurrency(project.total_energy_cost)}</>}
             </span>
           )}
@@ -468,7 +469,7 @@ function ProjectCard({
                   <span className="w-2 h-2 rounded-full shrink-0 ring-1 ring-white/10"
                         style={{ background: m.color_hex }} />
                   <span className="text-gray-400">{m.material}</span>
-                  <span className="text-gray-500">{m.grams.toFixed(0)}g</span>
+                  <span className="text-gray-500">{fmtNum(m.grams, 0)}g</span>
                 </span>
               ))}
             </div>
@@ -495,9 +496,9 @@ function ProjectCard({
                   <span className="text-gray-500">{t('projects.normalStats')}: </span>
                   <span className="text-gray-300">
                     {project.print_count - project.test_print_count} {t('projects.prints')}
-                    {' · '}{((project.total_grams - project.test_total_grams) / 1000).toFixed(2)} {t('common.kg')}
+                    {' · '}{fmtNum(((project.total_grams - project.test_total_grams) / 1000), 2)} {t('common.kg')}
                     {' · '}{fmtCurrency(project.total_cost - project.test_total_cost)}
-                    {prodEnergyKwh != null && <>{' · '}{prodEnergyKwh.toFixed(3)} kWh</>}
+                    {prodEnergyKwh != null && <>{' · '}{fmtNum(prodEnergyKwh, 3)} kWh</>}
                     {prodEnergyCost != null && <>{' · '}{fmtCurrency(prodEnergyCost)}</>}
                     {prodWearCost != null && <>{' · '}{t('prints.wearCost')} {fmtCurrency(prodWearCost)}</>}
                   </span>
@@ -506,9 +507,9 @@ function ProjectCard({
                   <span className="text-amber-500 flex items-center gap-1 inline-flex"><FlaskConical size={11} />{t('projects.testStats')}: </span>
                   <span className="text-gray-300">
                     {project.test_print_count} {t('projects.prints')}
-                    {' · '}{(project.test_total_grams / 1000).toFixed(2)} {t('common.kg')}
+                    {' · '}{fmtNum((project.test_total_grams / 1000), 2)} {t('common.kg')}
                     {' · '}{fmtCurrency(project.test_total_cost)}
-                    {project.test_total_energy_kwh != null && <>{' · '}{project.test_total_energy_kwh.toFixed(3)} kWh</>}
+                    {project.test_total_energy_kwh != null && <>{' · '}{fmtNum(project.test_total_energy_kwh, 3)} kWh</>}
                     {project.test_total_energy_cost != null && <>{' · '}{fmtCurrency(project.test_total_energy_cost)}</>}
                     {project.test_total_wear_cost != null && <>{' · '}{t('prints.wearCost')} {fmtCurrency(project.test_total_wear_cost)}</>}
                   </span>
@@ -545,14 +546,14 @@ function PrintJobRow({ job, projectId }: { job: PrintJob; projectId: number }) {
       <span className="flex-1 truncate text-gray-200">{job.name}</span>
       <span className="text-xs text-gray-400 shrink-0">{formatDateTimeTZ(job.started_at, tz)}</span>
       {job.total_grams > 0 && (
-        <span className="text-xs text-gray-400 shrink-0">{job.total_grams.toFixed(1)}g</span>
+        <span className="text-xs text-gray-400 shrink-0">{fmtNum(job.total_grams, 1)}g</span>
       )}
       {job.material_cost > 0 && (
         <span className="text-xs text-gray-400 shrink-0">{fmtCurrency(job.material_cost)}</span>
       )}
       {job.energy_kwh != null && (
         <span className="text-xs text-yellow-500 shrink-0">
-          {job.energy_kwh.toFixed(2)} kWh
+          {fmtNum(job.energy_kwh, 2)} kWh
           {job.energy_cost != null && <> · {fmtCurrency(job.energy_cost)}</>}
         </span>
       )}
