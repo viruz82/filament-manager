@@ -15,7 +15,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 // ── Spools ───────────────────────────────────────────────────────────────────
-import type { Spool, PrintJob, PrinterConfig, PrinterStatus, DashboardStats, FilamentSubtype, Project, ProjectDetail, FilamentSyncStatus, FilamentSyncPlan, FilamentSyncResult, ApplySyncRequest, SyncMode, ProjectReportOptions, ProjectReportSummary } from './types'
+import type { Spool, PrintJob, PrinterConfig, PrinterStatus, DashboardStats, FilamentSubtype, Project, ProjectDetail, FilamentSyncStatus, FilamentSyncPlan, FilamentSyncResult, ApplySyncRequest, SyncMode, ProjectReportOptions, ProjectReportSummary, MaintenanceTask, MaintenanceTaskInput, MaintenanceLogEntry } from './types'
 
 export const api = {
   // Spools
@@ -48,6 +48,23 @@ export const api = {
     request<Project>(`projects/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   deleteProject: (id: number) =>
     request<void>(`projects/${id}`, { method: 'DELETE' }),
+
+  // Maintenance log
+  getMaintenance: () => request<MaintenanceTask[]>('maintenance'),
+  createMaintenance: (data: MaintenanceTaskInput) =>
+    request<MaintenanceTask>('maintenance', { method: 'POST', body: JSON.stringify(data) }),
+  updateMaintenance: (id: number, data: Partial<MaintenanceTaskInput>) =>
+    request<MaintenanceTask>(`maintenance/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteMaintenance: (id: number) =>
+    request<void>(`maintenance/${id}`, { method: 'DELETE' }),
+  maintenanceDone: (id: number, note: string | null) =>
+    request<{ task: MaintenanceTask; entry: MaintenanceLogEntry }>(`maintenance/${id}/done`, { method: 'POST', body: JSON.stringify({ note }) }),
+  getMaintenanceLog: (id: number) => request<MaintenanceLogEntry[]>(`maintenance/${id}/log`),
+  deleteMaintenanceLog: (entryId: number) =>
+    request<void>(`maintenance/log/${entryId}`, { method: 'DELETE' }),
+  addMaintenanceTemplate: (lang: string) =>
+    request<{ created: number; tasks: MaintenanceTask[] }>(`maintenance/template?lang=${encodeURIComponent(lang)}`, { method: 'POST' }),
+
   assignPrintsToProject: (projectId: number, jobIds: number[]) =>
     request<Project>(`projects/${projectId}/assign`, { method: 'POST', body: JSON.stringify({ job_ids: jobIds }) }),
   unassignPrintsFromProject: (projectId: number, jobIds: number[]) =>

@@ -7,6 +7,7 @@ Sensors:
   sensor.filament_manager_low_stock_spools – spools below the configurable threshold
   sensor.filament_manager_ams_unmatched    – AMS trays with filament but no matching spool (by material + color)
   sensor.filament_manager_moisture_spools  – spools whose estimated dryness is below the warning threshold
+  sensor.filament_manager_maintenance_due  – maintenance tasks that are due (attributes: all enabled tasks with progress)
 
 Every push always writes all three sensors so they remain present in HA
 after an HA restart (the States API creates entities on first write and they
@@ -28,6 +29,7 @@ _ENTITY_LAST_PRINT      = "sensor.filament_manager_last_print"
 _ENTITY_TOTAL_SPOOLS    = "sensor.filament_manager_total_spools"
 _ENTITY_CONSUMED_SPOOLS = "sensor.filament_manager_consumed_spools"
 _ENTITY_MOISTURE        = "sensor.filament_manager_moisture_spools"
+_ENTITY_MAINTENANCE     = "sensor.filament_manager_maintenance_due"
 
 _trigger_event: asyncio.Event | None = None
 _event_loop: asyncio.AbstractEventLoop | None = None
@@ -308,6 +310,7 @@ def _compute(db) -> dict[str, tuple[int, dict]]:
                 "by_material": _count_by_material(empty_spools),
             },
         ),
+        _ENTITY_MAINTENANCE: _maintenance_sensor(db),
         **_statistics_sensors(db),
         **printer_sensors,
     }
@@ -468,3 +471,8 @@ async def run_ha_event_listener() -> None:
         except Exception as exc:
             log.debug("ha_publisher: WS listener error (%s) — reconnecting in 60s", exc)
             await asyncio.sleep(60)
+
+
+def _maintenance_sensor(db) -> tuple:
+    from . import maintenance as _maint
+    return _maint.sensor(db)

@@ -357,3 +357,46 @@ class PrinterConfig(Base):
 
     created_at = Column(DateTime, default=utcnow)
     updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
+
+
+class MaintenanceTask(Base):
+    """A recurring maintenance job (maintenance log / Wartungsbuch).
+
+    A task is due as soon as the first of its limits is reached, counted from
+    ``last_done_at``: print hours and filament grams of the prints finished
+    since then, or calendar days. Limits that are None are not used.
+    """
+    __tablename__ = "maintenance_tasks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    description = Column(Text, nullable=True)          # how to do it / material
+    printer_id = Column(Integer, ForeignKey("printer_configs.id", ondelete="SET NULL"), nullable=True)
+    interval_hours = Column(Float, nullable=True)      # print hours
+    interval_days = Column(Integer, nullable=True)     # calendar days
+    interval_grams = Column(Float, nullable=True)      # filament grams (1 spool ≈ 1000 g)
+    enabled = Column(Boolean, default=True, nullable=False)
+    template_key = Column(String, nullable=True)       # set when created from a template
+    sort_order = Column(Integer, default=0, nullable=False)
+    last_done_at = Column(DateTime, nullable=False, default=utcnow)   # counting starts here
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
+
+    printer = relationship("PrinterConfig")
+    log = relationship("MaintenanceLog", back_populates="task", cascade="all, delete-orphan",
+                       order_by="MaintenanceLog.done_at.desc()")
+
+
+class MaintenanceLog(Base):
+    """One 'done' entry of a maintenance task, with what had accumulated since the previous one."""
+    __tablename__ = "maintenance_log"
+
+    id = Column(Integer, primary_key=True, index=True)
+    task_id = Column(Integer, ForeignKey("maintenance_tasks.id", ondelete="CASCADE"), nullable=False, index=True)
+    done_at = Column(DateTime, nullable=False, default=utcnow)
+    hours_since = Column(Float, nullable=True)
+    grams_since = Column(Float, nullable=True)
+    days_since = Column(Float, nullable=True)
+    note = Column(Text, nullable=True)
+
+    task = relationship("MaintenanceTask", back_populates="log")

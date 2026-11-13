@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard'
 import Spools from './pages/Spools'
 import Prints from './pages/Prints'
 import Projects from './pages/Projects'
+import Maintenance from './pages/Maintenance'
 import Settings from './pages/Settings'
 
 export default function App() {
@@ -15,6 +16,7 @@ export default function App() {
         <Route path="/spools" element={<Spools />} />
         <Route path="/prints" element={<Prints />} />
         <Route path="/projects" element={<Projects />} />
+        <Route path="/maintenance" element={<Maintenance />} />
         <Route path="/settings" element={<Settings />} />
       </Routes>
     </Layout>

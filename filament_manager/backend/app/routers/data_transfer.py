@@ -26,6 +26,7 @@ from ..models import (
     Spool, PrintJob, PrintUsage, Project, ProjectPrint,
     BrandSpoolWeight, FilamentMaterial, FilamentSubtype, FilamentBrand,
     PurchaseLocation, StorageLocation, PrinterConfig, FilamentCatalog, UserPreferences, MATERIAL_DENSITY,
+    MaintenanceTask, MaintenanceLog,
 )
 
 router = APIRouter(prefix="/api/data", tags=["data-transfer"])
@@ -141,6 +142,7 @@ def export_data(db: Session = Depends(get_db)):
     storage_locs    = db.query(StorageLocation).order_by(StorageLocation.name).all()
     catalog         = db.query(FilamentCatalog).order_by(FilamentCatalog.brand, FilamentCatalog.material, FilamentCatalog.color_name).all()
     user_prefs      = db.get(UserPreferences, 1)
+    maint_tasks     = db.query(MaintenanceTask).order_by(MaintenanceTask.sort_order, MaintenanceTask.id).all()
 
     bundle = {
         "version": EXPORT_VERSION,
@@ -166,6 +168,22 @@ def export_data(db: Session = Depends(get_db)):
                 "wear_cost_per_hour": p.wear_cost_per_hour,
             }
             for p in printers
+        ],
+        "maintenance": [
+            {
+                "name": t.name, "description": t.description,
+                "printer_name": t.printer.name if t.printer else None,
+                "interval_hours": t.interval_hours, "interval_days": t.interval_days,
+                "interval_grams": t.interval_grams, "enabled": t.enabled,
+                "template_key": t.template_key, "sort_order": t.sort_order,
+                "last_done_at": _dt(t.last_done_at), "created_at": _dt(t.created_at),
+                "log": [
+                    {"done_at": _dt(e.done_at), "note": e.note, "hours_since": e.hours_since,
+                     "grams_since": e.grams_since, "days_since": e.days_since}
+                    for e in t.log
+                ],
+            }
+            for t in maint_tasks
         ],
         "user_preferences": {
             "timezone_override":       user_prefs.timezone_override       if user_prefs else None,
@@ -611,6 +629,7 @@ class ImportBundle(BaseModel):
     project_prints: list[dict[str, Any]] = []
     print_jobs: list[dict[str, Any]] = []
     printer_configs: list[dict[str, Any]] = []
+    maintenance: list[dict[str, Any]] = []
     settings: dict[str, Any] = {}
     user_preferences: dict[str, Any] = {}
 
@@ -637,6 +656,7 @@ def import_data(bundle: ImportBundle, db: Session = Depends(get_db)):
         "storage_locations": 0,
         "brand_weights": 0,
         "filament_catalog": 0,
+        "maintenance_tasks": 0,
     }
 
     # ── settings lists (skip duplicates by name) ──────────────────────────────
@@ -1032,6 +1052,34 @@ def import_data(bundle: ImportBundle, db: Session = Depends(get_db)):
                 is_test_print=False,
             ))
             stats["project_prints"] += 1
+
+    # ── maintenance log (skip tasks with the same name and created_at) ────────
+    printers_by_name = {p.name: p.id for p in db.query(PrinterConfig).all()}
+    existing_tasks = {(t.name, t.created_at) for t in db.query(MaintenanceTask).all()}
+    for m in bundle.maintenance:
+        name = m.get("name")
+        created = _parse_dt(m.get("created_at"))
+        if not name or (name, created) in existing_tasks:
+            continue
+        task = MaintenanceTask(
+            name=name, description=m.get("description"),
+            printer_id=printers_by_name.get(m.get("printer_name")),
+            interval_hours=m.get("interval_hours"), interval_days=m.get("interval_days"),
+            interval_grams=m.get("interval_grams"), enabled=m.get("enabled", True),
+            template_key=m.get("template_key"), sort_order=m.get("sort_order") or 0,
+            last_done_at=_parse_dt(m.get("last_done_at")) or utcnow(),
+            created_at=created or utcnow(),
+        )
+        for e in m.get("log") or []:
+            done = _parse_dt(e.get("done_at"))
+            if done:
+                task.log.append(MaintenanceLog(done_at=done, note=e.get("note"),
+                                               hours_since=e.get("hours_since"),
+                                               grams_since=e.get("grams_since"),
+                                               days_since=e.get("days_since")))
+        db.add(task)
+        existing_tasks.add((name, created))
+        stats["maintenance_tasks"] += 1
 
     db.commit()
     from .. import moisture

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.8.0
+
+- Feature: **maintenance log** — new page "Maintenance" (`#/maintenance`) with recurring tasks that are due after print hours, calendar days and/or grams of filament (whichever is reached first, counted from the last time the task was done; hours and grams come from the prints finished since then, optionally only of one printer). Levels ok, due soon (from 90 %), due, off. Cards with progress bar and rest, "Done" with an optional note (counting restarts), history per task, edit, delete. Button "Bambu recommendations" adds the periodic maintenance from the Bambu Lab wiki for the A1 series (rails and hotend monthly, lead screw and idler pulley every 3 months, cutter every 3 spools, nozzle and extruder gear every 5, PTFE tube every 6, fans weekly but disabled), counted from now; existing ones are not duplicated
+- Feature: **Home Assistant sensor `sensor.filament_manager_maintenance_due`** — number of due tasks; attributes `soon`, `soon_pct` and `tasks` (all enabled tasks with level, %, hours/days/grams left and last done)
+- API: `GET/POST /api/maintenance`, `PATCH/DELETE /api/maintenance/{id}`, `POST /api/maintenance/{id}/done`, `GET /api/maintenance/{id}/log`, `DELETE /api/maintenance/log/{entry_id}`, `POST /api/maintenance/template?lang=de`
+- The JSON export/import includes the maintenance tasks with their history
+
 ## 1.7.1
 
 - Fix: numbers on the projects page (preview in the cost dialog, grams, kg, hours, kWh) use the decimal separator of the UI language (German "438,7 g" instead of "438.7 g")

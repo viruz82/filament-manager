@@ -3,7 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import {
-  LayoutDashboard, Layers, Printer, Settings, FolderOpen,
+  LayoutDashboard, Layers, Printer, Settings, FolderOpen, Wrench,
   ChevronLeft, ChevronRight, Menu, X, Globe,
 } from 'lucide-react'
 import { api } from '../api'
@@ -147,6 +147,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { to: '/spools',    icon: Layers,          label: t('nav.spools') },
     { to: '/prints',    icon: Printer,         label: t('nav.prints') },
     { to: '/projects',  icon: FolderOpen,      label: t('nav.projects') },
+    { to: '/maintenance', icon: Wrench,        label: t('nav.maintenance') },
     { to: '/settings',  icon: Settings,        label: t('nav.settings') },
   ]
 

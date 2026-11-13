@@ -400,3 +400,52 @@ export interface ProjectReportSummary {
   per_print: number | null
   prints_without_kwh: number
 }
+
+// ── Maintenance log ──────────────────────────────────────────────────────────
+
+export type MaintenanceLevel = 'ok' | 'soon' | 'due' | 'off' | 'none'
+
+export interface MaintenanceTask {
+  id: number
+  name: string
+  description: string | null
+  printer_id: number | null
+  printer_name: string | null
+  interval_hours: number | null
+  interval_days: number | null
+  interval_grams: number | null
+  enabled: boolean
+  template_key: string | null
+  sort_order: number
+  last_done_at: string
+  log_count: number
+  hours_since: number
+  grams_since: number
+  days_since: number
+  hours_left: number | null
+  grams_left: number | null
+  days_left: number | null
+  pct: number | null
+  level: MaintenanceLevel
+}
+
+export interface MaintenanceTaskInput {
+  name: string
+  description: string | null
+  printer_id: number | null
+  interval_hours: number | null
+  interval_days: number | null
+  interval_grams: number | null
+  enabled: boolean
+  last_done_at?: string
+}
+
+export interface MaintenanceLogEntry {
+  id: number
+  task_id: number
+  done_at: string
+  note: string | null
+  hours_since: number | null
+  grams_since: number | null
+  days_since: number | null
+}
