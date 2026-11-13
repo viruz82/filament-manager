@@ -2,11 +2,12 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { api } from '../api'
-import type { Project, ProjectDetail, PrintJob } from '../types'
+import type { Project, ProjectDetail, PrintJob, ProjectReportOptions, ProjectReportSummary, ReportExtra } from '../types'
 import { Plus, Pencil, Trash2, X, FolderOpen, ChevronDown, ChevronRight, Layers, FlaskConical, ExternalLink, FileDown, Loader2 } from 'lucide-react'
 import { useHATZ, useCurrencyFormatter, useHACurrency } from '../hooks/useHATZ'
 import { saveBlob, fileSlug } from '../utils/download'
 import { formatDateTimeTZ } from '../utils/time'
+import Modal from '../components/Modal'
 
 // ── Inline modal shell (matches Prints.tsx pattern) ───────────────────────────
 
@@ -89,6 +90,158 @@ function ProjectForm({
         </button>
       </div>
     </div>
+  )
+}
+
+// ── Cost report selection dialog ──────────────────────────────────────────────
+
+const LS_REPORT_OPTS = 'fm_report_options'
+const lsExtrasKey = (id: number) => `fm_report_extras_${id}`
+const DEFAULT_REPORT_OPTS: Omit<ProjectReportOptions, 'extras'> = {
+  material: true, energy: true, wear: true,
+  include_tests: true, show_by_material: true, show_print_list: true,
+}
+type ExtraDraft = { name: string; amount: string }
+
+function lsRead<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key)
+    return raw ? { ...fallback, ...JSON.parse(raw) } : fallback
+  } catch { return fallback }
+}
+function lsWrite(key: string, value: unknown) {
+  try { localStorage.setItem(key, JSON.stringify(value)) } catch { /* private mode etc. */ }
+}
+const parseAmount = (s: string) => {
+  const n = parseFloat(s.replace(',', '.'))
+  return Number.isFinite(n) ? n : null
+}
+
+function CostReportModal({ project, onClose }: { project: Project; onClose: () => void }) {
+  const { t, i18n } = useTranslation()
+  const fmtCurrency = useCurrencyFormatter()
+  const currency = useHACurrency()
+  const [opts, setOpts] = useState(() => lsRead(LS_REPORT_OPTS, DEFAULT_REPORT_OPTS))
+  const [extras, setExtras] = useState<ExtraDraft[]>(() => {
+    try {
+      const raw = localStorage.getItem(lsExtrasKey(project.id))
+      const list = raw ? JSON.parse(raw) : []
+      return Array.isArray(list) ? list.map((e: ReportExtra) => ({ name: String(e.name ?? ''), amount: String(e.amount ?? '').replace('.', ',') })) : []
+    } catch { return [] }
+  })
+  const [busy, setBusy] = useState(false)
+
+  const validExtras: ReportExtra[] = extras
+    .map(e => ({ name: e.name.trim().slice(0, 80), amount: parseAmount(e.amount) }))
+    .filter((e): e is ReportExtra => e.name !== '' && e.amount !== null)
+    .slice(0, 20)
+  const body: ProjectReportOptions = { ...opts, extras: validExtras }
+
+  const { data: sum, isError } = useQuery<ProjectReportSummary>({
+    queryKey: ['report-summary', project.id, body],
+    queryFn: () => api.projectReportSummary(project.id, body),
+    placeholderData: prev => prev,
+  })
+
+  const set = (key: keyof typeof opts) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setOpts(o => ({ ...o, [key]: e.target.checked }))
+  const setExtra = (i: number, patch: Partial<ExtraDraft>) =>
+    setExtras(list => list.map((e, j) => (j === i ? { ...e, ...patch } : e)))
+
+  const create = async () => {
+    setBusy(true)
+    lsWrite(LS_REPORT_OPTS, opts)
+    lsWrite(lsExtrasKey(project.id), validExtras)
+    try {
+      const blob = await api.projectReportPdfWithOptions(project.id, body, i18n.resolvedLanguage ?? i18n.language ?? 'en', currency)
+      saveBlob(blob, `${fileSlug(project.name)}_${new Date().toISOString().slice(0, 10)}.pdf`)
+      onClose()
+    } catch (e: unknown) {
+      alert(t('common.pdfFailed') + ': ' + (e instanceof Error ? e.message : String(e)))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const Check = ({ k, label, hint }: { k: keyof typeof opts; label: string; hint?: string }) => (
+    <label className="flex items-start gap-2 text-sm cursor-pointer py-0.5">
+      <input type="checkbox" className="mt-0.5" checked={opts[k]} onChange={set(k)} />
+      <span>{label}{hint && <span className="block text-xs text-gray-500">{hint}</span>}</span>
+    </label>
+  )
+  const Row = ({ label, value, strong }: { label: string; value: string; strong?: boolean }) => (
+    <div className={`flex justify-between gap-3 ${strong ? 'font-semibold text-white border-t border-surface-3 pt-1 mt-1' : 'text-gray-300'}`}>
+      <span className="truncate">{label}</span><span className="shrink-0 tabular-nums">{value}</span>
+    </div>
+  )
+
+  return (
+    <ModalShell title={t('projects.report.title', { name: project.name })} onClose={onClose}>
+      <div className="space-y-4">
+        <div>
+          <div className="label">{t('projects.report.costs')}</div>
+          <Check k="material" label={t('projects.report.material')} />
+          <Check k="energy" label={t('projects.report.energy')} />
+          <Check k="wear" label={t('projects.report.wear')} />
+        </div>
+
+        <div>
+          <div className="label">{t('projects.report.extras')}</div>
+          <div className="space-y-2">
+            {extras.map((e, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <input className="input flex-1 min-w-0" value={e.name} maxLength={80}
+                  placeholder={t('projects.report.extraName')} onChange={ev => setExtra(i, { name: ev.target.value })} />
+                <input className="input w-24 text-right" inputMode="decimal" value={e.amount}
+                  placeholder="0,00" onChange={ev => setExtra(i, { amount: ev.target.value })} />
+                <button className="btn-ghost p-1.5 text-red-400 shrink-0" title={t('common.delete')}
+                  aria-label={t('common.delete')} onClick={() => setExtras(list => list.filter((_, j) => j !== i))}>
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ))}
+            {extras.length < 20 && (
+              <button className="btn-ghost px-2 py-1 text-sm flex items-center gap-1"
+                onClick={() => setExtras(list => [...list, { name: '', amount: '' }])}>
+                <Plus size={14} /> {t('projects.report.addExtra')}
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div>
+          <div className="label">{t('projects.report.content')}</div>
+          <Check k="include_tests" label={t('projects.report.includeTests')}
+            hint={project.test_print_count > 0 ? t('projects.report.testCount', { n: project.test_print_count }) : t('projects.report.noTests')} />
+          <Check k="show_by_material" label={t('projects.report.byMaterial')} />
+          <Check k="show_print_list" label={t('projects.report.printList')} />
+        </div>
+
+        <div className="rounded-xl bg-surface-3/40 p-3 text-sm space-y-0.5">
+          <div className="label mb-1">{t('projects.report.preview')}</div>
+          {isError && <div className="text-red-400 text-xs">{t('projects.report.previewFailed')}</div>}
+          {sum && (
+            <>
+              <Row label={t('projects.prints')} value={`${sum.prints}${sum.test_prints_excluded ? ` (−${sum.test_prints_excluded} ${t('projects.testStats')})` : ''} · ${sum.grams.toFixed(1)} g · ${sum.hours.toFixed(1)} h`} />
+              {sum.material !== null && <Row label={t('projects.report.material') + (sum.material_estimated ? ` (${t('projects.report.estimated')} ${fmtCurrency(sum.material_estimated)})` : '')} value={fmtCurrency(sum.material)} />}
+              {sum.energy !== null && <Row label={t('projects.report.energy')} value={fmtCurrency(sum.energy)} />}
+              {sum.wear !== null && <Row label={t('projects.report.wear')} value={fmtCurrency(sum.wear)} />}
+              {validExtras.map((e, i) => <Row key={i} label={e.name} value={fmtCurrency(e.amount)} />)}
+              <Row strong label={t('projects.report.total')} value={fmtCurrency(sum.total)} />
+              {sum.per_print !== null && <Row label={t('projects.report.perPrint')} value={fmtCurrency(sum.per_print)} />}
+            </>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-2 pt-1">
+          <button className="btn-ghost px-4 py-2" onClick={onClose}>{t('common.cancel')}</button>
+          <button className="btn-primary px-4 py-2 flex items-center gap-2" disabled={busy} onClick={create}>
+            {busy ? <Loader2 size={14} className="animate-spin" /> : <FileDown size={14} />}
+            {t('projects.report.create')}
+          </button>
+        </div>
+      </div>
+    </ModalShell>
   )
 }
 
@@ -208,23 +361,10 @@ function ProjectCard({
   onDelete: () => void
   onManagePrints: () => void
 }) {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const fmtCurrency = useCurrencyFormatter()
-  const currency = useHACurrency()
   const [expanded, setExpanded] = useState(false)
-  const [pdfBusy, setPdfBusy] = useState(false)
-
-  const downloadPdf = async () => {
-    setPdfBusy(true)
-    try {
-      const blob = await api.projectReportPdf(project.id, i18n.resolvedLanguage ?? i18n.language ?? 'en', currency)
-      saveBlob(blob, `${fileSlug(project.name)}_${new Date().toISOString().slice(0, 10)}.pdf`)
-    } catch (e: unknown) {
-      alert(t('common.pdfFailed') + ': ' + (e instanceof Error ? e.message : String(e)))
-    } finally {
-      setPdfBusy(false)
-    }
-  }
+  const [reportOpen, setReportOpen] = useState(false)
 
   const { data: detail } = useQuery<ProjectDetail>({
     queryKey: ['projects', project.id],
@@ -296,13 +436,13 @@ function ProjectCard({
         <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
           <button
             className="btn-ghost p-1.5"
-            onClick={downloadPdf}
-            disabled={pdfBusy}
+            onClick={() => setReportOpen(true)}
             title={t('projects.pdfHint')}
             aria-label={t('projects.pdfHint')}
           >
-            {pdfBusy ? <Loader2 size={14} className="animate-spin" /> : <FileDown size={14} />}
+            <FileDown size={14} />
           </button>
+          {reportOpen && <Modal><CostReportModal project={project} onClose={() => setReportOpen(false)} /></Modal>}
           <button
             className="btn-ghost p-1.5"
             onClick={onManagePrints}

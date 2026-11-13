@@ -630,7 +630,29 @@
     "normalStats": "Produktion",
     "testStats": "Test",
     "pdf": "PDF",
-    "pdfHint": "Kostenaufstellung als PDF herunterladen"
+    "pdfHint": "Kostenaufstellung als PDF herunterladen",
+    "report": {
+      "title": "Kostenaufstellung – {{name}}",
+      "costs": "Kosten",
+      "material": "Material",
+      "energy": "Strom",
+      "wear": "Abnutzung",
+      "extras": "Zusatzposten",
+      "extraName": "z. B. Schrauben, Nachbearbeitung",
+      "addExtra": "Posten hinzufügen",
+      "content": "Inhalt",
+      "includeTests": "Testdrucke mitrechnen",
+      "testCount": "{{n}} Testdrucke im Projekt",
+      "noTests": "Keine Testdrucke im Projekt",
+      "byMaterial": "Verbrauch je Material",
+      "printList": "Liste der Drucke",
+      "preview": "Vorschau",
+      "previewFailed": "Vorschau konnte nicht berechnet werden",
+      "estimated": "davon geschätzt",
+      "total": "Gesamt",
+      "perPrint": "je Druck",
+      "create": "PDF erstellen"
+    }
   },
   "moisture": {
     "title": "Feuchte",

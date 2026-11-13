@@ -367,3 +367,36 @@ export interface DashboardStats {
   prints_per_day: { date: string; count: number }[]
 }
 
+
+// ── Project cost report (selection dialog) ─────────────────────────────────
+export interface ReportExtra {
+  name: string
+  amount: number
+}
+
+export interface ProjectReportOptions {
+  material: boolean
+  energy: boolean
+  wear: boolean
+  include_tests: boolean
+  show_by_material: boolean
+  show_print_list: boolean
+  extras: ReportExtra[]
+}
+
+export interface ProjectReportSummary {
+  prints: number
+  test_prints: number
+  test_prints_excluded: number
+  grams: number
+  hours: number
+  material: number | null
+  material_estimated: number | null
+  energy: number | null
+  energy_kwh: number | null
+  wear: number | null
+  extras: number
+  total: number
+  per_print: number | null
+  prints_without_kwh: number
+}

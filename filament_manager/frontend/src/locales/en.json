@@ -630,7 +630,29 @@
     "normalStats": "Production",
     "testStats": "Test",
     "pdf": "PDF",
-    "pdfHint": "Download cost overview as PDF"
+    "pdfHint": "Download cost overview as PDF",
+    "report": {
+      "title": "Cost overview – {{name}}",
+      "costs": "Costs",
+      "material": "Material",
+      "energy": "Energy",
+      "wear": "Wear",
+      "extras": "Extra items",
+      "extraName": "e.g. screws, post-processing",
+      "addExtra": "Add item",
+      "content": "Content",
+      "includeTests": "Include test prints",
+      "testCount": "{{n}} test prints in project",
+      "noTests": "No test prints in project",
+      "byMaterial": "Usage by material",
+      "printList": "List of prints",
+      "preview": "Preview",
+      "previewFailed": "Preview could not be calculated",
+      "estimated": "of which estimated",
+      "total": "Total",
+      "perPrint": "per print",
+      "create": "Create PDF"
+    }
   },
   "moisture": {
     "title": "Moisture",

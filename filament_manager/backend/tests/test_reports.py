@@ -179,6 +179,87 @@ class TestProjectReport:
         _pdf_text(pdf)
 
 
+def _option_project(session):
+    """Project with a priced print (100 g × 0,02 = 2,00), a test print and a print without spool."""
+    s = _spool(session, purchase_price=20.0)
+    p = _project(session, name="Gizmo")
+    j1 = _job(session, spool=s, grams=100, energy=0.30, wear=0.50, project=p, name="Teil A")
+    jt = _job(session, spool=s, grams=10, energy=0.10, wear=0.10, project=p, name="Test")
+    session.add(ProjectPrint(project_id=p.id, print_job_id=j1.id, is_test_print=False))
+    session.add(ProjectPrint(project_id=p.id, print_job_id=jt.id, is_test_print=True))
+    session.commit()
+    return p
+
+
+class TestProjectReportOptions:
+    def test_summary_defaults_match_everything(self, client, session):
+        p = _option_project(session)
+        r = client.post(f"/api/reports/projects/{p.id}/summary", json={})
+        assert r.status_code == 200
+        d = r.json()
+        assert d["prints"] == 2 and d["test_prints"] == 1 and d["test_prints_excluded"] == 0
+        assert d["material"] == pytest.approx(2.20)
+        assert d["energy"] == pytest.approx(0.40)
+        assert d["wear"] == pytest.approx(0.60)
+        assert d["extras"] == 0
+        assert d["total"] == pytest.approx(3.20)
+        assert d["per_print"] == pytest.approx(1.60)
+
+    def test_summary_switches_and_extras(self, client, session):
+        p = _option_project(session)
+        body = {"energy": False, "wear": False, "include_tests": False,
+                "extras": [{"name": "Schrauben", "amount": 1.5}, {"name": "Etsy", "amount": 0.2549}]}
+        d = client.post(f"/api/reports/projects/{p.id}/summary", json=body).json()
+        assert d["prints"] == 1 and d["test_prints_excluded"] == 1
+        assert d["energy"] is None and d["wear"] is None and d["energy_kwh"] is None
+        assert d["material"] == pytest.approx(2.00)
+        assert d["extras"] == pytest.approx(1.75)  # amounts are rounded to cents
+        assert d["total"] == pytest.approx(3.75)
+        assert d["grams"] == pytest.approx(100)
+
+    def test_summary_unknown_project_404(self, client):
+        assert client.post("/api/reports/projects/999/summary", json={}).status_code == 404
+
+    def test_extras_are_validated(self, client, session):
+        p = _option_project(session)
+        url = f"/api/reports/projects/{p.id}/summary"
+        assert client.post(url, json={"extras": [{"name": "", "amount": 1}]}).status_code == 422
+        assert client.post(url, json={"extras": [{"name": "x" * 81, "amount": 1}]}).status_code == 422
+        assert client.post(url, json={"extras": [{"name": "x", "amount": 1}] * 21}).status_code == 422
+
+    @pytest.mark.parametrize("body", [
+        {},
+        {"material": False, "energy": False, "wear": False},
+        {"material": True, "energy": False, "wear": True, "show_by_material": False},
+        {"show_print_list": False, "extras": [{"name": "Nachbearbeitung „Schleifen“ – 10 €", "amount": 2}]},
+        {"include_tests": False, "lang": "ignored"},
+    ])
+    def test_post_pdf_with_options(self, client, session, body):
+        p = _option_project(session)
+        r = client.post(f"/api/reports/projects/{p.id}.pdf?lang=de", json=body)
+        assert r.status_code == 200
+        assert r.headers["content-type"] == "application/pdf"
+        assert r.content.startswith(b"%PDF")
+
+    def test_only_test_prints_excluded_gives_empty_report(self, session):
+        from app.routers.reports import ProjectReportOptions
+        s = _spool(session)
+        p = _project(session, name="Nur Test")
+        j = _job(session, spool=s, project=p)
+        session.add(ProjectPrint(project_id=p.id, print_job_id=j.id, is_test_print=True))
+        session.commit()
+        session.refresh(p)
+        _pdf_text(project_report(session, p, opts=ProjectReportOptions(include_tests=False)))
+        # extras alone still give a summary
+        opts = ProjectReportOptions(include_tests=False, extras=[{"name": "Versand", "amount": 4.9}])
+        _pdf_text(project_report(session, p, opts=opts))
+
+    def test_get_still_works_unchanged(self, client, session):
+        p = _option_project(session)
+        r = client.get(f"/api/reports/projects/{p.id}.pdf")
+        assert r.status_code == 200 and r.content.startswith(b"%PDF")
+
+
 class TestInventoryReport:
     def test_endpoint_returns_pdf(self, client, session):
         _spool(session, custom_id=3, storage_location="Regal", color_hex="#00FF00")

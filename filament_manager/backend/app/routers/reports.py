@@ -10,10 +10,13 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from urllib.parse import quote
 
+import math
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 from fpdf import FPDF
 from fpdf.fonts import FontFace
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from ..database import get_db
@@ -45,6 +48,8 @@ TEXTS = {
         "drying": "im Trockner", "inv_note": "Feuchte = geschätzte Trockenheit in Prozent "
                     "(100 = frisch getrocknet). Wert = Restgewicht mal Preis je Gramm.",
         "h": "h", "no_prints": "Keine Drucke im Projekt.", "no_spools": "Keine Spulen.",
+        "extras": "Zusatzposten", "tests_excluded": "Testdrucke nicht mitgerechnet ({n}).",
+        "included": "Enthalten", "amounts_in": "Beträge in {unit}.",
     },
     "en": {
         "project_title": "Cost overview", "inventory_title": "Inventory list",
@@ -65,6 +70,8 @@ TEXTS = {
         "drying": "drying", "inv_note": "Dryness = estimated dryness in percent "
                     "(100 = freshly dried). Value = remaining weight times price per gram.",
         "h": "h", "no_prints": "No prints in this project.", "no_spools": "No spools.",
+        "extras": "Extra items", "tests_excluded": "Test prints not included ({n}).",
+        "included": "Included", "amounts_in": "Amounts in {unit}.",
     },
 }
 
@@ -182,16 +189,83 @@ def _slug(name: str) -> str:
     return "_".join(p for p in keep.split("_") if p)[:60] or "projekt"
 
 
+# ── report options (selection dialog) ───────────────────────────────────────
+
+class ReportExtra(BaseModel):
+    name: str = Field(..., min_length=1, max_length=80)
+    amount: float
+
+    @field_validator("amount")
+    @classmethod
+    def _finite(cls, v: float) -> float:
+        if not math.isfinite(v):
+            raise ValueError("amount must be a finite number")
+        return round(v, 2)
+
+
+class ProjectReportOptions(BaseModel):
+    """What the project cost report contains (all on = same as 1.6.0)."""
+    material: bool = True
+    energy: bool = True
+    wear: bool = True
+    include_tests: bool = True
+    show_by_material: bool = True
+    show_print_list: bool = True
+    extras: list[ReportExtra] = Field(default_factory=list, max_length=20)
+
+
+def _project_jobs(project: Project, opts: ProjectReportOptions) -> tuple[list[PrintJob], set[int], int]:
+    """Jobs of the project (sorted), ids of test prints, number of test prints left out."""
+    test_ids = {pp.print_job_id for pp in project.project_prints if pp.is_test_print}
+    jobs = sorted(project.print_jobs, key=lambda j: j.started_at or datetime.min)
+    if opts.include_tests:
+        return jobs, test_ids, 0
+    kept = [j for j in jobs if j.id not in test_ids]
+    return kept, test_ids, len(jobs) - len(kept)
+
+
+def project_summary(project: Project, opts: ProjectReportOptions | None = None) -> dict:
+    """Totals of the project with the chosen options (preview + PDF)."""
+    opts = opts or ProjectReportOptions()
+    jobs, test_ids, excluded = _project_jobs(project, opts)
+    material = sum(j.material_cost for j in jobs)
+    estimated = sum((u.cost or 0) for j in jobs for u in j.usages if u.cost_estimated)
+    energy = sum((j.energy_cost or 0) for j in jobs)
+    kwh = sum((j.energy_kwh or 0) for j in jobs)
+    wear = sum((j.wear_cost or 0) for j in jobs)
+    extras = sum(e.amount for e in opts.extras)
+    total = ((material if opts.material else 0) + (energy if opts.energy else 0)
+             + (wear if opts.wear else 0) + extras)
+    return {
+        "prints": len(jobs),
+        "test_prints": len(test_ids & {j.id for j in jobs}),
+        "test_prints_excluded": excluded,
+        "grams": round(sum(j.total_grams for j in jobs), 2),
+        "hours": round(sum((j.duration_seconds or 0) for j in jobs) / 3600, 2),
+        "material": round(material, 2) if opts.material else None,
+        "material_estimated": round(estimated, 2) if opts.material else None,
+        "energy": round(energy, 2) if opts.energy else None,
+        "energy_kwh": round(kwh, 3) if opts.energy else None,
+        "wear": round(wear, 2) if opts.wear else None,
+        "extras": round(extras, 2),
+        "total": round(total, 2),
+        "per_print": round(total / len(jobs), 2) if jobs else None,
+        "prints_without_kwh": sum(1 for j in jobs if j.energy_kwh is None),
+    }
+
+
 # ── project cost report ─────────────────────────────────────────────────────
 
-def project_report(db: Session, project: Project, lang: str = "de", currency: str = "EUR") -> FPDF:
+def project_report(db: Session, project: Project, lang: str = "de", currency: str = "EUR",
+                   opts: ProjectReportOptions | None = None) -> FPDF:
+    opts = opts or ProjectReportOptions()
     tx = _t(lang)
     stand, tz = _stand(db, tx)
     pdf = _Pdf(f"{tx['project_title']}: {project.name}", stand, tx)
     pdf.add_page()
 
-    test_ids = {pp.print_job_id for pp in project.project_prints if pp.is_test_print}
-    jobs = sorted(project.print_jobs, key=lambda j: j.started_at or datetime.min)
+    jobs, test_ids, excluded = _project_jobs(project, opts)
+    sm = project_summary(project, opts)
 
     # head
     pdf.set_font("Helvetica", "", 9)
@@ -204,32 +278,35 @@ def project_report(db: Session, project: Project, lang: str = "de", currency: st
     if project.url:
         pdf.cell(0, 5, latin1(f"{tx['link']}: {project.url}"), new_x="LMARGIN", new_y="NEXT")
 
-    if not jobs:
+    if not jobs and not opts.extras:
         pdf.ln(4)
-        pdf.cell(0, 6, latin1(tx["no_prints"]))
+        pdf.cell(0, 6, latin1(tx["no_prints"]), new_x="LMARGIN", new_y="NEXT")
+        if excluded:
+            pdf.ln(2)
+            pdf.note(tx["tests_excluded"].format(n=excluded))
         return pdf
 
-    material = sum(j.material_cost for j in jobs)
-    estimated = sum((u.cost or 0) for j in jobs for u in j.usages if u.cost_estimated)
-    energy = sum((j.energy_cost or 0) for j in jobs)
-    kwh = sum((j.energy_kwh or 0) for j in jobs)
-    wear = sum((j.wear_cost or 0) for j in jobs)
-    total = material + energy + wear
-    grams = sum(j.total_grams for j in jobs)
-    hours = sum((j.duration_seconds or 0) for j in jobs) / 3600
-    no_kwh = sum(1 for j in jobs if j.energy_kwh is None)
+    material, energy, wear = sm["material"] or 0, sm["energy"] or 0, sm["wear"] or 0
+    estimated = sm["material_estimated"] or 0
+    grams, hours, total = sm["grams"], sm["hours"], sm["total"]
     m = lambda x: _money(x, lang, currency)  # noqa: E731
 
     # summary
     pdf.section(tx["summary"])
+    n_tests = sm["test_prints"]
     rows = [
-        (tx["prints"], f"{len(jobs)}" + (f" ({tx['of_which_test']} {len(test_ids & {j.id for j in jobs})})" if test_ids else "")),
+        (tx["prints"], f"{len(jobs)}" + (f" ({tx['of_which_test']} {n_tests})" if n_tests else "")),
         (tx["duration"], f"{_num(hours, 1, lang)} {tx['h']}"),
         (tx["filament"], f"{_num(grams, 1, lang)} g"),
-        (tx["material"], m(material) + (f" ({tx['of_which_est']} {m(estimated)})" if estimated > 0 else "")),
-        (tx["energy"], f"{m(energy)} ({_num(kwh, 2, lang)} kWh)"),
-        (tx["wear"], m(wear)),
     ]
+    if opts.material:
+        rows.append((tx["material"], m(material) + (f" ({tx['of_which_est']} {m(estimated)})" if estimated > 0 else "")))
+    if opts.energy:
+        rows.append((tx["energy"], f"{m(energy)} ({_num(sm['energy_kwh'], 2, lang)} kWh)"))
+    if opts.wear:
+        rows.append((tx["wear"], m(wear)))
+    for e in opts.extras:
+        rows.append((e.name, m(e.amount)))
     with pdf.table(col_widths=(45, 100), width=145, align="LEFT", first_row_as_headings=False,
                    line_height=5.5, borders_layout="HORIZONTAL_LINES") as table:
         for label, value in rows:
@@ -238,7 +315,8 @@ def project_report(db: Session, project: Project, lang: str = "de", currency: st
             r.cell(latin1(value))
         r = table.row()
         r.cell(latin1(tx["total"]), style=_TOTAL)
-        r.cell(latin1(f"{m(total)} ({tx['per_print']} {m(total / len(jobs))})"), style=_TOTAL)
+        per = f" ({tx['per_print']} {m(sm['per_print'])})" if jobs else ""
+        r.cell(latin1(f"{m(total)}{per}"), style=_TOTAL)
 
     # by material / colour
     usage: dict[tuple[str, str, str], float] = {}
@@ -251,7 +329,7 @@ def project_report(db: Session, project: Project, lang: str = "de", currency: st
                 h = hints.get(u.ams_slot) or {}
                 key = (str(h.get("filament_type") or "?"), tx["no_spool"], str(h.get("color") or "#888888"))
             usage[key] = usage.get(key, 0.0) + (u.grams_used or 0)
-    if usage and grams > 0:
+    if opts.show_by_material and usage and grams > 0:
         pdf.section(tx["by_material"])
         with pdf.table(col_widths=(8, 30, 62, 25, 20), width=145, align="LEFT", headings_style=_HEAD,
                        line_height=5, text_align=("LEFT", "LEFT", "LEFT", "RIGHT", "RIGHT")) as table:
@@ -266,48 +344,64 @@ def project_report(db: Session, project: Project, lang: str = "de", currency: st
                 r.cell(_num(g, 1, lang))
                 r.cell(f"{_num(g / grams * 100, 1, lang)} %")
 
-    # print list
-    pdf.section(tx["print_list"])
-    pdf.set_font("Helvetica", "", 8)
-    with pdf.table(col_widths=(19, 64, 13, 15, 18, 16, 18, 19), align="LEFT", headings_style=_HEAD,
-                   line_height=4.5,
-                   text_align=("LEFT", "LEFT", "RIGHT", "RIGHT", "RIGHT", "RIGHT", "RIGHT", "RIGHT")) as table:
-        h = table.row()
-        for c in (tx["date"], tx["name"], tx["h"], "g", tx["material"], tx["energy"], tx["wear"], tx["sum"]):
-            h.cell(latin1(c))
-        for j in jobs:
+    # print list – only the chosen cost columns; "Sum" = chosen costs of that print
+    if opts.show_print_list and jobs:
+        cost_cols = [(tx["material"], 18, "material"), (tx["energy"], 16, "energy"), (tx["wear"], 18, "wear")]
+        cost_cols = [c for c in cost_cols if getattr(opts, c[2])]
+        sum_w = 19 if cost_cols else 0
+        name_w = 64 + (52 + 19) - sum(c[1] for c in cost_cols) - sum_w
+        widths = (19, name_w, 13, 15) + tuple(c[1] for c in cost_cols) + ((sum_w,) if cost_cols else ())
+        heads = (tx["date"], tx["name"], tx["h"], "g") + tuple(c[0] for c in cost_cols) + ((tx["sum"],) if cost_cols else ())
+        pdf.section(tx["print_list"])
+        pdf.set_font("Helvetica", "", 8)
+        with pdf.table(col_widths=widths, align="LEFT", headings_style=_HEAD, line_height=4.5,
+                       text_align=("LEFT", "LEFT") + ("RIGHT",) * (len(widths) - 2)) as table:
+            h = table.row()
+            for c in heads:
+                h.cell(latin1(c))
+            for j in jobs:
+                r = table.row()
+                st = _local(j.started_at, tz)
+                r.cell(f"{st:%d.%m.%Y}" if st else "")
+                name = (j.design_title or j.name or "")[:60]
+                flags = (" [T]" if j.id in test_ids else "") + (f" ({tx['failed']})" if j.success is False else "")
+                r.cell(latin1(name + flags))
+                r.cell(_num((j.duration_seconds or 0) / 3600, 1, lang))
+                r.cell(_num(j.total_grams, 1, lang))
+                row_sum = 0.0
+                for _label, _w, key in cost_cols:
+                    if key == "material":
+                        est = "*" if any(u.cost_estimated for u in j.usages) else ""
+                        r.cell(_num(j.material_cost, 2, lang) + est)
+                        row_sum += j.material_cost
+                    else:
+                        v = j.energy_cost if key == "energy" else j.wear_cost
+                        r.cell(_num(v, 2, lang) if v is not None else "-")
+                        row_sum += v or 0
+                if cost_cols:
+                    r.cell(_num(row_sum, 2, lang))
             r = table.row()
-            st = _local(j.started_at, tz)
-            r.cell(f"{st:%d.%m.%Y}" if st else "")
-            name = (j.design_title or j.name or "")[:60]
-            flags = (" [T]" if j.id in test_ids else "") + (f" ({tx['failed']})" if j.success is False else "")
-            est = "*" if any(u.cost_estimated for u in j.usages) else ""
-            r.cell(latin1(name + flags))
-            r.cell(_num((j.duration_seconds or 0) / 3600, 1, lang))
-            r.cell(_num(j.total_grams, 1, lang))
-            r.cell(_num(j.material_cost, 2, lang) + est)
-            r.cell(_num(j.energy_cost, 2, lang) if j.energy_cost is not None else "-")
-            r.cell(_num(j.wear_cost, 2, lang) if j.wear_cost is not None else "-")
-            r.cell(_num(j.total_cost, 2, lang))
-        r = table.row()
-        r.cell(latin1(tx["sum"]), style=_TOTAL)
-        r.cell(latin1(f"{len(jobs)} {tx['prints']}"), style=_TOTAL)
-        r.cell(_num(hours, 1, lang), style=_TOTAL)
-        r.cell(_num(grams, 1, lang), style=_TOTAL)
-        r.cell(_num(material, 2, lang), style=_TOTAL)
-        r.cell(_num(energy, 2, lang), style=_TOTAL)
-        r.cell(_num(wear, 2, lang), style=_TOTAL)
-        r.cell(_num(total, 2, lang), style=_TOTAL)
+            r.cell(latin1(tx["sum"]), style=_TOTAL)
+            r.cell(latin1(f"{len(jobs)} {tx['prints']}"), style=_TOTAL)
+            r.cell(_num(hours, 1, lang), style=_TOTAL)
+            r.cell(_num(grams, 1, lang), style=_TOTAL)
+            vals = {"material": material, "energy": energy, "wear": wear}
+            for _label, _w, key in cost_cols:
+                r.cell(_num(vals[key], 2, lang), style=_TOTAL)
+            if cost_cols:
+                r.cell(_num(sum(vals[c[2]] for c in cost_cols), 2, lang), style=_TOTAL)
 
     pdf.ln(2)
     unit = "Euro" if currency.upper() == "EUR" else currency.upper()
-    notes = [f"{tx['material']}, {tx['energy']}, {tx['wear']}, {tx['sum']}: {unit}."]
-    if test_ids:
+    notes = [tx["amounts_in"].format(unit=unit)]
+    if opts.show_print_list and test_ids & {j.id for j in jobs}:
         notes.append(tx["note_test"].replace("T", "[T]", 1))
-    if estimated > 0:
-        notes.append("* " + tx["note_est"])
-    if no_kwh:
-        notes.append(tx["note_no_kwh"].format(n=no_kwh))
+    if excluded:
+        notes.append(tx["tests_excluded"].format(n=excluded))
+    if opts.material and estimated > 0:
+        notes.append(("* " if opts.show_print_list else "") + tx["note_est"])
+    if opts.energy and sm["prints_without_kwh"]:
+        notes.append(tx["note_no_kwh"].format(n=sm["prints_without_kwh"]))
     pdf.note(" ".join(notes))
     return pdf
 
@@ -392,9 +486,7 @@ def inventory_report(db: Session, lang: str = "de", currency: str = "EUR",
 
 # ── endpoints ───────────────────────────────────────────────────────────────
 
-@router.get("/projects/{project_id}.pdf")
-def project_pdf(project_id: int, lang: str = "de", currency: str = "EUR",
-                db: Session = Depends(get_db)):
+def _load_project(db: Session, project_id: int) -> Project:
     project = (
         db.query(Project)
         .options(
@@ -406,9 +498,36 @@ def project_pdf(project_id: int, lang: str = "de", currency: str = "EUR",
     )
     if not project:
         raise HTTPException(404, "Project not found")
-    pdf = project_report(db, project, lang, currency)
+    return project
+
+
+def _project_pdf_response(db: Session, project_id: int, lang: str, currency: str,
+                          opts: ProjectReportOptions) -> Response:
+    project = _load_project(db, project_id)
+    pdf = project_report(db, project, lang, currency, opts)
     tx = _t(lang)
     return _pdf_response(pdf, f"{_slug(tx['project_title'])}_{_slug(project.name)}.pdf")
+
+
+@router.get("/projects/{project_id}.pdf")
+def project_pdf(project_id: int, lang: str = "de", currency: str = "EUR",
+                db: Session = Depends(get_db)):
+    """Cost overview with everything included."""
+    return _project_pdf_response(db, project_id, lang, currency, ProjectReportOptions())
+
+
+@router.post("/projects/{project_id}.pdf")
+def project_pdf_with_options(project_id: int, opts: ProjectReportOptions, lang: str = "de",
+                             currency: str = "EUR", db: Session = Depends(get_db)):
+    """Cost overview with the items chosen in the selection dialog."""
+    return _project_pdf_response(db, project_id, lang, currency, opts)
+
+
+@router.post("/projects/{project_id}/summary")
+def project_summary_endpoint(project_id: int, opts: ProjectReportOptions,
+                             db: Session = Depends(get_db)):
+    """Totals for the preview in the selection dialog."""
+    return project_summary(_load_project(db, project_id), opts)
 
 
 @router.get("/inventory.pdf")

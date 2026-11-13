@@ -15,7 +15,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 // ── Spools ───────────────────────────────────────────────────────────────────
-import type { Spool, PrintJob, PrinterConfig, PrinterStatus, DashboardStats, FilamentSubtype, Project, ProjectDetail, FilamentSyncStatus, FilamentSyncPlan, FilamentSyncResult, ApplySyncRequest, SyncMode } from './types'
+import type { Spool, PrintJob, PrinterConfig, PrinterStatus, DashboardStats, FilamentSubtype, Project, ProjectDetail, FilamentSyncStatus, FilamentSyncPlan, FilamentSyncResult, ApplySyncRequest, SyncMode, ProjectReportOptions, ProjectReportSummary } from './types'
 
 export const api = {
   // Spools
@@ -248,6 +248,12 @@ export const api = {
   projectReportPdf: (id: number, lang: string, currency: string) =>
     fetch(`${BASE}/reports/projects/${id}.pdf?lang=${encodeURIComponent(lang)}&currency=${encodeURIComponent(currency)}`)
       .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.blob() }),
+  projectReportPdfWithOptions: (id: number, opts: ProjectReportOptions, lang: string, currency: string) =>
+    fetch(`${BASE}/reports/projects/${id}.pdf?lang=${encodeURIComponent(lang)}&currency=${encodeURIComponent(currency)}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(opts),
+    }).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.blob() }),
+  projectReportSummary: (id: number, opts: ProjectReportOptions) =>
+    request<ProjectReportSummary>(`reports/projects/${id}/summary`, { method: 'POST', body: JSON.stringify(opts) }),
   inventoryReportPdf: (lang: string, currency: string) =>
     fetch(`${BASE}/reports/inventory.pdf?lang=${encodeURIComponent(lang)}&currency=${encodeURIComponent(currency)}`)
       .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.blob() }),

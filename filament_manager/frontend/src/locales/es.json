@@ -630,7 +630,29 @@
     "normalStats": "Producción",
     "testStats": "Prueba",
     "pdf": "PDF",
-    "pdfHint": "Descargar resumen de costes en PDF"
+    "pdfHint": "Descargar resumen de costes en PDF",
+    "report": {
+      "title": "Resumen de costes – {{name}}",
+      "costs": "Costes",
+      "material": "Material",
+      "energy": "Electricidad",
+      "wear": "Desgaste",
+      "extras": "Partidas adicionales",
+      "extraName": "p. ej. tornillos, posprocesado",
+      "addExtra": "Añadir partida",
+      "content": "Contenido",
+      "includeTests": "Incluir impresiones de prueba",
+      "testCount": "{{n}} impresiones de prueba en el proyecto",
+      "noTests": "Sin impresiones de prueba en el proyecto",
+      "byMaterial": "Consumo por material",
+      "printList": "Lista de impresiones",
+      "preview": "Vista previa",
+      "previewFailed": "No se pudo calcular la vista previa",
+      "estimated": "de ello estimado",
+      "total": "Total",
+      "perPrint": "por impresión",
+      "create": "Crear PDF"
+    }
   },
   "moisture": {
     "title": "Humedad",

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.7.0
+
+- Feature: **selection dialog before the project cost overview** (like a quote dialog, but for hobby use): the PDF button on a project card now opens a dialog with switches for the cost items (material, energy, wear), any number of **extra items** with own name and amount (e.g. screws, post-processing, platform fee; up to 20), switches for the content (include test prints, usage by material, list of prints) and a **live preview** of the totals; then "Create PDF". Switches are remembered per browser, extra items per project. New endpoints `POST /api/reports/projects/{id}.pdf` (options as JSON body) and `POST /api/reports/projects/{id}/summary` (totals for the preview); `GET /api/reports/projects/{id}.pdf` stays and includes everything. In the PDF, the print list only shows the chosen cost columns; test prints left out are noted
+
 ## 1.6.0
 
 - Feature: **Cost overview per project as PDF** — download button on every project card (`GET /api/reports/projects/{id}.pdf?lang=de&currency=EUR`): period, link, summary (prints incl. test prints, print time, filament, material/energy/wear cost, total and per print), usage by material and colour, and a table of all prints with their costs and totals. Plain overview for hobby use (no margin, labour or quotes)
