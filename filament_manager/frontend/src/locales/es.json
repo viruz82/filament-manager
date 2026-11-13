@@ -32,7 +32,8 @@
     "search": "Buscar…",
     "clear": "Limpiar",
     "experimental": "Experimental",
-    "optional": "opcional"
+    "optional": "opcional",
+    "pdfFailed": "No se pudo crear el PDF"
   },
   "dashboard": {
     "title": "Panel",
@@ -218,7 +219,9 @@
       "before": "Antes",
       "after": "Nuevo",
       "delta": "Diferencia"
-    }
+    },
+    "inventoryPdf": "Inventario",
+    "inventoryPdfHint": "Descargar lista de inventario de todas las bobinas en PDF"
   },
   "prints": {
     "title": "Impresiones",
@@ -625,7 +628,9 @@
     "markTestPrint": "Marcar como impresión de prueba",
     "unmarkTestPrint": "Quitar marca de impresión de prueba",
     "normalStats": "Producción",
-    "testStats": "Prueba"
+    "testStats": "Prueba",
+    "pdf": "PDF",
+    "pdfHint": "Descargar resumen de costes en PDF"
   },
   "moisture": {
     "title": "Humedad",

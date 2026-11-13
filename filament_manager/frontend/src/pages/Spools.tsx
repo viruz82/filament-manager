@@ -4,10 +4,11 @@ import { useTranslation } from 'react-i18next'
 import { api } from '../api'
 import type { Spool, BrandSpoolWeight, FilamentCatalog, SpoolAuditEntry, Packaging } from '../types'
 import { PACKAGING_TYPES } from '../types'
-import { Plus, Pencil, Trash2, X, LayoutGrid, Table2, ChevronUp, ChevronDown, ChevronsUpDown, Copy, History, RotateCcw, Archive, ArchiveRestore, Columns3, Cloud, Recycle, Scale, Droplet, Flame } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, LayoutGrid, Table2, ChevronUp, ChevronDown, ChevronsUpDown, Copy, History, RotateCcw, Archive, ArchiveRestore, Columns3, Cloud, Recycle, Scale, Droplet, Flame, FileDown, Loader2 } from 'lucide-react'
 import Modal from '../components/Modal'
 import { formatDateOnly, formatDateTimeTZ } from '../utils/time'
-import { useHATZ, useCurrencyFormatter, useCurrencySymbol } from '../hooks/useHATZ'
+import { useHATZ, useCurrencyFormatter, useCurrencySymbol, useHACurrency } from '../hooks/useHATZ'
+import { saveBlob } from '../utils/download'
 import { parseDecimal } from '../utils/number'
 import { AmsSlotSelect, useAmsSlotLabel } from '../hooks/useAmsSlots'
 
@@ -1315,8 +1316,21 @@ function SpoolTable({ spools, onEdit, onWeigh, onMoisture, onDuplicate, onHistor
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function Spools() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const qc = useQueryClient()
+  const currency = useHACurrency()
+  const [inventoryBusy, setInventoryBusy] = useState(false)
+  const downloadInventory = async () => {
+    setInventoryBusy(true)
+    try {
+      const blob = await api.inventoryReportPdf(i18n.resolvedLanguage ?? i18n.language ?? 'en', currency)
+      saveBlob(blob, `${t('spools.inventoryPdf')}_${new Date().toISOString().slice(0, 10)}.pdf`)
+    } catch (e: unknown) {
+      alert(t('common.pdfFailed') + ': ' + (e instanceof Error ? e.message : String(e)))
+    } finally {
+      setInventoryBusy(false)
+    }
+  }
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Spool | null>(null)
   const [duplicating, setDuplicating] = useState<Spool | null>(null)
@@ -1440,6 +1454,16 @@ export default function Spools() {
               <Table2 size={13} />
             </button>
           </div>
+
+          <button
+            className="btn-ghost px-2.5 py-1.5 text-xs flex items-center gap-1 text-gray-400"
+            onClick={downloadInventory}
+            disabled={inventoryBusy}
+            title={t('spools.inventoryPdfHint')}
+          >
+            {inventoryBusy ? <Loader2 size={13} className="animate-spin" /> : <FileDown size={13} />}
+            <span className="hidden sm:inline">{t('spools.inventoryPdf')}</span>
+          </button>
 
           <button className="btn-primary flex items-center gap-1.5" onClick={() => setShowForm(true)}>
             <Plus size={14} /> {t('spools.addSpool')}

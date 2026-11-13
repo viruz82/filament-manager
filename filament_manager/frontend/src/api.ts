@@ -244,6 +244,14 @@ export const api = {
   filamentSyncApply: (data: ApplySyncRequest) =>
     request<FilamentSyncResult>('filament-sync/apply', { method: 'POST', body: JSON.stringify(data) }),
 
+  // PDF reports
+  projectReportPdf: (id: number, lang: string, currency: string) =>
+    fetch(`${BASE}/reports/projects/${id}.pdf?lang=${encodeURIComponent(lang)}&currency=${encodeURIComponent(currency)}`)
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.blob() }),
+  inventoryReportPdf: (lang: string, currency: string) =>
+    fetch(`${BASE}/reports/inventory.pdf?lang=${encodeURIComponent(lang)}&currency=${encodeURIComponent(currency)}`)
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.blob() }),
+
   // Data transfer
   exportData: () => fetch(`${BASE}/data/export`).then(r => r.blob()),
   exportSpoolsCsv: () => fetch(`${BASE}/data/export-spools-csv`).then(r => r.blob()),

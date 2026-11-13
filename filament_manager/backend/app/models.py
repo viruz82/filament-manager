@@ -204,7 +204,17 @@ class PrintUsage(Base):
     def cost(self) -> float | None:
         if self.spool and self.spool.cost_per_gram:
             return round(self.grams_used * self.spool.cost_per_gram, 4)
+        if self.cost_estimated:
+            from sqlalchemy.orm import object_session
+            from .pricing import estimated_cost
+            db = object_session(self)
+            return estimated_cost(self, db) if db is not None else None
         return None
+
+    @property
+    def cost_estimated(self) -> bool:
+        """No spool known → cost is an average-price estimate (see pricing.py)."""
+        return self.spool_id is None and self.spool is None and (self.grams_used or 0) > 0
 
 
 class BrandSpoolWeight(Base):

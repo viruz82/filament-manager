@@ -134,6 +134,7 @@ class PrintUsageOut(PrintUsageBase):
     id: int
     print_job_id: int
     cost: float | None
+    cost_estimated: bool = False
     spool: SpoolOut | None = None
 
 

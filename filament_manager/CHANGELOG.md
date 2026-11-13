@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.6.0
+
+- Feature: **Cost overview per project as PDF** — download button on every project card (`GET /api/reports/projects/{id}.pdf?lang=de&currency=EUR`): period, link, summary (prints incl. test prints, print time, filament, material/energy/wear cost, total and per print), usage by material and colour, and a table of all prints with their costs and totals. Plain overview for hobby use (no margin, labour or quotes)
+- Feature: **Inventory list as PDF** — button "Inventory" in the spool toolbar (`GET /api/reports/inventory.pdf`): all non-archived spools grouped by storage location (number, colour, brand, material, colour name, remaining g and %, estimated dryness, value, AMS slot, empty "checked" column for stock-taking), sums per location and in total; landscape A4, header repeats on every page
+- Feature: **estimated material cost for usages without a spool** — prints imported from Bambu Cloud history often carry grams per AMS slot but no spool, so their material cost was 0. They are now priced with the average price per gram of the same material across all spools with a purchase price (material from the cloud hint of that slot; fallback: average over all materials). Nothing is written to the database. Usages expose `cost_estimated`, the statistics snapshot `kosten.material_geschaetzt` and `kosten.gramm_ohne_spule`, the project PDF marks such prints with `*`. Note: the cost sensors (`cost_material`, `cost_total`) jump once by the estimated amount after the update
+- PDFs are built with fpdf2 (new dependency) using the core Helvetica font: amounts are written as "12,34 Euro" or with the currency code; texts in German or English (`lang`)
+
 ## 1.5.0
 
 - Feature: **Home Assistant long-term statistics** — new sensors with `state_class`, so Home Assistant keeps hourly/daily/monthly history and statistics graphs work: `sensor.filament_manager_filament_used` (g), `_prints`, `_print_hours` (h), `_cost_total`, `_cost_material`, `_cost_energy`, `_cost_wear` (EUR, all `total`; `total` instead of `total_increasing` because correcting or deleting a print may lower a value) and `_stock_weight` (g) / `_stock_value` (EUR, `measurement`)

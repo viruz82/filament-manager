@@ -32,7 +32,8 @@
     "search": "Search…",
     "clear": "Clear",
     "experimental": "Experimental",
-    "optional": "optional"
+    "optional": "optional",
+    "pdfFailed": "Could not create PDF"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -218,7 +219,9 @@
       "before": "Before",
       "after": "New",
       "delta": "Change"
-    }
+    },
+    "inventoryPdf": "Inventory",
+    "inventoryPdfHint": "Download inventory list of all spools as PDF"
   },
   "prints": {
     "title": "Prints",
@@ -625,7 +628,9 @@
     "markTestPrint": "Mark as test print",
     "unmarkTestPrint": "Unmark as test print",
     "normalStats": "Production",
-    "testStats": "Test"
+    "testStats": "Test",
+    "pdf": "PDF",
+    "pdfHint": "Download cost overview as PDF"
   },
   "moisture": {
     "title": "Moisture",

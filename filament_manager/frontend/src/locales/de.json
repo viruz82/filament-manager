@@ -32,7 +32,8 @@
     "search": "Suchen…",
     "clear": "Zurücksetzen",
     "experimental": "Experimentell",
-    "optional": "optional"
+    "optional": "optional",
+    "pdfFailed": "PDF konnte nicht erstellt werden"
   },
   "dashboard": {
     "title": "Übersicht",
@@ -218,7 +219,9 @@
       "before": "Bisher",
       "after": "Neu",
       "delta": "Differenz"
-    }
+    },
+    "inventoryPdf": "Inventarliste",
+    "inventoryPdfHint": "Inventarliste aller Spulen als PDF herunterladen"
   },
   "prints": {
     "title": "Drucke",
@@ -625,7 +628,9 @@
     "markTestPrint": "Als Testdruck markieren",
     "unmarkTestPrint": "Testdruck-Markierung entfernen",
     "normalStats": "Produktion",
-    "testStats": "Test"
+    "testStats": "Test",
+    "pdf": "PDF",
+    "pdfHint": "Kostenaufstellung als PDF herunterladen"
   },
   "moisture": {
     "title": "Feuchte",

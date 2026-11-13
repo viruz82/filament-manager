@@ -301,6 +301,8 @@ def compute(db: Session, now: datetime | None = None, forecast_days: int = FOREC
             "rest_wert": c["stock_value"],
             "verbraucht_wert": _r(lager_gesamt - c["stock_value"]),
             "material": c["cost_material"],
+            "material_geschaetzt": _r(sum((u.cost or 0) for j in jobs for u in j.usages if u.cost_estimated)),
+            "gramm_ohne_spule": _r(sum(u.grams_used for j in jobs for u in j.usages if u.cost_estimated), 1),
             "strom": c["cost_energy"],
             "abnutzung": c["cost_wear"],
             "gesamt": c["cost_total"],

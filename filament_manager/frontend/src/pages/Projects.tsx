@@ -3,8 +3,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { api } from '../api'
 import type { Project, ProjectDetail, PrintJob } from '../types'
-import { Plus, Pencil, Trash2, X, FolderOpen, ChevronDown, ChevronRight, Layers, FlaskConical, ExternalLink } from 'lucide-react'
-import { useHATZ, useCurrencyFormatter } from '../hooks/useHATZ'
+import { Plus, Pencil, Trash2, X, FolderOpen, ChevronDown, ChevronRight, Layers, FlaskConical, ExternalLink, FileDown, Loader2 } from 'lucide-react'
+import { useHATZ, useCurrencyFormatter, useHACurrency } from '../hooks/useHATZ'
+import { saveBlob, fileSlug } from '../utils/download'
 import { formatDateTimeTZ } from '../utils/time'
 
 // ── Inline modal shell (matches Prints.tsx pattern) ───────────────────────────
@@ -207,9 +208,23 @@ function ProjectCard({
   onDelete: () => void
   onManagePrints: () => void
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const fmtCurrency = useCurrencyFormatter()
+  const currency = useHACurrency()
   const [expanded, setExpanded] = useState(false)
+  const [pdfBusy, setPdfBusy] = useState(false)
+
+  const downloadPdf = async () => {
+    setPdfBusy(true)
+    try {
+      const blob = await api.projectReportPdf(project.id, i18n.resolvedLanguage ?? i18n.language ?? 'en', currency)
+      saveBlob(blob, `${fileSlug(project.name)}_${new Date().toISOString().slice(0, 10)}.pdf`)
+    } catch (e: unknown) {
+      alert(t('common.pdfFailed') + ': ' + (e instanceof Error ? e.message : String(e)))
+    } finally {
+      setPdfBusy(false)
+    }
+  }
 
   const { data: detail } = useQuery<ProjectDetail>({
     queryKey: ['projects', project.id],
@@ -279,6 +294,15 @@ function ProjectCard({
         </div>
 
         <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
+          <button
+            className="btn-ghost p-1.5"
+            onClick={downloadPdf}
+            disabled={pdfBusy}
+            title={t('projects.pdfHint')}
+            aria-label={t('projects.pdfHint')}
+          >
+            {pdfBusy ? <Loader2 size={14} className="animate-spin" /> : <FileDown size={14} />}
+          </button>
           <button
             className="btn-ghost p-1.5"
             onClick={onManagePrints}

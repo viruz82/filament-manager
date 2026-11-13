@@ -57,6 +57,14 @@ async def get_dashboard(db: Session = Depends(get_db)):
             PrintUsage.grams_used * Spool.purchase_price / Spool.initial_weight_g
         ), 0.0),
     ).outerjoin(Spool, PrintUsage.spool_id == Spool.id).one()
+    # Usages without a spool (old cloud imports) → average-price estimate
+    material_cost_sum += sum(
+        (u.cost or 0)
+        for u in db.query(PrintUsage)
+        .options(joinedload(PrintUsage.print_job))
+        .filter(PrintUsage.spool_id.is_(None))
+        .all()
+    )
 
     energy_cost_sum = db.query(func.coalesce(func.sum(PrintJob.energy_cost), 0.0)).scalar() or 0.0
     wear_cost_sum = db.query(func.coalesce(func.sum(PrintJob.wear_cost), 0.0)).scalar() or 0.0
