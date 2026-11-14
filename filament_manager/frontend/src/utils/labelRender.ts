@@ -94,7 +94,15 @@ export function autoBaseUrl(): string {
     const top = window.top?.location
     if (top && top !== window.location && top.pathname) {
       const panel = top.pathname.split('/').filter(Boolean)[0]
-      if (panel) return `${top.origin}/${panel}`
+      if (panel) {
+        // Prefer HA's external URL (Settings → Network): it is HTTPS, works from
+        // every phone, and Web Bluetooth needs a secure context; opened via the
+        // local IP (http) the browser switches Bluetooth off.
+        const ha = window.top?.document.querySelector('home-assistant') as { hass?: { config?: { external_url?: string | null } } } | null
+        const ext = ha?.hass?.config?.external_url
+        const origin = ext && /^https:\/\//.test(ext) ? ext.replace(/\/+$/, '') : top.origin
+        return `${origin}/${panel}`
+      }
     }
   } catch { /* cross-origin parent */ }
   return window.location.origin + window.location.pathname.replace(/\/(spool-\d+)?\/?$/, '')

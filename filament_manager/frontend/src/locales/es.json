@@ -770,6 +770,7 @@
     "disconnect": "Disconnect",
     "labelsLeft": "{{n}} labels left",
     "noBluetooth": "This browser has no Bluetooth (e.g. the Home Assistant app). Open the add-on in Chrome or Edge to print directly. PNG, PDF and Print work everywhere.",
+    "noBluetoothHttp": "Bluetooth only works over HTTPS – the add-on is open via an http address (e.g. the IP). \"Open in browser\" uses Home Assistant's external HTTPS address, printing works there. PNG, PDF and Print work everywhere.",
     "openInBrowser": "Open in browser",
     "copyLink": "Copy link",
     "copied": "Copied",

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.9.3
+
+- Labels: the QR code, "Open in browser" and "Copy link" use Home Assistant's **external HTTPS address** (Settings → Network) instead of the address the add-on happens to be open on. Opened via the local IP (http), browsers switch Web Bluetooth off, so "Print on Niimbot" was missing there; the dialog now says so ("Bluetooth only works over HTTPS") and the link leads to a page where printing works. QR codes also work away from home.
+
 ## 1.9.2
 
 - Label dialog: **"Print on Niimbot" connects by itself** — the button was disabled until "Connect printer" had been used, but looked active; it now opens the Bluetooth chooser when needed and prints right after. Disabled buttons are shown dimmed everywhere.

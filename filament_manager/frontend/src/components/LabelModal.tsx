@@ -344,7 +344,7 @@ export default function LabelModal({ spools, initialIds, onClose }: {
               <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-400">{t('labels.printer')}</h3>
               {!hasBt ? (
                 <div className="rounded-lg border border-amber-700/60 bg-amber-900/20 p-3 text-xs text-amber-300 space-y-2">
-                  <p className="flex items-start gap-1.5"><BluetoothOff size={14} className="shrink-0 mt-0.5" /> {t('labels.noBluetooth')}</p>
+                  <p className="flex items-start gap-1.5"><BluetoothOff size={14} className="shrink-0 mt-0.5" /> {t(window.isSecureContext ? 'labels.noBluetooth' : 'labels.noBluetoothHttp')}</p>
                   <div className="flex flex-wrap gap-2">
                     <a className="btn-ghost px-2.5 py-1.5 text-xs flex items-center gap-1 text-amber-200" href={openUrl} target="_blank" rel="noopener noreferrer">
                       <ExternalLink size={13} /> {t('labels.openInBrowser')}

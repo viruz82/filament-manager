@@ -770,6 +770,7 @@
     "disconnect": "Trennen",
     "labelsLeft": "noch {{n}} Etiketten",
     "noBluetooth": "Dieser Browser kann kein Bluetooth (zum Beispiel die Home-Assistant-App). Öffne das Add-on in Chrome oder Edge, dann geht der Druck direkt. PNG, PDF und Drucken funktionieren überall.",
+    "noBluetoothHttp": "Bluetooth geht nur über HTTPS – das Add-on ist gerade über eine http-Adresse (z. B. die IP) geöffnet. „Im Browser öffnen“ nimmt die externe HTTPS-Adresse aus Home Assistant, dort geht der Druck direkt. PNG, PDF und Drucken funktionieren überall.",
     "openInBrowser": "Im Browser öffnen",
     "copyLink": "Link kopieren",
     "copied": "Kopiert",
