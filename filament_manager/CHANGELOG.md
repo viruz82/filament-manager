@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.9.1
+
+- Fix: the label QR code (`<HA address>/<add-on panel>/spool-<id>`) only opened the overview — Home Assistant keeps the sub-path in its own address but does not pass it on to the ingress iframe; the add-on now also reads the parent window's address and resets it to the panel afterwards
+
 ## 1.9.0
 
 - Feature: **spool labels with QR code** — dialog "QR code & label" (QR button on every spool card/table row, green once a label exists) and "Labels" in the toolbar for several spools (filter all / without label / with label, search, add all). Modelled on Spooly's label dialog:

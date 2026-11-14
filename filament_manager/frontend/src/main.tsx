@@ -7,14 +7,29 @@ import './index.css'
 import i18n, { applyDocLang } from './i18n'
 
 // Deep link from a spool label QR code: ".../spool-12" (or "?spool=12") → #/spools?spool=12
+// Inside Home Assistant the QR target is the add-on panel ("/<panel>/spool-12"),
+// but HA does not pass that sub-path on to the ingress iframe, so the parent
+// window (same origin) is checked as well and its address is reset to the panel.
 {
-  const m = window.location.pathname.match(/\/spool-(\d+)\/?$/)
-  const q = new URLSearchParams(window.location.search).get('spool')
-  const id = m ? m[1] : (q && /^\d+$/.test(q) ? q : null)
-  if (id) {
-    const path = m ? window.location.pathname.slice(0, m.index! + 1) : window.location.pathname
-    window.history.replaceState(null, '', `${path}#/spools?spool=${id}`)
+  const spoolFrom = (loc: Location): { id: string; path: string } | null => {
+    const m = loc.pathname.match(/\/spool-(\d+)\/?$/)
+    const q = new URLSearchParams(loc.search).get('spool')
+    const id = m ? m[1] : (q && /^\d+$/.test(q) ? q : null)
+    if (!id) return null
+    return { id, path: m ? loc.pathname.slice(0, m.index! + 1) : loc.pathname }
   }
+  let hit = spoolFrom(window.location)
+  if (!hit) {
+    try {
+      const top = window.top
+      if (top && top !== window) {
+        hit = spoolFrom(top.location)
+        if (hit) top.history.replaceState(top.history.state, '', hit.path.replace(/\/$/, '') || '/')
+      }
+    } catch { /* cross-origin parent */ }
+    if (hit) hit = { id: hit.id, path: window.location.pathname }
+  }
+  if (hit) window.history.replaceState(null, '', `${hit.path}#/spools?spool=${hit.id}`)
 }
 
 const queryClient = new QueryClient({
