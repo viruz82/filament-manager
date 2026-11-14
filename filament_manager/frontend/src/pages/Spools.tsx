@@ -7,6 +7,7 @@ import type { Spool, BrandSpoolWeight, FilamentCatalog, SpoolAuditEntry, Packagi
 import { PACKAGING_TYPES } from '../types'
 import { Plus, Trash2, X, RotateCcw, Droplet, Flame, Scale } from 'lucide-react'
 import Modal from '../components/Modal'
+import Section from '../components/ui/Section'
 import LabelModal from '../components/LabelModal'
 import { useSearchParams } from 'react-router-dom'
 import { formatDateOnly, formatDateTimeTZ } from '../utils/time'
@@ -121,187 +122,214 @@ function SpoolForm({
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => setForm(f => ({ ...f, [k]: e.target.value }))
 
+  const hexOk = (v: string) => /^#[0-9a-fA-F]{6}$/.test(v)
+  const priceBad = form.purchase_price.trim() !== '' && parseDecimal(form.purchase_price) === null
+  const missing: string[] = []
+  if (!form.brand) missing.push(t('spools.form.brand'))
+  if (!form.material) missing.push(t('spools.form.material'))
+  if (!form.color_name) missing.push(t('spools.form.colorName'))
+  if (!hexOk(form.color_hex)) missing.push(t('spools.form.colorSwatch'))
+  if (priceBad) missing.push(t('spools.form.purchasePrice'))
+  const canSave = missing.length === 0
+
+  // optional groups: open when they already hold values, otherwise folded away
+  const purchaseFilled = [form.purchase_price, form.purchased_at, form.purchase_location].filter(v => String(v ?? '').trim() !== '').length
+    + (form.is_refill_pack ? 1 : 0)
+  const storageFilled = [form.storage_location, form.ams_slot, form.last_dried_at, form.packaging, form.notes]
+    .filter(v => String(v ?? '').trim() !== '').length
+  const filledHint = (n: number) => (n > 0 ? t('spools.form.filledCount', { count: n }) : undefined)
+  const [initialPurchaseFilled] = useState(purchaseFilled)
+  const [initialStorageFilled] = useState(storageFilled)
+  const hasExtraColors = !!(form.color2_hex || form.color3_hex || form.color4_hex)
+  const [showExtraColors, setShowExtraColors] = useState(hasExtraColors)
+
+  const fieldClass = 'grid grid-cols-1 sm:grid-cols-2 gap-3'
+
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-      <div className="bg-surface-2 border border-surface-3 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-surface-3">
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center sm:p-4">
+      <div className="bg-surface-2 sm:border border-surface-3 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-2xl h-[94dvh] sm:h-auto sm:max-h-[90vh] flex flex-col overflow-hidden">
+        <div className="flex-none flex items-center justify-between px-5 py-4 border-b border-surface-3">
           <h2 className="font-semibold">{initial?.id ? t('spools.editSpool') : t('spools.addSpool')}</h2>
-          <button onClick={onCancel} className="btn-ghost p-1"><X size={16} /></button>
+          <button onClick={onCancel} className="btn-ghost p-1" aria-label={t('common.close')}><X size={16} /></button>
         </div>
 
-        <div className="p-5 space-y-4">
-          <div>
-            <label className="label">{t('spools.form.articleNumber')}</label>
-            <select
-              className="input"
-              autoFocus={isNew}
-              value={form.article_number ?? ''}
-              onChange={e => {
-                const val = e.target.value
-                const entry = filamentCatalog.find(c => c.article_number === val)
-                if (entry) {
-                  setForm(f => ({
-                    ...f,
-                    article_number: val,
-                    brand: entry.brand,
-                    material: entry.material,
-                    subtype: entry.subtype ?? '',
-                    subtype2: entry.subtype2 ?? '',
-                    color_name: entry.color_name,
-                    color_hex: entry.color_hex,
-                    color2_hex: entry.color2_hex ?? '',
-                    color3_hex: entry.color3_hex ?? '',
-                    color4_hex: entry.color4_hex ?? '',
-                  }))
-                  setTimeout(() => weightInputRef.current?.focus(), 0)
-                } else {
-                  setForm(f => ({ ...f, article_number: val }))
-                }
-              }}
-            >
-              <option value="">{t('common.select')}</option>
-              {filamentCatalog.filter(c => c.article_number).map(c => (
-                <option key={c.id} value={c.article_number!}>
-                  {c.article_number} — {c.brand} {c.material} {c.color_name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="label">{t('spools.form.customId')}</label>
-            <input
-              className="input w-28"
-              type="number"
-              min="1"
-              max="9999"
-              step="1"
-              placeholder="—"
-              value={form.custom_id ?? ''}
-              onChange={e => {
-                const v = e.target.value.replace(/\D/g, '').slice(0, 4)
-                setForm(f => ({ ...f, custom_id: v }))
-              }}
-            />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-3">
+          {/* 1 — basics */}
+          <Section title={t('spools.form.groupBasics')}>
             <div>
-              <label className="label">{t('spools.form.brand')} *</label>
-              <input className="input" value={form.brand} onChange={onBrandChange}
-                placeholder={t('spools.form.brandPlaceholder')}
-                list="brand-list" />
-              <datalist id="brand-list">
-                {brands.map(b => <option key={b.id} value={b.name} />)}
-              </datalist>
-            </div>
-            <div>
-              <label className="label">{t('spools.form.material')} *</label>
-              <select className="input" value={form.material} onChange={set('material')}>
-                {materials.map(m => <option key={m}>{m}</option>)}
+              <label className="label">{t('spools.form.articleNumber')}</label>
+              <select
+                className="input"
+                autoFocus={isNew}
+                value={form.article_number ?? ''}
+                onChange={e => {
+                  const val = e.target.value
+                  const entry = filamentCatalog.find(c => c.article_number === val)
+                  if (entry) {
+                    setForm(f => ({
+                      ...f,
+                      article_number: val,
+                      brand: entry.brand,
+                      material: entry.material,
+                      subtype: entry.subtype ?? '',
+                      subtype2: entry.subtype2 ?? '',
+                      color_name: entry.color_name,
+                      color_hex: entry.color_hex,
+                      color2_hex: entry.color2_hex ?? '',
+                      color3_hex: entry.color3_hex ?? '',
+                      color4_hex: entry.color4_hex ?? '',
+                    }))
+                    if (entry.color2_hex || entry.color3_hex || entry.color4_hex) setShowExtraColors(true)
+                    setTimeout(() => weightInputRef.current?.focus(), 0)
+                  } else {
+                    setForm(f => ({ ...f, article_number: val }))
+                  }
+                }}
+              >
+                <option value="">{t('common.select')}</option>
+                {filamentCatalog.filter(c => c.article_number).map(c => (
+                  <option key={c.id} value={c.article_number!}>
+                    {c.article_number} — {c.brand} {c.material} {c.color_name}
+                  </option>
+                ))}
               </select>
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="label">{t('spools.form.subtype')}</label>
-              <select className="input" value={form.subtype ?? ''} onChange={set('subtype')}>
-                <option value="">{t('common.none')}</option>
-                {subtypes.map(s => <option key={s}>{s}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="label">{t('spools.form.subtype2')}</label>
-              <select className="input" value={form.subtype2 ?? ''} onChange={set('subtype2')}>
-                <option value="">{t('common.none')}</option>
-                {subtypes.map(s => <option key={s}>{s}</option>)}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="label">{t('spools.form.diameter')}</label>
-              <select className="input" value={form.diameter_mm} onChange={set('diameter_mm')}>
-                <option value={1.75}>1.75 mm</option>
-                <option value={2.85}>2.85 mm</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="label">{t('spools.form.colorName')} *</label>
-              <input className="input" value={form.color_name} onChange={set('color_name')}
-                placeholder={t('spools.form.colorPlaceholder')} />
-            </div>
-            <div>
-              <label className="label">{t('spools.form.colorSwatch')}</label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  className="h-9 w-16 rounded cursor-pointer bg-surface-3 border border-surface-3"
-                  value={/^#[0-9a-fA-F]{6}$/.test(form.color_hex) ? form.color_hex : '#888888'}
-                  onChange={set('color_hex')}
-                />
-                <div className="flex items-center flex-1">
-                  <span className="px-2 py-1.5 text-sm text-gray-400 bg-surface-3 border border-r-0 border-surface-3 rounded-l-lg select-none">#</span>
-                  <input
-                    className={`input flex-1 rounded-l-none ${form.color_hex && !/^#[0-9a-fA-F]{6}$/.test(form.color_hex) ? 'border-crit focus:border-crit' : ''}`}
-                    value={form.color_hex.replace(/^#/, '')}
-                    onChange={e => setForm(f => ({ ...f, color_hex: '#' + e.target.value.replace(/^#/, '') }))}
-                    placeholder="ffffff"
-                    maxLength={6}
-                  />
-                </div>
-              </div>
-              {form.color_hex && !/^#[0-9a-fA-F]{6}$/.test(form.color_hex) && (
-                <p className="text-xs text-crit mt-1">{t('spools.form.colorHexInvalid')}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Optional extra colors for multicolor filaments */}
-          {(['color2_hex', 'color3_hex', 'color4_hex'] as const).map((key, i) => (
-            <div key={key} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div />
+            <div className={fieldClass}>
               <div>
-                <label className="label">{t(`spools.form.${key}`)}</label>
+                <label className="label">{t('spools.form.brand')} *</label>
+                <input className="input" value={form.brand} onChange={onBrandChange}
+                  placeholder={t('spools.form.brandPlaceholder')}
+                  list="brand-list" />
+                <datalist id="brand-list">
+                  {brands.map(b => <option key={b.id} value={b.name} />)}
+                </datalist>
+              </div>
+              <div>
+                <label className="label">{t('spools.form.material')} *</label>
+                <select className="input" value={form.material} onChange={set('material')}>
+                  {materials.map(m => <option key={m}>{m}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="label">{t('spools.form.subtype')}</label>
+                <select className="input" value={form.subtype ?? ''} onChange={set('subtype')}>
+                  <option value="">{t('common.none')}</option>
+                  {subtypes.map(s => <option key={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="label">{t('spools.form.subtype2')}</label>
+                <select className="input" value={form.subtype2 ?? ''} onChange={set('subtype2')}>
+                  <option value="">{t('common.none')}</option>
+                  {subtypes.map(s => <option key={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="label">{t('spools.form.diameter')}</label>
+                <select className="input" value={form.diameter_mm} onChange={set('diameter_mm')}>
+                  <option value={1.75}>1.75 mm</option>
+                  <option value={2.85}>2.85 mm</option>
+                </select>
+              </div>
+              <div>
+                <label className="label">{t('spools.form.customId')}</label>
+                <input
+                  className="input"
+                  type="number"
+                  min="1"
+                  max="9999"
+                  step="1"
+                  placeholder="—"
+                  value={form.custom_id ?? ''}
+                  onChange={e => {
+                    const v = e.target.value.replace(/\D/g, '').slice(0, 4)
+                    setForm(f => ({ ...f, custom_id: v }))
+                  }}
+                />
+              </div>
+            </div>
+          </Section>
+
+          {/* 2 — colour */}
+          <Section title={t('spools.form.groupColor')}>
+            <div className={fieldClass}>
+              <div>
+                <label className="label">{t('spools.form.colorName')} *</label>
+                <input className="input" value={form.color_name} onChange={set('color_name')}
+                  placeholder={t('spools.form.colorPlaceholder')} />
+              </div>
+              <div>
+                <label className="label">{t('spools.form.colorSwatch')}</label>
                 <div className="flex items-center gap-2">
                   <input
                     type="color"
                     className="h-9 w-16 rounded cursor-pointer bg-surface-3 border border-surface-3"
-                    value={/^#[0-9a-fA-F]{6}$/.test(form[key]) ? form[key] : '#888888'}
-                    onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                    value={hexOk(form.color_hex) ? form.color_hex : '#888888'}
+                    onChange={set('color_hex')}
                   />
                   <div className="flex items-center flex-1">
                     <span className="px-2 py-1.5 text-sm text-gray-400 bg-surface-3 border border-r-0 border-surface-3 rounded-l-lg select-none">#</span>
                     <input
-                      className="input flex-1 rounded-l-none"
-                      value={form[key].replace(/^#/, '')}
-                      onChange={e => setForm(f => ({ ...f, [key]: e.target.value ? '#' + e.target.value.replace(/^#/, '') : '' }))}
-                      placeholder={t('common.optional')}
+                      className={`input flex-1 rounded-l-none ${form.color_hex && !hexOk(form.color_hex) ? 'border-crit focus:border-crit' : ''}`}
+                      value={form.color_hex.replace(/^#/, '')}
+                      onChange={e => setForm(f => ({ ...f, color_hex: '#' + e.target.value.replace(/^#/, '') }))}
+                      placeholder="ffffff"
                       maxLength={6}
                     />
                   </div>
-                  {form[key] && (
-                    <button type="button" className="text-gray-500 hover:text-crit p-1" onClick={() => setForm(f => ({ ...f, [key]: '' }))}>
-                      <X size={14} />
-                    </button>
-                  )}
                 </div>
-                {form[key] && !/^#[0-9a-fA-F]{6}$/.test(form[key]) && (
+                {form.color_hex && !hexOk(form.color_hex) && (
                   <p className="text-xs text-crit mt-1">{t('spools.form.colorHexInvalid')}</p>
                 )}
               </div>
             </div>
-          ))}
 
-          {/* Weight section */}
-          <div className="rounded-xl border border-surface-3 p-3 space-y-3 bg-surface-3/20">
-            <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">{t('spools.form.weight')}</p>
+            {/* Optional extra colors for multicolor filaments */}
+            {showExtraColors ? (
+              <div className={fieldClass}>
+                {(['color2_hex', 'color3_hex', 'color4_hex'] as const).map(key => (
+                  <div key={key}>
+                    <label className="label">{t(`spools.form.${key}`)}</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        className="h-9 w-16 rounded cursor-pointer bg-surface-3 border border-surface-3"
+                        value={hexOk(form[key]) ? form[key] : '#888888'}
+                        onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                      />
+                      <div className="flex items-center flex-1">
+                        <span className="px-2 py-1.5 text-sm text-gray-400 bg-surface-3 border border-r-0 border-surface-3 rounded-l-lg select-none">#</span>
+                        <input
+                          className="input flex-1 rounded-l-none"
+                          value={form[key].replace(/^#/, '')}
+                          onChange={e => setForm(f => ({ ...f, [key]: e.target.value ? '#' + e.target.value.replace(/^#/, '') : '' }))}
+                          placeholder={t('common.optional')}
+                          maxLength={6}
+                        />
+                      </div>
+                      {form[key] && (
+                        <button type="button" className="text-gray-500 hover:text-crit p-1" aria-label={t('common.clear')} onClick={() => setForm(f => ({ ...f, [key]: '' }))}>
+                          <X size={14} />
+                        </button>
+                      )}
+                    </div>
+                    {form[key] && !hexOk(form[key]) && (
+                      <p className="text-xs text-crit mt-1">{t('spools.form.colorHexInvalid')}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <button type="button" className="chip" onClick={() => setShowExtraColors(true)}>
+                <Plus size={12} /> {t('spools.form.moreColors')}
+              </button>
+            )}
+          </Section>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* 3 — weight */}
+          <Section title={t('spools.form.weight')}>
+            <div className={fieldClass}>
               <div>
                 <label className="label">{t('spools.form.nominalWeight')} *</label>
                 <div className="flex items-center gap-2">
@@ -398,122 +426,124 @@ function SpoolForm({
                 </p>
               )}
             </div>
-          </div>
+          </Section>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="label">{t('spools.form.purchasePrice')}</label>
-              {/* type="text" + inputMode="decimal": a native number input rejects the
-                  comma decimal separator German/etc. keyboards produce (issue #18) */}
-              <div className="flex items-center gap-2">
+          {/* 4 — purchase (folded unless it holds values) */}
+          <Section title={t('spools.form.groupPurchase')} hint={filledHint(purchaseFilled)} collapsible defaultOpen={initialPurchaseFilled > 0}>
+            <div className={fieldClass}>
+              <div>
+                <label className="label">{t('spools.form.purchasePrice')}</label>
+                {/* type="text" + inputMode="decimal": a native number input rejects the
+                    comma decimal separator German/etc. keyboards produce (issue #18) */}
+                <div className="flex items-center gap-2">
+                  <input
+                    className={`input ${priceBad ? 'border-crit focus:border-crit' : ''}`}
+                    type="text" inputMode="decimal"
+                    value={form.purchase_price}
+                    onChange={set('purchase_price')}
+                    placeholder={t('spools.form.purchasePricePlaceholder')}
+                  />
+                  <span className="text-xs text-gray-500 shrink-0">{currencySymbol}</span>
+                </div>
+              </div>
+              <div>
+                <label className="label">{t('spools.form.purchaseDate')}</label>
+                <input className="input" type="date" value={form.purchased_at} onChange={set('purchased_at')} />
+              </div>
+              <div>
+                <label className="label">{t('spools.form.purchaseLocation')}</label>
+                <select className="input" value={form.purchase_location} onChange={set('purchase_location')}>
+                  <option value="">{t('common.select')}</option>
+                  {locations.map(l => <option key={l.id} value={l.name}>{l.name}</option>)}
+                </select>
+              </div>
+              <label className="flex items-center gap-2 text-sm cursor-pointer sm:self-end sm:pb-2">
                 <input
-                  className={`input ${form.purchase_price.trim() !== '' && parseDecimal(form.purchase_price) === null ? 'border-crit focus:border-crit' : ''}`}
-                  type="text" inputMode="decimal"
-                  value={form.purchase_price}
-                  onChange={set('purchase_price')}
-                  placeholder={t('spools.form.purchasePricePlaceholder')}
+                  type="checkbox" className="accent-accent"
+                  checked={form.is_refill_pack}
+                  onChange={e => setForm(f => ({ ...f, is_refill_pack: e.target.checked }))}
                 />
-                <span className="text-xs text-gray-500 shrink-0">{currencySymbol}</span>
+                {t('spools.form.refillPack')}
+              </label>
+            </div>
+          </Section>
+
+          {/* 5 — storage & notes (folded unless it holds values) */}
+          <Section title={t('spools.form.groupStorage')} hint={filledHint(storageFilled)} collapsible defaultOpen={initialStorageFilled > 0}>
+            <div className={fieldClass}>
+              <div>
+                <label className="label">{t('spools.form.storageLocation')}</label>
+                <select className="input" value={form.storage_location} onChange={set('storage_location')}>
+                  <option value="">{t('common.select')}</option>
+                  {storageLocations.map(l => <option key={l.id} value={l.name}>{l.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="label">{t('spools.form.amsSlot')}</label>
+                <AmsSlotSelect
+                  spoolId={isNew ? undefined : initial?.id}
+                  value={form.ams_slot || null}
+                  onChange={slot => setForm(f => ({ ...f, ams_slot: slot ?? '' }))}
+                  spools={activeSpools}
+                />
+              </div>
+              <div>
+                <label className="label">{t('spools.form.lastDried')}</label>
+                <input className="input" type="date" value={form.last_dried_at ?? ''} onChange={set('last_dried_at')} />
+                {isNew && (
+                  <label className="flex items-center gap-2 mt-1.5 text-xs text-gray-400 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="accent-accent"
+                      checked={form.last_dried_at === new Date().toISOString().slice(0, 10)}
+                      onChange={e => setForm(f => ({ ...f, last_dried_at: e.target.checked ? new Date().toISOString().slice(0, 10) : '' }))}
+                    />
+                    {t('spools.form.justDried')}
+                  </label>
+                )}
+              </div>
+              <div>
+                <label className="label">{t('spools.form.packaging')}</label>
+                <select className="input" value={form.packaging ?? ''} onChange={e => setForm(f => ({ ...f, packaging: e.target.value as Packaging | '' }))}>
+                  <option value="">{t('common.select')}</option>
+                  {PACKAGING_TYPES.map(k => <option key={k} value={k}>{t(`moisture.storage.${k}`)}</option>)}
+                </select>
+                <p className="text-xs text-gray-500 mt-0.5">{t('spools.form.packagingHint')}</p>
+              </div>
+              <div className="sm:col-span-2">
+                <label className="label">{t('spools.form.notes')}</label>
+                <textarea className="input h-16 resize-none" value={form.notes ?? ''} onChange={set('notes')} />
               </div>
             </div>
-            <div>
-              <label className="label">{t('spools.form.purchaseDate')}</label>
-              <input className="input" type="date" value={form.purchased_at} onChange={set('purchased_at')} />
-            </div>
-          </div>
-
-          <label className="flex items-center gap-2 text-sm cursor-pointer">
-            <input
-              type="checkbox" className="accent-accent"
-              checked={form.is_refill_pack}
-              onChange={e => setForm(f => ({ ...f, is_refill_pack: e.target.checked }))}
-            />
-            {t('spools.form.refillPack')}
-          </label>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="label">{t('spools.form.purchaseLocation')}</label>
-              <select className="input" value={form.purchase_location} onChange={set('purchase_location')}>
-                <option value="">{t('common.select')}</option>
-                {locations.map(l => <option key={l.id} value={l.name}>{l.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="label">{t('spools.form.storageLocation')}</label>
-              <select className="input" value={form.storage_location} onChange={set('storage_location')}>
-                <option value="">{t('common.select')}</option>
-                {storageLocations.map(l => <option key={l.id} value={l.name}>{l.name}</option>)}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="label">{t('spools.form.amsSlot')}</label>
-              <AmsSlotSelect
-                spoolId={isNew ? undefined : initial?.id}
-                value={form.ams_slot || null}
-                onChange={slot => setForm(f => ({ ...f, ams_slot: slot ?? '' }))}
-                spools={activeSpools}
-              />
-            </div>
-            <div>
-              <label className="label">{t('spools.form.lastDried')}</label>
-              <input className="input" type="date" value={form.last_dried_at ?? ''} onChange={set('last_dried_at')} />
-              {isNew && (
-                <label className="flex items-center gap-2 mt-1.5 text-xs text-gray-400 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="accent-accent"
-                    checked={form.last_dried_at === new Date().toISOString().slice(0, 10)}
-                    onChange={e => setForm(f => ({ ...f, last_dried_at: e.target.checked ? new Date().toISOString().slice(0, 10) : '' }))}
-                  />
-                  {t('spools.form.justDried')}
-                </label>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="label">{t('spools.form.packaging')}</label>
-              <select className="input" value={form.packaging ?? ''} onChange={e => setForm(f => ({ ...f, packaging: e.target.value as Packaging | '' }))}>
-                <option value="">{t('common.select')}</option>
-                {PACKAGING_TYPES.map(k => <option key={k} value={k}>{t(`moisture.storage.${k}`)}</option>)}
-              </select>
-              <p className="text-xs text-gray-500 mt-0.5">{t('spools.form.packagingHint')}</p>
-            </div>
-          </div>
-
-          <div>
-            <label className="label">{t('spools.form.notes')}</label>
-            <textarea className="input h-16 resize-none" value={form.notes ?? ''} onChange={set('notes')} />
-          </div>
-
+          </Section>
         </div>
 
-        <div className="flex items-center justify-between px-5 py-4 border-t border-surface-3 gap-3">
-          {isNew && (
-            <div className="flex items-center gap-2 shrink-0">
-              <label className="text-xs text-gray-400">{t('spools.form.qty')}</label>
-              <input
-                className="input w-16 text-sm py-1 text-center"
-                type="number" min="1" max="50"
-                value={quantity}
-                onChange={e => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-              />
-            </div>
+        <div className="flex-none border-t border-surface-3 px-4 sm:px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] space-y-2">
+          {!canSave && (
+            <p className="text-xs text-warn">{t('spools.form.missing', { fields: missing.join(', ') })}</p>
           )}
-          <div className="flex gap-2 ml-auto">
-            <button className="btn-ghost" onClick={onCancel}>{t('common.cancel')}</button>
-            <button
-              className="btn-primary"
-              onClick={() => onSave(form as typeof EMPTY_FORM, quantity)}
-              disabled={!form.brand || !form.material || !form.color_name || !/^#[0-9a-fA-F]{6}$/.test(form.color_hex) || (form.purchase_price.trim() !== '' && parseDecimal(form.purchase_price) === null)}
-            >
-              {isNew && quantity > 1 ? t('spools.form.addN', { n: quantity }) : t('common.save')}
-            </button>
+          <div className="flex items-center justify-between gap-3">
+            {isNew && (
+              <div className="flex items-center gap-2 shrink-0">
+                <label className="text-xs text-gray-400">{t('spools.form.qty')}</label>
+                <input
+                  className="input w-16 text-sm py-1 text-center"
+                  type="number" min="1" max="50"
+                  value={quantity}
+                  onChange={e => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                />
+              </div>
+            )}
+            <div className="flex gap-2 ml-auto">
+              <button className="btn-ghost" onClick={onCancel}>{t('common.cancel')}</button>
+              <button
+                className="btn-primary"
+                onClick={() => onSave(form as typeof EMPTY_FORM, quantity)}
+                disabled={!canSave}
+              >
+                {isNew && quantity > 1 ? t('spools.form.addN', { n: quantity }) : t('common.save')}
+              </button>
+            </div>
           </div>
         </div>
       </div>
