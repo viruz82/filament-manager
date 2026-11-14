@@ -38,6 +38,10 @@ EXPORT_VERSION = 1
 def _dt(v) -> str | None:
     return v.isoformat() if v else None
 
+def _is_real_task_id(v) -> bool:
+    """Bambu reports task_id "0" for local runs (calibrations, SD prints)."""
+    return v is not None and str(v).strip() not in ("", "0")
+
 def _spool_dict(s: Spool) -> dict:
     return {
         "id": s.id,
@@ -848,9 +852,12 @@ def import_data(bundle: ImportBundle, db: Session = Depends(get_db)):
     # Dedup: cloud-tracked jobs by task_id (same key the live tracker uses);
     # manual jobs by (name, started_at, printer_name) — started_at is preserved
     # through export/import, so an identical triple means the same print.
+    # Local runs (calibrations, SD-card prints) report task_id "0" — that is a
+    # placeholder, not an identity, so it must never be used as a dedup key.
     existing_jobs_by_task: dict[str, int] = {
         j.task_id: j.id
         for j in db.query(PrintJob).filter(PrintJob.task_id.isnot(None)).all()
+        if _is_real_task_id(j.task_id)
     }
     existing_jobs_by_fp: dict[tuple, int] = {
         (j.name, j.started_at, j.printer_name): j.id
@@ -862,7 +869,7 @@ def import_data(bundle: ImportBundle, db: Session = Depends(get_db)):
     bundle_jobs_by_fp: dict[tuple, PrintJob] = {}
     for job_data in bundle.print_jobs:
         old_job_id = job_data.get("id")
-        task_id = job_data.get("task_id")
+        task_id = job_data.get("task_id") if _is_real_task_id(job_data.get("task_id")) else None
         started_at = _parse_dt(job_data.get("started_at"))
         fp = (job_data.get("name", "Imported print"), started_at, job_data.get("printer_name"))
 

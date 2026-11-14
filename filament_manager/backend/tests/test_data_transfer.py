@@ -362,6 +362,21 @@ class TestImportDedup:
         assert r["print_jobs"] == 0
         assert r["print_jobs_skipped"] == 1
 
+    def test_task_id_zero_is_not_a_dedup_key(self, client):
+        # Local calibration runs all report task_id "0" — distinct prints
+        base = {"name": "auto_filament_cali", "task_id": "0", "success": True, "usages": []}
+        jobs = [dict(base, id=1, started_at="2026-04-27T14:11:07"),
+                dict(base, id=2, started_at="2026-04-27T14:17:35"),
+                dict(base, id=3, started_at="2026-09-13T17:04:00")]
+        r = _import(client, _minimal_bundle(print_jobs=jobs)).json()["imported"]
+        assert r["print_jobs"] == 3
+        assert r["print_jobs_skipped"] == 0
+        # Re-import still dedupes them by (name, started_at, printer_name)
+        r2 = _import(client, _minimal_bundle(print_jobs=jobs)).json()["imported"]
+        assert r2["print_jobs"] == 0
+        assert r2["print_jobs_skipped"] == 3
+        assert len(client.get("/api/prints").json()) == 3
+
     def test_spool_without_created_at_is_not_deduped(self, client):
         # No created_at → no fingerprint → old additive behaviour preserved
         spool = {"id": 1, "brand": "X", "material": "PLA", "color_name": "A",
