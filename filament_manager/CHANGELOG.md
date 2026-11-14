@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.13.0
+
+- **Overview**: the inventory table became key figures (Available, Purchased, Used up with spool counts and values), so "Used up" is no longer mixed up with "Printed". The running print shows a progress ring with remaining time, weight and tray as chips. Charts use the theme colours; the material chart is a ring with a legend. Recent prints and low stock link to the print list / spool list (filtered) and the spool detail.
+- **Prints**: compact cards, names wrap instead of being cut off on the phone, status / auto / project as pills, one "⋯" menu (Edit, Log usage, Delete) instead of three icons. Energy, wear and the filament used per spool are in the expanded card. Date filter is a single row (scrolls sideways on narrow screens).
+- **Projects**: labelled key figures (prints, weight, cost, energy, wear, duration) on every card, also on the phone; production and test prints side by side; delete asks with the common dialog; actions in a "⋯" menu.
+- **Spool form**: the 25 fields are grouped (Basics, Colour, Weight, Purchase, Storage and notes). Purchase and Storage are folded unless they already hold values (with a counter). Extra colours appear on demand. The footer lists what is still missing; on the phone the form is a full-height sheet with a fixed footer, on the laptop a wider two-column dialog. Calculations (tare, scale reading) are unchanged.
+- New building blocks: `PageHeader`, `StatTile`, `Section`.
+
 ## 1.12.0
 
 - **Spools page redone** (tiles + list share one bar): search over number, brand, material, colour and location; filter chips Active / Moist / Low / In AMS / Archived (with counts), material and location filters, sort menu and a summary line (spools, kg, remaining value). Search and filters stay when you switch between tiles and list.
