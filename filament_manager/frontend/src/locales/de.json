@@ -40,6 +40,13 @@
     "pdfFailed": "PDF konnte nicht erstellt werden"
   },
   "dashboard": {
+    "allLow": "Alle anzeigen",
+    "allPrints": "Alle Drucke",
+    "liveWeight": "Gewicht",
+    "emptyCount_other": "{{count}} leere Spulen",
+    "emptyCount_one": "{{count}} leere Spule",
+    "spoolCount_other": "{{count}} Spulen",
+    "spoolCount_one": "{{count}} Spule",
     "title": "Übersicht",
     "haConnected": "HA verbunden",
     "haOffline": "HA offline",
@@ -50,7 +57,7 @@
     "colMoney": "Betrag",
     "inventoryGroup": "Inventar",
     "totalPurchased": "Gesamt gekauft",
-    "printedSpent": "Gedruckt / verbraucht",
+    "printedSpent": "Aufgebraucht",
     "available": "Verfügbar",
     "refillPacks": "Nachfüllpacks",
     "totalSpools": "Spulen gesamt",
@@ -83,6 +90,9 @@
       "energy": "Energie / Drucker"
     },
     "chart": {
+      "prints_other": "{{count}} Drucke",
+      "prints_one": "{{count}} Druck",
+      "avg": "Ø",
       "purchased": "Gekauft",
       "printed": "Gedruckt",
       "available": "Verfügbar",
@@ -127,6 +137,14 @@
     "list": { "spool": "Spule", "rest": "Rest", "status": "Status" },
     "detail": { "initial": "Nennmenge", "spoolWeight": "Leergewicht", "diameter": "Durchmesser", "purchasePrice": "Kaufpreis", "labelPrinted": "Etikett gedruckt" },
     "form": {
+      "missing": "Fehlt noch: {{fields}}",
+      "filledCount_other": "{{count}} ausgefüllt",
+      "filledCount_one": "{{count}} ausgefüllt",
+      "moreColors": "Mehrfarbig: weitere Farben",
+      "groupStorage": "Lagerung und Notizen",
+      "groupPurchase": "Kauf",
+      "groupColor": "Farbe",
+      "groupBasics": "Grunddaten",
       "customId": "# (Referenz)",
       "brand": "Marke",
       "material": "Material",
@@ -248,6 +266,12 @@
     "inventoryPdfHint": "Inventarliste aller Spulen als PDF herunterladen"
   },
   "prints": {
+    "energy": "Strom",
+    "material": "Material",
+    "actions": "Aktionen",
+    "link": "Link",
+    "usageMissing": "Verbrauch fehlt",
+    "failed": "Fehlgeschlagen",
     "title": "Drucke",
     "logPrint": "Druck erfassen",
     "editPrint": "Druck bearbeiten",
@@ -628,6 +652,12 @@
     }
   },
   "projects": {
+    "actions": "Aktionen",
+    "duration": "Dauer",
+    "cost": "Kosten",
+    "weight": "Gewicht",
+    "testCount_other": "{{count}} Tests",
+    "testCount_one": "{{count}} Test",
     "title": "Projekte",
     "subtitle": "Druckjobs in Projekten für Kosten- und Materialauswertung gruppieren",
     "new": "Neues Projekt",

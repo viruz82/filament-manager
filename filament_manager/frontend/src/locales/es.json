@@ -40,6 +40,13 @@
     "pdfFailed": "No se pudo crear el PDF"
   },
   "dashboard": {
+    "allLow": "Ver todas",
+    "allPrints": "Todas las impresiones",
+    "liveWeight": "Peso",
+    "emptyCount_other": "{{count}} bobinas vacías",
+    "emptyCount_one": "{{count}} bobina vacía",
+    "spoolCount_other": "{{count}} bobinas",
+    "spoolCount_one": "{{count}} bobina",
     "title": "Panel",
     "haConnected": "HA conectado",
     "haOffline": "HA sin conexión",
@@ -50,7 +57,7 @@
     "colMoney": "Importe",
     "inventoryGroup": "Inventario",
     "totalPurchased": "Total comprado",
-    "printedSpent": "Impreso / gastado",
+    "printedSpent": "Agotado",
     "available": "Disponible",
     "refillPacks": "Paquetes de recarga",
     "totalSpools": "Bobinas totales",
@@ -83,6 +90,9 @@
       "energy": "Energía / Impresora"
     },
     "chart": {
+      "prints_other": "{{count}} impresiones",
+      "prints_one": "{{count}} impresión",
+      "avg": "prom.",
       "purchased": "Comprado",
       "printed": "Impreso",
       "available": "Disponible",
@@ -127,6 +137,14 @@
     "list": { "spool": "Bobina", "rest": "Restante", "status": "Estado" },
     "detail": { "initial": "Peso nominal", "spoolWeight": "Peso vacía", "diameter": "Diámetro", "purchasePrice": "Precio de compra", "labelPrinted": "Etiqueta impresa" },
     "form": {
+      "missing": "Falta: {{fields}}",
+      "filledCount_other": "{{count}} completados",
+      "filledCount_one": "{{count}} completado",
+      "moreColors": "Multicolor: más colores",
+      "groupStorage": "Almacenamiento y notas",
+      "groupPurchase": "Compra",
+      "groupColor": "Color",
+      "groupBasics": "Datos básicos",
       "customId": "# (Referencia)",
       "brand": "Marca",
       "material": "Material",
@@ -248,6 +266,12 @@
     "inventoryPdfHint": "Descargar lista de inventario de todas las bobinas en PDF"
   },
   "prints": {
+    "energy": "Energía",
+    "material": "Material",
+    "actions": "Acciones",
+    "link": "Enlace",
+    "usageMissing": "Falta el consumo",
+    "failed": "Fallida",
     "title": "Impresiones",
     "logPrint": "Registrar impresión",
     "editPrint": "Editar impresión",
@@ -628,6 +652,12 @@
     }
   },
   "projects": {
+    "actions": "Acciones",
+    "duration": "Duración",
+    "cost": "Coste",
+    "weight": "Peso",
+    "testCount_other": "{{count}} pruebas",
+    "testCount_one": "{{count}} prueba",
     "title": "Proyectos",
     "subtitle": "Agrupa trabajos de impresión en proyectos para rastrear costes y materiales",
     "new": "Nuevo proyecto",

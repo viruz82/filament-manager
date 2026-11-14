@@ -40,6 +40,13 @@
     "pdfFailed": "Could not create PDF"
   },
   "dashboard": {
+    "allLow": "Show all",
+    "allPrints": "All prints",
+    "liveWeight": "Weight",
+    "emptyCount_other": "{{count}} empty spools",
+    "emptyCount_one": "{{count}} empty spool",
+    "spoolCount_other": "{{count}} spools",
+    "spoolCount_one": "{{count}} spool",
     "title": "Dashboard",
     "haConnected": "HA connected",
     "haOffline": "HA offline",
@@ -50,7 +57,7 @@
     "colMoney": "Money",
     "inventoryGroup": "Inventory",
     "totalPurchased": "Total purchased",
-    "printedSpent": "Printed / spent",
+    "printedSpent": "Used up",
     "available": "Available",
     "refillPacks": "Refill packs",
     "totalSpools": "Total spools",
@@ -83,6 +90,9 @@
       "energy": "Energy / Printer"
     },
     "chart": {
+      "prints_other": "{{count}} prints",
+      "prints_one": "{{count}} print",
+      "avg": "avg",
       "purchased": "Purchased",
       "printed": "Printed",
       "available": "Available",
@@ -127,6 +137,14 @@
     "list": { "spool": "Spool", "rest": "Remaining", "status": "Status" },
     "detail": { "initial": "Nominal weight", "spoolWeight": "Empty spool", "diameter": "Diameter", "purchasePrice": "Purchase price", "labelPrinted": "Label printed" },
     "form": {
+      "missing": "Still missing: {{fields}}",
+      "filledCount_other": "{{count}} filled in",
+      "filledCount_one": "{{count}} filled in",
+      "moreColors": "Multicolour: more colours",
+      "groupStorage": "Storage and notes",
+      "groupPurchase": "Purchase",
+      "groupColor": "Colour",
+      "groupBasics": "Basics",
       "customId": "# (Reference)",
       "brand": "Brand",
       "material": "Material",
@@ -248,6 +266,12 @@
     "inventoryPdfHint": "Download inventory list of all spools as PDF"
   },
   "prints": {
+    "energy": "Energy",
+    "material": "Material",
+    "actions": "Actions",
+    "link": "Link",
+    "usageMissing": "Usage missing",
+    "failed": "Failed",
     "title": "Prints",
     "logPrint": "Log Print",
     "editPrint": "Edit Print",
@@ -628,6 +652,12 @@
     }
   },
   "projects": {
+    "actions": "Actions",
+    "duration": "Duration",
+    "cost": "Cost",
+    "weight": "Weight",
+    "testCount_other": "{{count}} tests",
+    "testCount_one": "{{count}} test",
     "title": "Projects",
     "subtitle": "Group print jobs into projects for cost and material tracking",
     "new": "New Project",

@@ -1,10 +1,14 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useConfirm } from '../components/ui/Feedback'
+import PageHeader from '../components/ui/PageHeader'
+import StatTile from '../components/ui/StatTile'
+import Ring from '../components/ui/Ring'
 import { api } from '../api'
 import type { DashboardStats, PrintJob, PrinterConfig, PrinterStatus, AMSTray, Spool, PrinterEnergy } from '../types'
-import { AlertTriangle, Printer, Zap, CheckCircle2 } from 'lucide-react'
+import { AlertTriangle, Printer, Zap, CheckCircle2, ChevronRight } from 'lucide-react'
 import { findBestSpoolMatch } from '../utils/amsMatch'
 import { formatDistanceToNow } from 'date-fns'
 import { enUS, de, es, type Locale } from 'date-fns/locale'
@@ -13,121 +17,100 @@ import { parseUTC } from '../utils/time'
 import { fmtNum } from '../utils/number'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
-  PieChart, Pie, Legend, CartesianGrid,
+  PieChart, Pie, CartesianGrid,
 } from 'recharts'
 
 const LOCALE_MAP: Record<string, Locale> = { en: enUS, de, es }
 
+// Chart colours come from the theme tokens (follow dark / light and the HA accent);
+// only the tail of the palette is fixed.
+const tok = (name: string) => `rgb(var(--fm-${name}))`
 const PIE_COLORS = [
-  '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
-  '#06b6d4', '#f97316', '#84cc16', '#ec4899', '#6366f1',
+  tok('accent'), tok('ok'), tok('warn'), tok('extra'), tok('crit'), tok('info'),
+  '#06b6d4', '#f97316', '#84cc16', '#ec4899',
 ]
+const AXIS_TICK = { fill: 'var(--fm-text-primary)', fillOpacity: 0.6, fontSize: 11 }
+const TT_STYLE = {
+  background: tok('surface-3'), border: 'none', borderRadius: 12,
+  color: 'var(--fm-text-primary)', boxShadow: '0 8px 24px rgba(0,0,0,.25)',
+}
+const TT_LABEL = { color: 'var(--fm-text-primary)' }
+const TT_ITEM  = { color: 'var(--fm-text-primary)' }
 
-const TT_STYLE = { background: '#1c1c1e', border: '1px solid #48484a', borderRadius: 8, color: '#f5f5f7' }
-const TT_LABEL = { color: '#d1d5db' }
-const TT_ITEM  = { color: '#f5f5f7' }
-
-// ── Combined inventory card ───────────────────────────────────────────────────
+// ── Inventory key figures ─────────────────────────────────────────────────────
 
 function InventoryCard({ stats }: { stats: DashboardStats }) {
   const { t } = useTranslation()
   const fmtCurrency = useCurrencyFormatter()
 
-  const rows = [
-    {
-      label:  t('dashboard.totalPurchased'),
-      spools: stats.total_spools,
-      kg:     stats.total_filament_kg,
-      eur:    stats.total_filament_spent_eur,
-      dim:    false,
-    },
-    {
-      label:  t('dashboard.printedSpent'),
-      spools: stats.empty_spools,
-      kg:     stats.total_filament_kg - stats.total_available_kg,
-      eur:    stats.total_filament_spent_eur - stats.total_available_eur,
-      dim:    true,
-    },
-    {
-      label:  t('dashboard.available'),
-      spools: stats.active_spools,
-      kg:     stats.total_available_kg,
-      eur:    stats.total_available_eur,
-      est:    true,
-      dim:    false,
-    },
-    ...(stats.refill_pack_spools > 0 ? [{
-      label:  t('dashboard.refillPacks'),
-      spools: stats.refill_pack_spools,
-      kg:     stats.refill_pack_kg,
-      eur:    stats.refill_pack_spent_eur,
-      dim:    true,
-    }] : []),
-  ]
+  const usedKg = stats.total_filament_kg - stats.total_available_kg
+  const usedEur = stats.total_filament_spent_eur - stats.total_available_eur
+  const spools = (n: number) => t('dashboard.spoolCount', { count: n })
 
   return (
     <div className="card">
       <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
         {t('dashboard.inventoryGroup')}
       </p>
-      <table className="w-full">
-        <thead>
-          <tr className="border-b border-surface-3">
-            <th className="pb-2 text-left" />
-            <th className="pb-2 text-right text-xs font-medium text-gray-500 pl-5 whitespace-nowrap">
-              {t('dashboard.spoolsGroup')}
-            </th>
-            <th className="pb-2 text-right text-xs font-medium text-gray-500 pl-5 whitespace-nowrap">
-              {t('dashboard.colWeight')}
-            </th>
-            <th className="pb-2 text-right text-xs font-medium text-gray-500 pl-5 whitespace-nowrap">
-              {t('dashboard.colMoney')}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map(r => (
-            <tr key={r.label} className="border-b border-surface-3/40 last:border-0">
-              <td className={`py-2.5 pr-4 text-sm ${r.dim ? 'text-gray-500' : 'text-gray-300'}`}>{r.label}</td>
-              <td className={`py-2.5 pl-5 text-right text-sm font-semibold tabular-nums ${r.dim ? 'text-gray-500' : 'text-white'}`}>
-                {r.spools}
-              </td>
-              <td className={`py-2.5 pl-5 text-right text-sm font-semibold tabular-nums whitespace-nowrap ${r.dim ? 'text-gray-500' : 'text-white'}`}>
-                {fmtNum(r.kg, 2)} kg
-              </td>
-              <td className={`py-2.5 pl-5 text-right text-sm tabular-nums whitespace-nowrap ${r.dim ? 'text-gray-500' : 'text-gray-300'}`}>
-                {fmtCurrency(r.eur)}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-4">
+        <StatTile
+          className="col-span-2 lg:col-span-1"
+          label={t('dashboard.available')}
+          value={<span className="text-2xl">{fmtNum(stats.total_available_kg, 2)} {t('common.kg')}</span>}
+          detail={`${spools(stats.active_spools)} · ${fmtCurrency(stats.total_available_eur)}`}
+          tone="ok"
+        />
+        <StatTile
+          label={t('dashboard.totalPurchased')}
+          value={`${fmtNum(stats.total_filament_kg, 2)} ${t('common.kg')}`}
+          detail={`${spools(stats.total_spools)} · ${fmtCurrency(stats.total_filament_spent_eur)}`}
+        />
+        <StatTile
+          label={t('dashboard.printedSpent')}
+          value={`${fmtNum(usedKg, 2)} ${t('common.kg')}`}
+          detail={`${t('dashboard.emptyCount', { count: stats.empty_spools })} · ${fmtCurrency(usedEur)}`}
+          tone="muted"
+        />
+        {stats.refill_pack_spools > 0 && (
+          <StatTile
+            label={t('dashboard.refillPacks')}
+            value={`${fmtNum(stats.refill_pack_kg, 2)} ${t('common.kg')}`}
+            detail={`${spools(stats.refill_pack_spools)} · ${fmtCurrency(stats.refill_pack_spent_eur)}`}
+            tone="muted"
+          />
+        )}
+      </div>
     </div>
   )
 }
 
 // ── Running job card ──────────────────────────────────────────────────────────
 
-const LIVE_UNITS: Record<string, string> = {
-  print_progress: '%',
-  remaining_time: ' min',
-  print_weight:   'g',
+function fmtMinutes(raw: string): string {
+  const m = Math.round(Number(raw))
+  if (!Number.isFinite(m)) return raw
+  return m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')} min` : `${m} min`
 }
-const LIVE_KEYS = ['print_stage', 'print_progress', 'remaining_time', 'print_weight', 'ams_active', 'active_tray'] as const
+
+function ProgressDisc({ pct }: { pct: number }) {
+  const p = Math.max(0, Math.min(100, pct))
+  return (
+    <div
+      className="rounded-full shrink-0 grid place-items-center w-14 h-14"
+      style={{ background: `conic-gradient(rgb(var(--fm-info)) ${p * 3.6}deg, rgba(128,128,128,0.25) 0)` }}
+      role="progressbar" aria-valuenow={p} aria-valuemin={0} aria-valuemax={100}
+    >
+      <span className="rounded-full bg-surface-2 grid place-items-center w-11 h-11 text-xs font-semibold tabular-nums text-info">
+        {Math.round(p)}%
+      </span>
+    </div>
+  )
+}
 
 function RunningJobCard({ job, printers }: { job: PrintJob; printers: PrinterConfig[] }) {
   const { confirm } = useConfirm()
   const { t, i18n } = useTranslation()
-  const liveLabels: Record<string, string> = {
-    print_stage:    t('settings.bambuCloud.statusStage'),
-    print_progress: t('settings.bambuCloud.statusProgress'),
-    remaining_time: t('settings.bambuCloud.statusRemaining'),
-    print_weight:   'Weight',
-    ams_active:     'AMS',
-    active_tray:    t('settings.bambuCloud.statusActiveTray'),
-  }
   const locale = LOCALE_MAP[i18n.resolvedLanguage ?? 'en'] ?? enUS
-  const tz = useHATZ()
   const qc = useQueryClient()
 
   const printer = printers.find(p => p.name === job.printer_name) ?? null
@@ -152,44 +135,45 @@ function RunningJobCard({ job, printers }: { job: PrintJob; printers: PrinterCon
     forceFinishMut.mutate()
   }
 
-  const liveEntries = status
-    ? LIVE_KEYS.map(k => [k, status[k]] as [string, string | null]).filter(([, v]) => v != null && v !== '')
-    : []
+  const progress = status?.print_progress != null && status.print_progress !== '' ? Number(status.print_progress) : null
+  const chips: { key: string; label: string; value: string }[] = []
+  if (status?.remaining_time) chips.push({ key: 'rem', label: t('settings.bambuCloud.statusRemaining'), value: fmtMinutes(status.remaining_time) })
+  if (status?.print_weight) chips.push({ key: 'w', label: t('dashboard.liveWeight'), value: `${status.print_weight} ${t('common.g')}` })
+  if (status?.active_tray) chips.push({ key: 'tray', label: t('settings.bambuCloud.statusActiveTray'), value: String(status.active_tray) })
 
   return (
     <div className="card border border-info/40 bg-info/15">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2 min-w-0">
-          <Zap size={15} className="text-info shrink-0 mt-0.5" />
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-white truncate">{job.name}</p>
-            <p className="text-xs text-gray-500 mt-0.5">
-              {job.printer_name && <span>{job.printer_name} · </span>}
-              {t('dashboard.runningFor')} {formatDistanceToNow(parseUTC(job.started_at), { locale })}
-            </p>
+      <div className="flex items-center gap-3">
+        {progress != null && Number.isFinite(progress)
+          ? <ProgressDisc pct={progress} />
+          : <Zap size={20} className="text-info shrink-0" />}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-sm font-semibold text-white truncate max-w-full">{job.name}</p>
+            <span className="pill pill-info">{t('dashboard.runningJob')}</span>
+            {status?.print_stage && <span className="pill">{status.print_stage}</span>}
           </div>
+          <p className="text-xs text-gray-500 mt-0.5">
+            {job.printer_name && <span>{job.printer_name} · </span>}
+            {t('dashboard.runningFor')} {formatDistanceToNow(parseUTC(job.started_at), { locale })}
+          </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            className="flex items-center gap-1 text-xs text-gray-400 hover:text-white border border-surface-3 hover:border-gray-500 rounded px-2 py-0.5 transition-colors disabled:opacity-50"
-            onClick={handleForceFinish}
-            disabled={forceFinishMut.isPending}
-            title={t('dashboard.forceFinish')}
-          >
-            <CheckCircle2 size={12} />
-            {t('dashboard.forceFinish')}
-          </button>
-          <span className="text-xs bg-info/15 text-info px-2 py-0.5 rounded-full">
-            {t('dashboard.runningJob')}
-          </span>
-        </div>
+        <button
+          className="btn-ghost !px-2.5 !py-1 text-xs shrink-0 flex items-center gap-1 border border-surface-3"
+          onClick={handleForceFinish}
+          disabled={forceFinishMut.isPending}
+          title={t('dashboard.forceFinish')}
+        >
+          <CheckCircle2 size={13} />
+          <span className="hidden sm:inline">{t('dashboard.forceFinish')}</span>
+        </button>
       </div>
 
-      {liveEntries.length > 0 && (
-        <div className="mt-3 pt-3 border-t border-info/40 flex flex-wrap gap-x-5 gap-y-1">
-          {liveEntries.map(([key, val]) => (
-            <span key={key} className="text-xs text-gray-500">
-              {liveLabels[key]}: <span className="text-gray-200 font-medium">{val}{LIVE_UNITS[key] ?? ''}</span>
+      {chips.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {chips.map(c => (
+            <span key={c.key} className="pill !bg-surface-2/70">
+              <span className="text-gray-500 font-medium">{c.label}</span> {c.value}
             </span>
           ))}
         </div>
@@ -205,18 +189,18 @@ function PrintRow({ job }: { job: PrintJob }) {
   const fmtCurrency = useCurrencyFormatter()
   const locale = LOCALE_MAP[i18n.resolvedLanguage ?? 'en'] ?? enUS
   return (
-    <div className="flex items-center justify-between py-2.5 border-b border-surface-3 last:border-0">
+    <div className="flex items-center justify-between gap-3 py-2.5 border-b border-surface-3 last:border-0">
       <div className="min-w-0">
         <p className="text-sm font-medium text-white truncate">{job.name}</p>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-gray-500 truncate">
           {formatDistanceToNow(parseUTC(job.started_at), { addSuffix: true, locale })}
           {job.printer_name && ` · ${job.printer_name}`}
         </p>
       </div>
-      <div className="text-right shrink-0 ml-4">
-        <p className="text-sm text-white">{fmtNum((job.total_grams / 1000), 3)} kg</p>
+      <div className="text-right shrink-0">
+        <p className="text-sm text-white tabular-nums">{fmtNum(job.total_grams, 0)} g</p>
         {job.total_cost > 0 && (
-          <p className="text-xs text-gray-400">{fmtCurrency(job.total_cost)}</p>
+          <p className="text-xs text-gray-400 tabular-nums">{fmtCurrency(job.total_cost)}</p>
         )}
       </div>
     </div>
@@ -250,6 +234,9 @@ function ChartSection({ stats }: { stats: DashboardStats }) {
     kg: m.current_kg,
     color: PIE_COLORS[i % PIE_COLORS.length],
   }))
+  const pieTotal = pieData.reduce((s, d) => s + d.value, 0)
+
+  const barColors = [tok('accent'), tok('crit'), tok('ok')]
 
   const costData = [
     { name: t('dashboard.chart.purchased'), value: stats.total_filament_spent_eur },
@@ -272,52 +259,59 @@ function ChartSection({ stats }: { stats: DashboardStats }) {
 
   return (
     <div className="card">
-      <div className="flex gap-1 mb-4 border-b border-surface-3 pb-3 flex-wrap">
-        {TAB_LABELS.map(t => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`px-3 py-1 text-xs rounded-lg transition-colors ${
-              tab === t.key
-                ? 'bg-accent text-white'
-                : 'text-gray-400 hover:text-white hover:bg-surface-3'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
+      <div className="overflow-x-auto -mx-1 px-1 mb-4">
+        <div className="seg" role="tablist">
+          {TAB_LABELS.map(tb => (
+            <button
+              key={tb.key}
+              role="tab"
+              aria-selected={tab === tb.key}
+              onClick={() => setTab(tb.key)}
+              className={`seg-item ${tab === tb.key ? 'seg-item-on' : 'hover:text-white'}`}
+            >
+              {tb.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {tab === 'materials' && (
         pieData.length === 0
           ? <p className="text-sm text-gray-500">{t('dashboard.noSpools')}</p>
-          : <ResponsiveContainer width="100%" height={260}>
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={90}
-                >
-                  {pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                </Pie>
-                <Tooltip
-                  contentStyle={TT_STYLE}
-                  labelStyle={TT_LABEL}
-                  itemStyle={TT_ITEM}
-                  formatter={(value: number, name: string, props) => [
-                    `${value} ${value === 1 ? t('dashboard.chart.spool') : t('dashboard.chart.spools')} · ${fmtNum(props.payload.kg, 2)} kg`, name,
-                  ]}
-                />
-                <Legend formatter={(v, entry: any) => (
-                  <span style={{ color: '#9ca3af', fontSize: 12 }}>
-                    {v}{entry?.payload?.value != null ? ` (${entry.payload.value})` : ''}
-                  </span>
-                )} />
-              </PieChart>
-            </ResponsiveContainer>
+          : (
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              <div className="w-full sm:w-52 shrink-0" style={{ height: 200 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%"
+                         innerRadius="58%" outerRadius="95%" paddingAngle={2} stroke="none">
+                      {pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={TT_STYLE} labelStyle={TT_LABEL} itemStyle={TT_ITEM}
+                      formatter={(value: number, name: string, props) => [
+                        `${value} ${value === 1 ? t('dashboard.chart.spool') : t('dashboard.chart.spools')} · ${fmtNum(props.payload.kg, 2)} ${t('common.kg')}`, name,
+                      ]}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <ul className="w-full min-w-0 grid grid-cols-1 min-[480px]:grid-cols-2 gap-x-6 gap-y-1.5">
+                {pieData.map(d => (
+                  <li key={d.name} className="flex items-center gap-2 text-sm min-w-0">
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: d.color }} />
+                    <span className="truncate text-gray-200">{d.name}</span>
+                    <span className="ml-auto text-xs text-gray-500 tabular-nums shrink-0">
+                      {d.value} · {fmtNum(d.kg, 2)} {t('common.kg')}
+                    </span>
+                  </li>
+                ))}
+                <li className="text-xs text-gray-500 col-span-full pt-1">
+                  {t('dashboard.spoolCount', { count: pieTotal })}
+                </li>
+              </ul>
+            </div>
+          )
       )}
 
       {tab === 'cost' && (
@@ -325,13 +319,11 @@ function ChartSection({ stats }: { stats: DashboardStats }) {
           ? <p className="text-sm text-gray-500">{t('dashboard.noPurchaseData')}</p>
           : <ResponsiveContainer width="100%" height={240}>
               <BarChart data={costData} barSize={48}>
-                <XAxis dataKey="name" tick={{ fill: '#9ca3af', fontSize: 12 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: '#9ca3af', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={TT_STYLE} labelStyle={TT_LABEL} itemStyle={TT_ITEM} separator="" formatter={(v: number) => [fmtCurrency(v), '']} />
-                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                  <Cell fill="#3b82f6" />
-                  <Cell fill="#ef4444" />
-                  <Cell fill="#10b981" />
+                <XAxis dataKey="name" tick={{ ...AXIS_TICK, fontSize: 12 }} axisLine={false} tickLine={false} />
+                <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={TT_STYLE} labelStyle={TT_LABEL} itemStyle={TT_ITEM} cursor={{ fill: 'rgba(128,128,128,0.12)' }} separator="" formatter={(v: number) => [fmtCurrency(v), '']} />
+                <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                  {barColors.map((c, i) => <Cell key={i} fill={c} />)}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
@@ -342,13 +334,11 @@ function ChartSection({ stats }: { stats: DashboardStats }) {
           ? <p className="text-sm text-gray-500">{t('dashboard.noFilamentData')}</p>
           : <ResponsiveContainer width="100%" height={240}>
               <BarChart data={weightData} barSize={48}>
-                <XAxis dataKey="name" tick={{ fill: '#9ca3af', fontSize: 12 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: '#9ca3af', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={TT_STYLE} labelStyle={TT_LABEL} itemStyle={TT_ITEM} separator="" formatter={(v: number) => [`${fmtNum(v, 3)} kg`, '']} />
-                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                  <Cell fill="#3b82f6" />
-                  <Cell fill="#ef4444" />
-                  <Cell fill="#10b981" />
+                <XAxis dataKey="name" tick={{ ...AXIS_TICK, fontSize: 12 }} axisLine={false} tickLine={false} />
+                <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={TT_STYLE} labelStyle={TT_LABEL} itemStyle={TT_ITEM} cursor={{ fill: 'rgba(128,128,128,0.12)' }} separator="" formatter={(v: number) => [`${fmtNum(v, 3)} ${t('common.kg')}`, '']} />
+                <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                  {barColors.map((c, i) => <Cell key={i} fill={c} />)}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
@@ -359,18 +349,19 @@ function ChartSection({ stats }: { stats: DashboardStats }) {
           ? <p className="text-sm text-gray-500">{t('dashboard.noLocationData')}</p>
           : <ResponsiveContainer width="100%" height={240}>
               <BarChart data={locationData} barSize={40}>
-                <XAxis dataKey="name" tick={{ fill: '#9ca3af', fontSize: 12 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: '#9ca3af', fontSize: 11 }} axisLine={false} tickLine={false} unit={currencySymbol} />
+                <XAxis dataKey="name" tick={{ ...AXIS_TICK, fontSize: 12 }} axisLine={false} tickLine={false} />
+                <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} unit={currencySymbol} />
                 <Tooltip
                   contentStyle={TT_STYLE}
                   labelStyle={TT_LABEL}
                   itemStyle={TT_ITEM}
+                  cursor={{ fill: 'rgba(128,128,128,0.12)' }}
                   formatter={(v: number, _: string, props) => [
-                    `${fmtCurrency(v)} avg (${props.payload.count} ${props.payload.count !== 1 ? t('dashboard.chart.spools') : t('dashboard.chart.spool')})`,
+                    `${fmtCurrency(v)} ${t('dashboard.chart.avg')} (${props.payload.count} ${props.payload.count !== 1 ? t('dashboard.chart.spools') : t('dashboard.chart.spool')})`,
                     t('dashboard.chart.avgPrice'),
                   ]}
                 />
-                <Bar dataKey="avg" radius={[4, 4, 0, 0]}>
+                <Bar dataKey="avg" radius={[8, 8, 0, 0]}>
                   {locationData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                 </Bar>
               </BarChart>
@@ -396,17 +387,17 @@ function ChartSection({ stats }: { stats: DashboardStats }) {
               return (
                 <ResponsiveContainer width="100%" height={240}>
                   <BarChart data={data} barSize={total > 180 ? 2 : total > 60 ? 4 : 8} barCategoryGap={1}>
-                    <CartesianGrid vertical={false} stroke="#2c2c2e" />
+                    <CartesianGrid vertical={false} stroke="rgba(128,128,128,0.2)" />
                     <XAxis
                       dataKey="date"
-                      tick={{ fill: '#9ca3af', fontSize: 11 }}
+                      tick={AXIS_TICK}
                       axisLine={false}
                       tickLine={false}
                       tickFormatter={tickFormatter}
                       interval={0}
                     />
                     <YAxis
-                      tick={{ fill: '#9ca3af', fontSize: 11 }}
+                      tick={AXIS_TICK}
                       axisLine={false}
                       tickLine={false}
                       allowDecimals={false}
@@ -416,17 +407,18 @@ function ChartSection({ stats }: { stats: DashboardStats }) {
                       contentStyle={TT_STYLE}
                       labelStyle={TT_LABEL}
                       itemStyle={TT_ITEM}
+                      cursor={{ fill: 'rgba(128,128,128,0.12)' }}
                       labelFormatter={(label: string) =>
                         new Date(label + 'T12:00:00Z').toLocaleDateString(undefined, {
                           weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
                         })
                       }
-                      formatter={(v: number) => [v === 1 ? '1 print' : `${v} prints`, '']}
+                      formatter={(v: number) => [t('dashboard.chart.prints', { count: v }), '']}
                       separator=""
                     />
                     <Bar dataKey="count" radius={[2, 2, 0, 0]}>
                       {data.map((entry, i) => (
-                        <Cell key={i} fill={entry.count === 0 ? '#1e293b' : '#3b82f6'} />
+                        <Cell key={i} fill={entry.count === 0 ? 'rgba(128,128,128,0.25)' : tok('accent')} />
                       ))}
                     </Bar>
                   </BarChart>
@@ -445,21 +437,22 @@ function ChartSection({ stats }: { stats: DashboardStats }) {
           return (
             <ResponsiveContainer width="100%" height={240}>
               <BarChart data={energyData} barSize={hasCost ? 20 : 40}>
-                <XAxis dataKey="printer" tick={{ fill: '#9ca3af', fontSize: 12 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: '#9ca3af', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="printer" tick={{ ...AXIS_TICK, fontSize: 12 }} axisLine={false} tickLine={false} />
+                <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} />
                 <Tooltip
                   contentStyle={TT_STYLE}
                   labelStyle={TT_LABEL}
                   itemStyle={TT_ITEM}
+                  cursor={{ fill: 'rgba(128,128,128,0.12)' }}
                   formatter={(v: number, name: string) =>
                     name === 'energy_kwh' ? [`${fmtNum(v, 3)} kWh`, t('dashboard.chart.energyKwh')] : [fmtCurrency(v), t('dashboard.chart.energyCost')]
                   }
                 />
-                <Bar dataKey="energy_kwh" radius={[4, 4, 0, 0]} name="energy_kwh">
+                <Bar dataKey="energy_kwh" radius={[8, 8, 0, 0]} name="energy_kwh">
                   {energyData.map((e, i) => <Cell key={i} fill={e.color} />)}
                 </Bar>
                 {hasCost && (
-                  <Bar dataKey="energy_cost" radius={[4, 4, 0, 0]} name="energy_cost">
+                  <Bar dataKey="energy_cost" radius={[8, 8, 0, 0]} name="energy_cost">
                     {energyData.map((e, i) => <Cell key={i} fill={e.color} fillOpacity={0.45} />)}
                   </Bar>
                 )}
@@ -497,7 +490,7 @@ function AMSPrinterAlert({ printer, spools }: { printer: PrinterConfig; spools: 
   return (
     <div className="card border border-warn/40 bg-warn/15">
       <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-        <AlertTriangle size={14} /> {t('dashboard.amsNoMatchCard')} — {printer.name}
+        <AlertTriangle size={14} className="text-warn" /> {t('dashboard.amsNoMatchCard')} — {printer.name}
       </h3>
       <div>
         {mismatches.map(tr => (
@@ -547,8 +540,8 @@ export default function Dashboard() {
   const cloudPrinters = printers.filter(p => p.is_active && !!p.bambu_serial)
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-lg font-bold">{t('dashboard.title')}</h2>
+    <div className="space-y-4">
+      <PageHeader title={t('dashboard.title')} />
 
       {/* Running job — only shown when a print is active */}
       {stats.running_job && (
@@ -560,16 +553,20 @@ export default function Dashboard() {
         <AMSPrinterAlert key={p.id} printer={p} spools={spools} />
       ))}
 
-      {/* Combined inventory metrics */}
       <InventoryCard stats={stats} />
 
       <ChartSection stats={stats} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="card">
-          <h3 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
-            <Printer size={14} /> {t('dashboard.recentPrints')}
-          </h3>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
+              <Printer size={14} /> {t('dashboard.recentPrints')}
+            </h3>
+            <Link to="/prints" className="text-xs text-accent flex items-center gap-0.5 hover:underline">
+              {t('dashboard.allPrints')} <ChevronRight size={12} />
+            </Link>
+          </div>
           {stats.recent_prints.length === 0 ? (
             <p className="text-gray-500 text-sm">{t('dashboard.noPrints')}</p>
           ) : (
@@ -578,25 +575,36 @@ export default function Dashboard() {
         </div>
 
         <div className="card">
-          <h3 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
-            <AlertTriangle size={14} className="text-warn" /> {t('dashboard.lowStockAlerts')}
-          </h3>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
+              <AlertTriangle size={14} className="text-warn" /> {t('dashboard.lowStockAlerts')}
+            </h3>
+            {stats.low_stock.length > 0 && (
+              <Link to="/spools?filter=low" className="text-xs text-accent flex items-center gap-0.5 hover:underline">
+                {t('dashboard.allLow')} <ChevronRight size={12} />
+              </Link>
+            )}
+          </div>
           {stats.low_stock.length === 0 ? (
             <p className="text-gray-500 text-sm">{t('dashboard.allWellStocked')}</p>
           ) : (
             stats.low_stock.map(spool => (
-              <div key={spool.id} className="flex items-center gap-3 py-2 border-b border-surface-3 last:border-0">
-                <span className="w-3 h-3 rounded-full shrink-0" style={{ background: spool.color_hex }} />
+              <Link
+                key={spool.id}
+                to={`/spools?spool=${spool.id}`}
+                className="flex items-center gap-3 py-2 border-b border-surface-3 last:border-0 hover:bg-surface-3/40 rounded-lg -mx-1 px-1 transition-colors"
+              >
+                <Ring spool={spool} pct={Math.round(spool.remaining_pct)} size={36} />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm text-white truncate">
                     {spool.brand} {spool.material}{spool.subtype ? ` ${spool.subtype}` : ''} — {spool.color_name}
                   </p>
-                  <div className="mt-1 h-1.5 rounded-full bg-surface-3 overflow-hidden">
-                    <div className="h-full rounded-full bg-warn" style={{ width: `${spool.remaining_pct}%` }} />
-                  </div>
+                  <p className="text-xs text-gray-500 tabular-nums">
+                    {fmtNum(spool.current_weight_g, 0)} {t('common.g')}
+                  </p>
                 </div>
-                <span className="text-sm text-warn shrink-0">{spool.remaining_pct}%</span>
-              </div>
+                <span className="pill pill-warn tabular-nums">{Math.round(spool.remaining_pct)}%</span>
+              </Link>
             ))
           )}
         </div>
