@@ -27,6 +27,8 @@ export type LabelSettings = {
   showText: boolean
   fontSize: LabelFontSize
   align: LabelAlign    // position of QR code + text block along the label
+  marginMm: number     // free space at the left and right label edge
+  offsetMm: number     // shift along the label, Niimbot print only (feed tolerance)
   customText: string
   widthMm: number      // along the feed (label length)
   heightMm: number     // across the printhead
@@ -42,6 +44,8 @@ export const DEFAULT_LABEL_SETTINGS: LabelSettings = {
   showText: true,
   fontSize: 'auto',
   align: 'center',
+  marginMm: 1,
+  offsetMm: 0,
   customText: '',
   widthMm: 30,
   heightMm: 15,
@@ -67,6 +71,12 @@ export function normalizeSettings(v: Record<string, unknown> | null | undefined,
   if (!['auto', 'small', 'medium', 'large'].includes(out.fontSize)) out.fontSize = 'auto'
   if (!['single', 'grid'].includes(out.layout)) out.layout = 'single'
   if (!LABEL_ALIGNS.includes(out.align)) out.align = base.align
+  const num = (v: unknown, def: number, min: number, max: number) => {
+    const n = Number(v)
+    return Number.isFinite(n) ? Math.min(max, Math.max(min, Math.round(n * 2) / 2)) : def
+  }
+  out.marginMm = num(out.marginMm, base.marginMm, 0, 5)
+  out.offsetMm = num(out.offsetMm, base.offsetMm, -3, 3)
   out.customText = String(out.customText ?? '').slice(0, 100)
   return out
 }
@@ -156,7 +166,7 @@ export function labelPixelSize(settings: LabelSettings, printheadPixels = 96, fo
  * forPrinter: clip the height to the printhead (label printer); false = full
  * label height (PDF/browser print on a normal printer).
  */
-export function renderLabel(spool: Spool, settings: LabelSettings, tx: LabelTexts, printheadPixels = 96, forPrinter = true): HTMLCanvasElement {
+export function renderLabel(spool: Spool, settings: LabelSettings, tx: LabelTexts, printheadPixels = 96, forPrinter = true, applyOffset = false): HTMLCanvasElement {
   const { w: W, h: H } = labelPixelSize(settings, printheadPixels, forPrinter)
   const canvas = document.createElement('canvas')
   canvas.width = W
@@ -167,7 +177,9 @@ export function renderLabel(spool: Spool, settings: LabelSettings, tx: LabelText
   ctx.fillStyle = '#000'
 
   const lines = labelLines(spool, settings, tx)
-  const pad = 3
+  const pad = 3                                                          // top/bottom
+  const padX = Math.max(pad, Math.round((settings.marginMm ?? 1) * DOTS_PER_MM))  // left/right
+  const shift = applyOffset ? Math.round((settings.offsetMm ?? 0) * DOTS_PER_MM) : 0
   const gap = 6
 
   // QR code: low error correction keeps it small enough for 2–3 dot modules
@@ -181,7 +193,7 @@ export function renderLabel(spool: Spool, settings: LabelSettings, tx: LabelText
   }
 
   // Text: fit every line first, so the whole block can be aligned
-  const maxW = W - 2 * pad - (qr ? qrSize + gap : 0)
+  const maxW = W - 2 * padX - (qr ? qrSize + gap : 0)
   const fitted: { text: string; font: string }[] = []
   let textW = 0
   let y0 = 0
@@ -211,9 +223,9 @@ export function renderLabel(spool: Spool, settings: LabelSettings, tx: LabelText
   // Alignment of the block (QR code + text) along the label
   const contentW = Math.ceil((qr ? qrSize : 0) + (qr && fitted.length ? gap : 0) + textW)
   const align = settings.align ?? 'center'
-  const left = align === 'left' ? pad
-    : align === 'right' ? Math.max(pad, W - pad - contentW)
-    : Math.max(pad, Math.floor((W - contentW) / 2))
+  const left = shift + (align === 'left' ? padX
+    : align === 'right' ? Math.max(padX, W - padX - contentW)
+    : Math.max(padX, Math.floor((W - contentW) / 2)))
 
   if (qr) {
     const n = qr.modules.size

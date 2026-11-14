@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.9.5
+
+- Labels: **margin left/right** (mm, default 1 mm instead of 0.4 mm) so text in "auto" size no longer runs to the label edge, and **Niimbot offset** (−3 … +3 mm) that shifts only the printer output to compensate the feed position of the printer (D110 test: about 1 mm to the right). Both are part of print profiles.
+
 ## 1.9.4
 
 - Labels: "Open in browser" in the **Home Assistant Android app** now really opens Chrome (`intent:` link with the HTTPS address as fallback) — the app loads links to its own server inside the app, where there is no Web Bluetooth

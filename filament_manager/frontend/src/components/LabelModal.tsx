@@ -128,7 +128,7 @@ export default function LabelModal({ spools, initialIds, onClose }: {
   const total = chosen.length * copies
   // what the label printer gets (height clipped to the printhead)
   const printerCanvases = () => chosen.flatMap(s => {
-    const c = renderLabel(s, settings, tx, printer.printheadPixels, true)
+    const c = renderLabel(s, settings, tx, printer.printheadPixels, true, true)
     return Array.from({ length: copies }, () => c)
   })
   // full label for PNG / PDF / normal printer
@@ -502,6 +502,19 @@ export default function LabelModal({ spools, initialIds, onClose }: {
                   </button>
                 ))}
               </div>
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <div>
+                  <label className="label">{t('labels.margin')}</label>
+                  <input className="input text-sm" type="number" min={0} max={5} step={0.5} value={settings.marginMm}
+                    onChange={e => update({ marginMm: Math.min(5, Math.max(0, Math.round((Number(e.target.value) || 0) * 2) / 2)) })} />
+                </div>
+                <div>
+                  <label className="label">{t('labels.offset')}</label>
+                  <input className="input text-sm" type="number" min={-3} max={3} step={0.5} value={settings.offsetMm}
+                    onChange={e => update({ offsetMm: Math.min(3, Math.max(-3, Math.round((Number(e.target.value) || 0) * 2) / 2)) })} />
+                </div>
+              </div>
+              <p className="text-[11px] text-gray-500">{t('labels.offsetHint')}</p>
             </section>
 
             <section className="space-y-1">
