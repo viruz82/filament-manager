@@ -7,25 +7,63 @@
 import QRCode from 'qrcode'
 import type { Spool } from '../types'
 
-export const LABEL_FIELDS = ['qr', 'number', 'material', 'brand', 'color', 'weight', 'location', 'purchased', 'price', 'article'] as const
+export const LABEL_FIELD_GROUPS = {
+  identity: ['qr', 'number', 'location'],
+  material: ['material', 'color', 'brand', 'spoolsize', 'weight'],
+  trade: ['price', 'purchased', 'article'],
+} as const
+export type LabelGroup = keyof typeof LABEL_FIELD_GROUPS
+export const LABEL_FIELDS = [
+  ...LABEL_FIELD_GROUPS.identity, ...LABEL_FIELD_GROUPS.material, ...LABEL_FIELD_GROUPS.trade,
+] as const
 export type LabelField = typeof LABEL_FIELDS[number]
+export type LabelFontSize = 'auto' | 'small' | 'medium' | 'large'
+export type LabelLayout = 'single' | 'grid'
 
 export type LabelSettings = {
   fields: LabelField[]
+  showText: boolean
+  fontSize: LabelFontSize
+  customText: string
   widthMm: number      // along the feed (label length)
   heightMm: number     // across the printhead
   density: number
   copies: number
+  layout: LabelLayout  // single = label printer / one page per label, grid = A4 sheet
   baseUrl: string      // link target of the QR code; "" = automatic
+  profile: string      // name of the active profile ("" = none)
 }
 
 export const DEFAULT_LABEL_SETTINGS: LabelSettings = {
   fields: ['qr', 'number', 'material', 'brand', 'color'],
+  showText: true,
+  fontSize: 'auto',
+  customText: '',
   widthMm: 30,
   heightMm: 15,
   density: 2,
   copies: 1,
+  layout: 'single',
   baseUrl: '',
+  profile: '',
+}
+
+/** Settings that belong to a profile (everything except the active profile name). */
+export function profileSettings(s: LabelSettings): Record<string, unknown> {
+  const { profile: _p, ...rest } = s
+  void _p
+  return rest
+}
+
+export function normalizeSettings(v: Record<string, unknown> | null | undefined, base: LabelSettings = DEFAULT_LABEL_SETTINGS): LabelSettings {
+  const out = { ...base, ...(v || {}) } as LabelSettings
+  out.fields = Array.isArray(out.fields)
+    ? (LABEL_FIELDS as readonly string[]).filter(f => (out.fields as string[]).includes(f)) as LabelField[]
+    : [...base.fields]
+  if (!['auto', 'small', 'medium', 'large'].includes(out.fontSize)) out.fontSize = 'auto'
+  if (!['single', 'grid'].includes(out.layout)) out.layout = 'single'
+  out.customText = String(out.customText ?? '').slice(0, 100)
+  return out
 }
 
 const LS_KEY = 'fm_label_settings'
@@ -33,13 +71,7 @@ const LS_KEY = 'fm_label_settings'
 export function loadLabelSettings(): LabelSettings {
   try {
     const raw = localStorage.getItem(LS_KEY)
-    if (raw) {
-      const v = JSON.parse(raw)
-      return {
-        ...DEFAULT_LABEL_SETTINGS, ...v,
-        fields: Array.isArray(v.fields) ? v.fields.filter((f: string) => (LABEL_FIELDS as readonly string[]).includes(f)) : DEFAULT_LABEL_SETTINGS.fields,
-      }
-    }
+    if (raw) return normalizeSettings(JSON.parse(raw))
   } catch { /* ignore */ }
   return { ...DEFAULT_LABEL_SETTINGS }
 }
@@ -68,20 +100,16 @@ export function spoolLink(baseUrl: string, spool: Spool): string {
   return `${base}/spool-${spool.id}`
 }
 
-/** Spool id from a deep link path ".../spool-12", or null. */
-export function spoolIdFromPath(pathname: string): number | null {
-  const m = pathname.match(/\/spool-(\d+)\/?$/)
-  return m ? parseInt(m[1], 10) : null
-}
-
 export type LabelTexts = {
   remaining: (g: number) => string
+  spoolSize: (g: number) => string
   purchased: (iso: string) => string
   pricePerKg: (v: number) => string
 }
 
-export function labelLines(spool: Spool, fields: LabelField[], tx: LabelTexts): { text: string; bold: boolean }[] {
-  const on = (f: LabelField) => fields.includes(f)
+export function labelLines(spool: Spool, s: Pick<LabelSettings, 'fields' | 'showText' | 'customText'>, tx: LabelTexts): { text: string; bold: boolean }[] {
+  if (!s.showText) return []
+  const on = (f: LabelField) => s.fields.includes(f)
   const lines: { text: string; bold: boolean }[] = []
   const head = [
     on('number') && spool.custom_id != null ? `#${spool.custom_id}` : '',
@@ -90,20 +118,33 @@ export function labelLines(spool: Spool, fields: LabelField[], tx: LabelTexts): 
   if (head) lines.push({ text: head, bold: true })
   if (on('brand') && spool.brand) lines.push({ text: spool.brand, bold: false })
   if (on('color') && spool.color_name) lines.push({ text: spool.color_name, bold: false })
+  if (on('spoolsize')) lines.push({ text: tx.spoolSize(spool.initial_weight_g), bold: false })
   if (on('weight')) lines.push({ text: tx.remaining(spool.current_weight_g), bold: false })
   if (on('location') && spool.storage_location) lines.push({ text: spool.storage_location, bold: false })
   if (on('purchased') && spool.purchased_at) lines.push({ text: tx.purchased(spool.purchased_at), bold: false })
   if (on('price') && spool.price_per_kg != null) lines.push({ text: tx.pricePerKg(spool.price_per_kg), bold: false })
   if (on('article') && spool.article_number) lines.push({ text: spool.article_number, bold: false })
+  if (s.customText.trim()) lines.push({ text: s.customText.trim(), bold: false })
   return lines
 }
 
 const DOTS_PER_MM = 8
 const FONT = 'Arial, Helvetica, sans-serif'
+// Fixed font sizes in dots (8 dots = 1 mm): small ≈ 1.8 mm, medium ≈ 2.5 mm, large ≈ 3.3 mm cap
+const FIXED_SIZE: Record<Exclude<LabelFontSize, 'auto'>, number> = { small: 14, medium: 20, large: 26 }
 
-export function renderLabel(spool: Spool, settings: LabelSettings, tx: LabelTexts, printheadPixels = 96): HTMLCanvasElement {
-  const W = Math.round(settings.widthMm * DOTS_PER_MM)
-  const H = Math.min(Math.round(settings.heightMm * DOTS_PER_MM), printheadPixels)
+export function labelPixelSize(settings: LabelSettings, printheadPixels = 96, forPrinter = true): { w: number; h: number } {
+  const w = Math.round(settings.widthMm * DOTS_PER_MM)
+  const h = Math.round(settings.heightMm * DOTS_PER_MM)
+  return { w, h: forPrinter ? Math.min(h, printheadPixels) : h }
+}
+
+/**
+ * forPrinter: clip the height to the printhead (label printer); false = full
+ * label height (PDF/browser print on a normal printer).
+ */
+export function renderLabel(spool: Spool, settings: LabelSettings, tx: LabelTexts, printheadPixels = 96, forPrinter = true): HTMLCanvasElement {
+  const { w: W, h: H } = labelPixelSize(settings, printheadPixels, forPrinter)
   const canvas = document.createElement('canvas')
   canvas.width = W
   canvas.height = H
@@ -112,6 +153,7 @@ export function renderLabel(spool: Spool, settings: LabelSettings, tx: LabelText
   ctx.fillRect(0, 0, W, H)
   ctx.fillStyle = '#000'
 
+  const lines = labelLines(spool, settings, tx)
   const pad = 3
   let x0 = pad
   if (settings.fields.includes('qr')) {
@@ -121,33 +163,38 @@ export function renderLabel(spool: Spool, settings: LabelSettings, tx: LabelText
     const mod = Math.max(1, Math.floor((H - 2 * pad) / n))
     const size = n * mod
     const top = Math.floor((H - size) / 2)
+    // without text the code sits in the middle of the label
+    const left = lines.length ? pad : Math.floor((W - size) / 2)
     for (let r = 0; r < n; r++) {
       for (let c = 0; c < n; c++) {
-        if (qr.modules.get(r, c)) ctx.fillRect(pad + c * mod, top + r * mod, mod, mod)
+        if (qr.modules.get(r, c)) ctx.fillRect(left + c * mod, top + r * mod, mod, mod)
       }
     }
-    x0 = pad + size + 6
+    x0 = left + size + 6
   }
 
-  const lines = labelLines(spool, settings.fields, tx)
-  if (!lines.length) return canvas
   const maxW = W - x0 - pad
-  if (maxW < 20) return canvas
-  const slot = (H - 2 * pad) / lines.length
-  const base = Math.max(10, Math.min(30, Math.floor(slot * 0.82)))
-  ctx.textBaseline = 'middle'
-  lines.forEach((ln, i) => {
-    let size = ln.bold ? base : Math.max(10, Math.floor(base * 0.9))
-    const font = (s: number) => `${ln.bold ? 'bold ' : ''}${s}px ${FONT}`
-    ctx.font = font(size)
-    while (size > 10 && ctx.measureText(ln.text).width > maxW) { size--; ctx.font = font(size) }
-    let text = ln.text
-    if (ctx.measureText(text).width > maxW) {
-      while (text.length > 1 && ctx.measureText(text + '…').width > maxW) text = text.slice(0, -1)
-      text += '…'
-    }
-    ctx.fillText(text, x0, pad + slot * i + slot / 2)
-  })
+  if (lines.length && maxW >= 20) {
+    const slot = (H - 2 * pad) / lines.length
+    const fit = Math.max(10, Math.min(30, Math.floor(slot * 0.82)))
+    const base = settings.fontSize === 'auto' ? fit : Math.max(10, Math.min(FIXED_SIZE[settings.fontSize], Math.floor(slot * 0.95)))
+    const blockH = settings.fontSize === 'auto' ? H - 2 * pad : Math.min(H - 2 * pad, lines.length * base * 1.15)
+    const y0 = pad + (H - 2 * pad - blockH) / 2
+    const step = blockH / lines.length
+    ctx.textBaseline = 'middle'
+    lines.forEach((ln, i) => {
+      let size = ln.bold ? base : Math.max(10, Math.floor(base * 0.9))
+      const font = (sz: number) => `${ln.bold ? 'bold ' : ''}${sz}px ${FONT}`
+      ctx.font = font(size)
+      while (size > 10 && ctx.measureText(ln.text).width > maxW) { size--; ctx.font = font(size) }
+      let text = ln.text
+      if (ctx.measureText(text).width > maxW) {
+        while (text.length > 1 && ctx.measureText(text + '…').width > maxW) text = text.slice(0, -1)
+        text += '…'
+      }
+      ctx.fillText(text, x0, y0 + step * i + step / 2)
+    })
+  }
 
   // Thermal printers have no grey: snap anti-aliased pixels to black/white
   const img = ctx.getImageData(0, 0, W, H)
@@ -159,4 +206,44 @@ export function renderLabel(spool: Spool, settings: LabelSettings, tx: LabelText
   }
   ctx.putImageData(img, 0, 0)
   return canvas
+}
+
+// ── A4 sheet (same numbers as the backend PDF) ──────────────────────────────
+export const A4 = { w: 210, h: 297, margin: 8, gap: 2 }
+
+export function gridDims(widthMm: number, heightMm: number): { cols: number; rows: number } {
+  const cols = Math.floor((A4.w - 2 * A4.margin + A4.gap) / (widthMm + A4.gap))
+  const rows = Math.floor((A4.h - 2 * A4.margin + A4.gap) / (heightMm + A4.gap))
+  return { cols: Math.max(1, cols), rows: Math.max(1, rows) }
+}
+
+/** Opens the browser's print dialog for the given label images (hidden iframe). */
+export function browserPrint(images: string[], settings: LabelSettings) {
+  const { widthMm: w, heightMm: h } = settings
+  const css = settings.layout === 'grid'
+    ? (() => {
+        const { cols } = gridDims(w, h)
+        return `@page{size:A4 portrait;margin:${A4.margin}mm}
+          body{margin:0}.g{display:grid;grid-template-columns:repeat(${cols},${w}mm);gap:${A4.gap}mm}
+          img{width:${w}mm;height:${h}mm;outline:0.1mm solid #ccc;break-inside:avoid}`
+      })()
+    : `@page{size:${w}mm ${h}mm;margin:0}body{margin:0}
+       img{display:block;width:${w}mm;height:${h}mm;break-after:page}`
+  const body = settings.layout === 'grid'
+    ? `<div class="g">${images.map(src => `<img src="${src}">`).join('')}</div>`
+    : images.map(src => `<img src="${src}">`).join('')
+  const frame = document.createElement('iframe')
+  frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0'
+  document.body.appendChild(frame)
+  const doc = frame.contentDocument!
+  doc.open()
+  doc.write(`<!doctype html><html><head><meta charset="utf-8"><style>${css}</style></head><body>${body}</body></html>`)
+  doc.close()
+  const imgs = Array.from(doc.images)
+  Promise.all(imgs.map(im => im.complete ? Promise.resolve() : new Promise(r => { im.onload = im.onerror = () => r(null) })))
+    .then(() => {
+      frame.contentWindow?.focus()
+      frame.contentWindow?.print()
+      setTimeout(() => frame.remove(), 60_000)
+    })
 }

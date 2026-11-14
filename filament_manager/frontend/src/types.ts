@@ -35,6 +35,7 @@ export interface Spool {
   updated_at: string
   bambu_spool_id: string | null
   bambu_synced_at: string | null
+  label_printed_at: string | null
 }
 
 export type Packaging = 'open' | 'original' | 'sealed' | 'vacuum' | 'drybox'

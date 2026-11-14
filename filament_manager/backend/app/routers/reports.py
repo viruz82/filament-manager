@@ -543,31 +543,69 @@ def inventory_pdf(lang: str = "de", currency: str = "EUR",
 # ── label sheets ────────────────────────────────────────────────────────────
 
 class LabelPdfRequest(BaseModel):
-    """Label images rendered by the frontend (PNG, base64 or data URL), one PDF page each."""
+    """Label images rendered by the frontend (PNG, base64 or data URL).
+
+    layout "single": one PDF page per label in the label's own size (label printer apps);
+    layout "grid": labels side by side on A4 portrait pages (normal printer, cut by hand).
+    """
     width_mm: float = Field(30, gt=5, le=300)
     height_mm: float = Field(15, gt=5, le=300)
-    images: list[str] = Field(..., min_length=1, max_length=200)
+    images: list[str] = Field(..., min_length=1, max_length=500)
+    layout: str = Field("single", pattern="^(single|grid)$")
+
+
+A4_W, A4_H, GRID_MARGIN, GRID_GAP = 210.0, 297.0, 8.0, 2.0
+
+
+def grid_dims(width_mm: float, height_mm: float) -> tuple[int, int]:
+    """Columns and rows of labels that fit on an A4 page (at least 1 x 1)."""
+    cols = int((A4_W - 2 * GRID_MARGIN + GRID_GAP) // (width_mm + GRID_GAP))
+    rows = int((A4_H - 2 * GRID_MARGIN + GRID_GAP) // (height_mm + GRID_GAP))
+    return max(1, cols), max(1, rows)
+
+
+def _decode_png(raw: str) -> bytes:
+    import base64
+    import binascii
+    data = raw.split(",", 1)[1] if raw.startswith("data:") else raw
+    try:
+        png = base64.b64decode(data, validate=True)
+    except (binascii.Error, ValueError):
+        raise HTTPException(status_code=422, detail="invalid image data")
+    if not png.startswith(b"\x89PNG"):
+        raise HTTPException(status_code=422, detail="images must be PNG")
+    return png
 
 
 def labels_pdf(req: LabelPdfRequest) -> bytes:
-    """One page per label in the label's own size, image filling the page (for the label printer app)."""
-    import base64
-    import binascii
     import io
+
+    pngs = [_decode_png(r) for r in req.images]
+    if req.layout == "grid":
+        pdf = FPDF(orientation="P", unit="mm", format="A4")
+        pdf.set_auto_page_break(False)
+        pdf.set_margin(0)
+        cols, rows = grid_dims(req.width_mm, req.height_mm)
+        per_page = cols * rows
+        for i, png in enumerate(pngs):
+            if i % per_page == 0:
+                pdf.add_page()
+            k = i % per_page
+            x = GRID_MARGIN + (k % cols) * (req.width_mm + GRID_GAP)
+            y = GRID_MARGIN + (k // cols) * (req.height_mm + GRID_GAP)
+            pdf.image(io.BytesIO(png), x=x, y=y, w=req.width_mm, h=req.height_mm)
+            # thin cut frame
+            pdf.set_draw_color(200, 200, 200)
+            pdf.set_line_width(0.1)
+            pdf.rect(x, y, req.width_mm, req.height_mm)
+        return bytes(pdf.output())
 
     orientation = "L" if req.width_mm >= req.height_mm else "P"
     pdf = FPDF(orientation=orientation, unit="mm", format=(min(req.width_mm, req.height_mm),
                                                            max(req.width_mm, req.height_mm)))
     pdf.set_auto_page_break(False)
     pdf.set_margin(0)
-    for raw in req.images:
-        data = raw.split(",", 1)[1] if raw.startswith("data:") else raw
-        try:
-            png = base64.b64decode(data, validate=True)
-        except (binascii.Error, ValueError):
-            raise HTTPException(status_code=422, detail="invalid image data")
-        if not png.startswith(b"\x89PNG"):
-            raise HTTPException(status_code=422, detail="images must be PNG")
+    for png in pngs:
         pdf.add_page()
         pdf.image(io.BytesIO(png), x=0, y=0, w=req.width_mm, h=req.height_mm)
     return bytes(pdf.output())

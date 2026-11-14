@@ -74,6 +74,23 @@ def create_spool(body: SpoolCreate, db: Session = Depends(get_db)):
     return spool
 
 
+class LabelPrintedIn(BaseModel):
+    ids: list[int] = Field(..., min_length=1, max_length=500)
+    printed: bool = True   # False → "no label" again
+
+
+@router.post("/label-printed")
+def mark_label_printed(body: LabelPrintedIn, db: Session = Depends(get_db)):
+    """Remember that labels were printed (or remove the mark) for the given spools."""
+    when = utcnow() if body.printed else None
+    n = 0
+    for spool in db.query(Spool).filter(Spool.id.in_(body.ids)).all():
+        spool.label_printed_at = when
+        n += 1
+    db.commit()
+    return {"updated": n, "label_printed_at": when}
+
+
 @router.get("/{spool_id}", response_model=SpoolOut)
 def get_spool(spool_id: int, db: Session = Depends(get_db)):
     spool = db.get(Spool, spool_id)

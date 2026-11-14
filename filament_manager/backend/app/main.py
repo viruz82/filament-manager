@@ -109,6 +109,12 @@ async def lifespan(app: FastAPI):
             conn.commit()
             log.info("Migration: added spools.archived")
 
+        # spools: last label print
+        if "label_printed_at" not in spool_cols:
+            conn.execute(text("ALTER TABLE spools ADD COLUMN label_printed_at DATETIME"))
+            conn.commit()
+            log.info("Migration: added spools.label_printed_at")
+
         # spools: add is_refill_pack flag if missing
         if "is_refill_pack" not in spool_cols:
             conn.execute(text("ALTER TABLE spools ADD COLUMN is_refill_pack INTEGER NOT NULL DEFAULT 0"))
@@ -331,6 +337,7 @@ async def lifespan(app: FastAPI):
             ("moisture_critical_pct", "INTEGER NOT NULL DEFAULT 25"),
             ("moisture_material_factors", "JSON"),
             ("moisture_storage_factors", "JSON"),
+            ("label_profiles", "JSON"),
         ):
             if up_cols and col not in up_cols:
                 conn.execute(text(f"ALTER TABLE user_preferences ADD COLUMN {col} {ddl}"))

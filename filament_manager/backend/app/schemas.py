@@ -88,6 +88,7 @@ class SpoolUpdate(BaseModel):
     notes: str | None = None
     archived: bool | None = None
     is_refill_pack: bool | None = None
+    label_printed_at: datetime | None = None
     # Moisture state, set directly only when migrating from another tool
     # (the dryer endpoints are the normal way). Applied after all other fields.
     is_drying: bool | None = None
@@ -111,6 +112,7 @@ class SpoolOut(SpoolBase):
     bambu_synced_at: datetime | None = None
     is_drying: bool = False
     drying_started_at: datetime | None = None
+    label_printed_at: datetime | None = None
     moisture: MoistureInfo
 
 

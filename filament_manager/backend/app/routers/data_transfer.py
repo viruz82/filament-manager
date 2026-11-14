@@ -75,6 +75,7 @@ def _spool_dict(s: Spool) -> dict:
         "notes": s.notes,
         "archived": s.archived,
         "is_refill_pack": s.is_refill_pack,
+        "label_printed_at": _dt(s.label_printed_at),
         "bambu_spool_id": s.bambu_spool_id,
         "created_at": _dt(s.created_at),
     }
@@ -195,6 +196,7 @@ def export_data(db: Session = Depends(get_db)):
             "moisture_critical_pct":      user_prefs.moisture_critical_pct if user_prefs else 25,
             "moisture_material_factors":  user_prefs.moisture_material_factors if user_prefs else None,
             "moisture_storage_factors":   user_prefs.moisture_storage_factors if user_prefs else None,
+            "label_profiles":             user_prefs.label_profiles if user_prefs else None,
         },
         "settings": {
             "brand_weights":      [{"brand": b.brand, "spool_weight_g": b.spool_weight_g} for b in bw],
@@ -748,7 +750,7 @@ def import_data(bundle: ImportBundle, db: Session = Depends(get_db)):
         for key in ("almost_empty_threshold_pct", "moisture_warning_pct", "moisture_critical_pct"):
             if up.get(key) is not None:
                 setattr(prefs, key, max(0, min(100, int(up[key]))))
-        for key in ("moisture_material_factors", "moisture_storage_factors"):
+        for key in ("moisture_material_factors", "moisture_storage_factors", "label_profiles"):
             if up.get(key):
                 setattr(prefs, key, up[key])
 
@@ -838,6 +840,7 @@ def import_data(bundle: ImportBundle, db: Session = Depends(get_db)):
             notes=sp.get("notes"),
             archived=sp.get("archived", False),
             is_refill_pack=sp.get("is_refill_pack", False),
+            label_printed_at=_parse_dt(sp.get("label_printed_at")),
             bambu_spool_id=sp.get("bambu_spool_id"),
             created_at=_parse_dt(sp.get("created_at")) or utcnow(),
         )

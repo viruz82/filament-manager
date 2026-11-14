@@ -2,9 +2,13 @@
 
 ## 1.9.0
 
-- Feature: **spool labels with QR code for Niimbot label printers** (tested model D110) — new dialog "Labels" (button with the QR icon on every spool card/table row, and "Labels" in the toolbar to pick several spools). Selectable fields: QR code, number, material, brand, color, remaining weight, location, purchase date, price/kg, article number; label size (default 30 × 15 mm, presets), density, copies per spool; live preview. Settings are remembered in the browser
-- Printing goes directly over **Web Bluetooth** (Chrome/Edge on desktop and Android) using [niimbluelib](https://github.com/MultiMote/niimbluelib) (MIT); shows the model and the labels left on the roll. Browsers without Bluetooth (e.g. the Home Assistant app) get "open in browser" / "copy link"
-- Download as **PNG** (one per spool) or **PDF** (one page per label in label size, `POST /api/reports/labels.pdf`)
+- Feature: **spool labels with QR code** — dialog "QR code & label" (QR button on every spool card/table row, green once a label exists) and "Labels" in the toolbar for several spools (filter all / without label / with label, search, add all). Modelled on Spooly's label dialog:
+  - label sizes (30×15, 40×12, 50×15, 40×30, 50×30, 62×30 or custom), switch "show text" (QR code only), fields in groups Identity (QR code, #number, location), Material (type, color name, brand, original spool size, current weight) and Purchase (price/kg, purchase date, article number), font size auto/small/medium/large, custom text (100 characters), "reset fields to default"
+  - **print profiles** stored in the add-on (new, rename, overwrite, delete, no profile), shared by all devices, included in the JSON export (`GET/PUT /api/settings/label-profiles`)
+  - output **single** (label printer, one page per label) or **grid A4** (normal printer, as many labels per page as fit, page preview), copies per spool
+  - **print on Niimbot** directly over Web Bluetooth (Chrome/Edge on desktop and Android, tested model D110) using [niimbluelib](https://github.com/MultiMote/niimbluelib) (MIT): model, labels left on the roll, density; browsers without Bluetooth (e.g. the Home Assistant app) get "open in browser" / "copy link"
+  - **PNG**, **PDF** (`POST /api/reports/labels.pdf`, layout single or grid) and **Print** (browser print dialog)
+  - **"last printed" / "has label"** per spool (`spools.label_printed_at`, set on every print or download, switchable in the dialog, `POST /api/spools/label-printed`), included in the JSON export
 - The QR code opens the spool in the add-on: `<HA address>/<add-on panel>/spool-<id>` (or `?spool=<id>`, or `#/spools?spool=<id>`); the target address can be overridden in the dialog
 
 ## 1.8.1

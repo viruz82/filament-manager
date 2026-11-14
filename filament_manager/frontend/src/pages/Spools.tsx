@@ -893,7 +893,7 @@ function SpoolCard({ spool, spools, onEdit, onWeigh, onLabel, onMoisture, onDupl
         <div className="grid grid-cols-2 gap-0.5 shrink-0 ml-2 content-start">
           <button onClick={onEdit} className="btn-ghost p-1" title={t('spools.actions.edit')}><Pencil size={13} /></button>
           <button onClick={onWeigh} className="btn-ghost p-1 text-emerald-400" title={t('spools.actions.weigh')} aria-label={t('spools.actions.weigh')}><Scale size={13} /></button>
-          <button onClick={onLabel} className="btn-ghost p-1 text-violet-400" title={t('labels.action')} aria-label={t('labels.action')}><QrCode size={13} /></button>
+          <button onClick={onLabel} className={`btn-ghost p-1 ${spool.label_printed_at ? 'text-emerald-400' : 'text-gray-400'}`} title={t('labels.action')} aria-label={t('labels.action')}><QrCode size={13} /></button>
           <button onClick={onDuplicate} className="btn-ghost p-1 text-blue-400" title={t('spools.actions.duplicate')}><Copy size={13} /></button>
           <button onClick={onHistory} className="btn-ghost p-1 text-amber-400" title={t('spools.actions.history')}><History size={13} /></button>
           {spool.archived
@@ -1147,7 +1147,7 @@ function SpoolTable({ spools, onEdit, onWeigh, onLabel, onMoisture, onDuplicate,
       <div className="flex items-center gap-0.5">
         <button onClick={() => onEdit(s)} className="btn-ghost p-1" title={t('spools.actions.edit')}><Pencil size={12} /></button>
         <button onClick={() => onWeigh(s)} className="btn-ghost p-1 text-emerald-400" title={t('spools.actions.weigh')} aria-label={t('spools.actions.weigh')}><Scale size={12} /></button>
-        <button onClick={() => onLabel(s)} className="btn-ghost p-1 text-violet-400" title={t('labels.action')} aria-label={t('labels.action')}><QrCode size={12} /></button>
+        <button onClick={() => onLabel(s)} className={`btn-ghost p-1 ${s.label_printed_at ? 'text-emerald-400' : 'text-gray-400'}`} title={t('labels.action')} aria-label={t('labels.action')}><QrCode size={12} /></button>
         <button onClick={() => onDuplicate(s)} className="btn-ghost p-1 text-blue-400" title={t('spools.actions.duplicate')}><Copy size={12} /></button>
         <button onClick={() => onHistory(s)} className="btn-ghost p-1 text-amber-400" title={t('spools.actions.history')}><History size={12} /></button>
         {s.archived

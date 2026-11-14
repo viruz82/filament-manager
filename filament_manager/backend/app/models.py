@@ -60,6 +60,7 @@ class Spool(Base):
     notes = Column(Text)
     archived = Column(Boolean, default=False, nullable=False, server_default='0')
     is_refill_pack = Column(Boolean, default=False, nullable=False, server_default='0')  # bulk filament, no new physical spool
+    label_printed_at = Column(DateTime, nullable=True)  # last time a label was printed/downloaded (None = no label)
     created_at = Column(DateTime, default=utcnow)
     updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 
@@ -323,6 +324,8 @@ class UserPreferences(Base):
     moisture_critical_pct     = Column(Integer, nullable=False, default=25)
     moisture_material_factors = Column(JSON(none_as_null=True), nullable=True)
     moisture_storage_factors  = Column(JSON(none_as_null=True), nullable=True)
+    # Label print profiles: [{"name": str, "settings": {...}}] (frontend-defined settings)
+    label_profiles            = Column(JSON(none_as_null=True), nullable=True)
     # Bambu Filament Sync settings
     # sync_mode: 'off' | 'pull' | 'push' | 'bidirectional'
     # Stored in bambu_filament_sync_direction for DB compat; bambu_filament_sync_enabled is legacy.

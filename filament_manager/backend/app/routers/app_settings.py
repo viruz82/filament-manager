@@ -1,6 +1,7 @@
+from typing import Any
 from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -196,6 +197,37 @@ def save_moisture_factors(body: MoistureFactorsIn, db: Session = Depends(get_db)
     from .. import ha_publisher
     ha_publisher.trigger()
     return moisture.get_config()
+
+
+class LabelProfile(BaseModel):
+    name: str = Field(..., min_length=1, max_length=60)
+    settings: dict[str, Any] = {}
+
+
+@router.get("/label-profiles", response_model=list[LabelProfile])
+def get_label_profiles(db: Session = Depends(get_db)):
+    prefs = db.get(UserPreferences, 1)
+    return (prefs.label_profiles if prefs and prefs.label_profiles else [])
+
+
+@router.put("/label-profiles", response_model=list[LabelProfile])
+def save_label_profiles(body: list[LabelProfile], db: Session = Depends(get_db)):
+    """Replace all label profiles (max. 30, names unique, trimmed)."""
+    seen: set[str] = set()
+    out: list[dict] = []
+    for p in body[:30]:
+        name = p.name.strip()
+        if not name or name.lower() in seen:
+            continue
+        seen.add(name.lower())
+        out.append({"name": name, "settings": p.settings})
+    prefs = db.get(UserPreferences, 1)
+    if not prefs:
+        prefs = UserPreferences(id=1)
+        db.add(prefs)
+    prefs.label_profiles = out or None
+    db.commit()
+    return out
 
 
 class BrandWeightIn(BaseModel):

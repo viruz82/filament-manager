@@ -275,7 +275,12 @@ export const api = {
     fetch(`${BASE}/reports/inventory.pdf?lang=${encodeURIComponent(lang)}&currency=${encodeURIComponent(currency)}`)
       .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.blob() }),
 
-  labelsPdf: (body: { width_mm: number; height_mm: number; images: string[] }) =>
+  markLabelPrinted: (ids: number[], printed = true) =>
+    request<{ updated: number }>('spools/label-printed', { method: 'POST', body: JSON.stringify({ ids, printed }) }),
+  getLabelProfiles: () => request<{ name: string; settings: Record<string, unknown> }[]>('settings/label-profiles'),
+  saveLabelProfiles: (profiles: { name: string; settings: Record<string, unknown> }[]) =>
+    request<{ name: string; settings: Record<string, unknown> }[]>('settings/label-profiles', { method: 'PUT', body: JSON.stringify(profiles) }),
+  labelsPdf: (body: { width_mm: number; height_mm: number; images: string[]; layout: 'single' | 'grid' }) =>
     fetch(`${BASE}/reports/labels.pdf`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
     }).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.blob() }),
