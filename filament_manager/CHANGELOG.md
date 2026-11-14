@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.14.0
+
+- **Faster start**: the app is split into chunks that load on demand. The start bundle shrank from 1.31 MB to about 0.46 MB; the remaining pages are fetched in the background once the first page is up, so switching tabs does not wait.
+- Overview charts (recharts) load right after the key figures; label printing (niimbluelib, qrcode) only loads when the label dialog opens.
+- If a part of the app cannot be loaded (typically right after an add-on update while the panel stayed open), the page reloads once; if that does not help, a message with a "Reload" button appears instead of a blank page.
+- Code: `Settings.tsx` (2,937 lines), `Spools.tsx` and `Prints.tsx` split into smaller files (`pages/settings/`, `components/spools/`, `components/prints/`). No change in behaviour.
+
 ## 1.13.0
 
 - **Overview**: the inventory table became key figures (Available, Purchased, Used up with spool counts and values), so "Used up" is no longer mixed up with "Printed". The running print shows a progress ring with remaining time, weight and tray as chips. Charts use the theme colours; the material chart is a ring with a legend. Recent prints and low stock link to the print list / spool list (filtered) and the spool detail.
