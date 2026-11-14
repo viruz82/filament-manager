@@ -235,7 +235,7 @@ function SpoolForm({
                 <div className="flex items-center flex-1">
                   <span className="px-2 py-1.5 text-sm text-gray-400 bg-surface-3 border border-r-0 border-surface-3 rounded-l-lg select-none">#</span>
                   <input
-                    className={`input flex-1 rounded-l-none ${form.color_hex && !/^#[0-9a-fA-F]{6}$/.test(form.color_hex) ? 'border-red-500 focus:border-red-500' : ''}`}
+                    className={`input flex-1 rounded-l-none ${form.color_hex && !/^#[0-9a-fA-F]{6}$/.test(form.color_hex) ? 'border-crit focus:border-crit' : ''}`}
                     value={form.color_hex.replace(/^#/, '')}
                     onChange={e => setForm(f => ({ ...f, color_hex: '#' + e.target.value.replace(/^#/, '') }))}
                     placeholder="ffffff"
@@ -244,7 +244,7 @@ function SpoolForm({
                 </div>
               </div>
               {form.color_hex && !/^#[0-9a-fA-F]{6}$/.test(form.color_hex) && (
-                <p className="text-xs text-red-400 mt-1">{t('spools.form.colorHexInvalid')}</p>
+                <p className="text-xs text-crit mt-1">{t('spools.form.colorHexInvalid')}</p>
               )}
             </div>
           </div>
@@ -273,13 +273,13 @@ function SpoolForm({
                     />
                   </div>
                   {form[key] && (
-                    <button type="button" className="text-gray-500 hover:text-red-400 p-1" onClick={() => setForm(f => ({ ...f, [key]: '' }))}>
+                    <button type="button" className="text-gray-500 hover:text-crit p-1" onClick={() => setForm(f => ({ ...f, [key]: '' }))}>
                       <X size={14} />
                     </button>
                   )}
                 </div>
                 {form[key] && !/^#[0-9a-fA-F]{6}$/.test(form[key]) && (
-                  <p className="text-xs text-red-400 mt-1">{t('spools.form.colorHexInvalid')}</p>
+                  <p className="text-xs text-crit mt-1">{t('spools.form.colorHexInvalid')}</p>
                 )}
               </div>
             </div>
@@ -325,7 +325,7 @@ function SpoolForm({
                 {ownTareG != null ? (
                   <p className="text-xs text-gray-400 mt-0.5">{t('spools.form.tareOwn')}</p>
                 ) : matchedBrand ? (
-                  <p className="text-xs text-green-500 mt-0.5">{t('spools.form.brandConfig', { brand: form.brand })}</p>
+                  <p className="text-xs text-ok mt-0.5">{t('spools.form.brandConfig', { brand: form.brand })}</p>
                 ) : form.brand ? (
                   <p className="text-xs text-gray-500 mt-0.5">{t('spools.form.noBrandConfig')}</p>
                 ) : null}
@@ -395,7 +395,7 @@ function SpoolForm({
                   comma decimal separator German/etc. keyboards produce (issue #18) */}
               <div className="flex items-center gap-2">
                 <input
-                  className={`input ${form.purchase_price.trim() !== '' && parseDecimal(form.purchase_price) === null ? 'border-red-500 focus:border-red-500' : ''}`}
+                  className={`input ${form.purchase_price.trim() !== '' && parseDecimal(form.purchase_price) === null ? 'border-crit focus:border-crit' : ''}`}
                   type="text" inputMode="decimal"
                   value={form.purchase_price}
                   onChange={set('purchase_price')}
@@ -578,10 +578,10 @@ function SpoolAuditModal({ spool, onClose }: { spool: Spool; onClose: () => void
                       </td>
                       <td className="px-4 py-2 whitespace-nowrap">
                         <span className={`px-1.5 py-0.5 rounded text-xs ${
-                          e.action === 'print_auto'    ? 'bg-blue-900/50 text-blue-300' :
-                          e.action === 'print_manual'  ? 'bg-purple-900/50 text-purple-300' :
-                          e.action === 'print_delete'  ? 'bg-green-900/50 text-green-300' :
-                          e.action === 'correction'    ? 'bg-amber-900/50 text-amber-300' :
+                          e.action === 'print_auto'    ? 'bg-info/15 text-info' :
+                          e.action === 'print_manual'  ? 'bg-extra/15 text-extra' :
+                          e.action === 'print_delete'  ? 'bg-ok/15 text-ok' :
+                          e.action === 'correction'    ? 'bg-warn/15 text-warn' :
                           'bg-surface-3 text-gray-300'
                         }`}>
                           {actionLabel(e.action)}
@@ -590,7 +590,7 @@ function SpoolAuditModal({ spool, onClose }: { spool: Spool; onClose: () => void
                       <td className="px-4 py-2 text-right text-gray-400 whitespace-nowrap">
                         {e.weight_before != null ? `${fmtNum(e.weight_before, 1)} g` : '—'}
                       </td>
-                      <td className={`px-4 py-2 text-right font-medium whitespace-nowrap ${positive ? 'text-green-400' : 'text-red-400'}`}>
+                      <td className={`px-4 py-2 text-right font-medium whitespace-nowrap ${positive ? 'text-ok' : 'text-crit'}`}>
                         {positive ? '+' : ''}{fmtNum(e.delta_g, 1)} g
                       </td>
                       <td className="px-4 py-2 text-right text-gray-300 whitespace-nowrap">
@@ -603,7 +603,7 @@ function SpoolAuditModal({ spool, onClose }: { spool: Spool; onClose: () => void
                         <button
                           onClick={() => handleCorrect(e)}
                           disabled={correctMut.isPending}
-                          className="btn-ghost p-1 text-gray-500 hover:text-amber-400"
+                          className="btn-ghost p-1 text-gray-500 hover:text-warn"
                           title={t('spools.audit.correctBtn')}
                         >
                           <RotateCcw size={11} />
@@ -624,8 +624,8 @@ function SpoolAuditModal({ spool, onClose }: { spool: Spool; onClose: () => void
 // ── Moisture ──────────────────────────────────────────────────────────────────
 
 const MOISTURE_COLOR: Record<string, string> = {
-  dry: 'text-green-400', good: 'text-sky-400', warning: 'text-amber-400',
-  critical: 'text-red-400', drying: 'text-orange-400', unknown: 'text-gray-500',
+  dry: 'text-ok', good: 'text-info', warning: 'text-warn',
+  critical: 'text-crit', drying: 'text-warn', unknown: 'text-gray-500',
 }
 const MOISTURE_BAR: Record<string, string> = {
   dry: '#4ade80', good: '#38bdf8', warning: '#fbbf24', critical: '#f87171', drying: '#fb923c', unknown: '#6b7280',
@@ -829,12 +829,12 @@ function WeighModal({ spool, onClose }: { spool: Spool; onClose: () => void }) {
             </div>
             <div className="bg-surface-3/40 rounded-lg py-2">
               <p className="text-[10px] text-gray-500 uppercase tracking-wide">{t('spools.weigh.delta')}</p>
-              <p className={`text-sm tabular-nums ${delta == null || delta === 0 ? 'text-gray-400' : delta < 0 ? 'text-amber-400' : 'text-green-400'}`}>
+              <p className={`text-sm tabular-nums ${delta == null || delta === 0 ? 'text-gray-400' : delta < 0 ? 'text-warn' : 'text-ok'}`}>
                 {delta != null ? `${delta > 0 ? '+' : ''}${fmtNum(delta, 0)} g` : '—'}
               </p>
             </div>
           </div>
-          {weighMut.isError && <p className="text-xs text-red-400">{String(weighMut.error)}</p>}
+          {weighMut.isError && <p className="text-xs text-crit">{String(weighMut.error)}</p>}
         </div>
         <div className="flex justify-end gap-2 px-5 py-4 border-t border-surface-3">
           <button className="btn-ghost" onClick={onClose}>{t('common.cancel')}</button>
@@ -884,13 +884,13 @@ function SpoolCard({ spool, spools, onEdit, onWeigh, onLabel, onMoisture, onDupl
                 <span className="text-xs text-gray-500 italic">{t('spools.archived')}</span>
               )}
               {spool.bambu_spool_id && (
-                <span className="inline-flex items-center gap-0.5 text-[10px] px-1 py-0.5 rounded bg-blue-900/40 border border-blue-700/60 text-blue-400"
+                <span className="inline-flex items-center gap-0.5 text-[10px] px-1 py-0.5 rounded bg-info/15 border border-info/40 text-info"
                   title={t('spools.bambuLinked')}>
                   <Cloud size={9} />{t('spools.bambuLinked')}
                 </span>
               )}
               {spool.is_refill_pack && (
-                <span className="inline-flex items-center gap-0.5 text-[10px] px-1 py-0.5 rounded bg-purple-900/40 border border-purple-700/60 text-purple-400"
+                <span className="inline-flex items-center gap-0.5 text-[10px] px-1 py-0.5 rounded bg-extra/15 border border-extra/40 text-extra"
                   title={t('spools.refillBadge')}>
                   <Recycle size={9} />{t('spools.refillBadge')}
                 </span>
@@ -916,7 +916,7 @@ function SpoolCard({ spool, spools, onEdit, onWeigh, onLabel, onMoisture, onDupl
         {spool.price_per_kg != null && <span>{fmtCurrency(spool.price_per_kg)}/kg</span>}
         {spool.purchase_price != null && <span>{fmtCurrency(spool.purchase_price)}</span>}
         {spool.purchased_at && <span>{formatDateOnly(spool.purchased_at)}</span>}
-        {spool.storage_location && <span className="text-green-400">{spool.storage_location}</span>}
+        {spool.storage_location && <span className="text-ok">{spool.storage_location}</span>}
       </div>
       {!spool.archived && (
         <div className="flex items-center gap-2 mt-3 text-xs">
@@ -926,7 +926,7 @@ function SpoolCard({ spool, spools, onEdit, onWeigh, onLabel, onMoisture, onDupl
             value={spool.ams_slot}
             onChange={onAssignSlot}
             spools={spools}
-            className={`input text-xs py-1 flex-1 min-w-0 ${spool.ams_slot ? 'text-blue-400' : 'text-gray-400'}`}
+            className={`input text-xs py-1 flex-1 min-w-0 ${spool.ams_slot ? 'text-info' : 'text-gray-400'}`}
           />
         </div>
       )}
@@ -934,15 +934,15 @@ function SpoolCard({ spool, spools, onEdit, onWeigh, onLabel, onMoisture, onDupl
       <div className="flex-1 min-h-3" />
       <div className="flex justify-between items-center pt-2 border-t border-surface-3 -mx-1">
         <button onClick={onEdit} className="btn-ghost p-2" title={t('spools.actions.edit')} aria-label={t('spools.actions.edit')}><Pencil size={18} /></button>
-        <button onClick={onWeigh} className="btn-ghost p-2 text-emerald-400" title={t('spools.actions.weigh')} aria-label={t('spools.actions.weigh')}><Scale size={18} /></button>
-        <button onClick={onLabel} className={`btn-ghost p-2 ${spool.label_printed_at ? 'text-emerald-400' : 'text-gray-400'}`} title={t('labels.action')} aria-label={t('labels.action')}><QrCode size={18} /></button>
-        <button onClick={onDuplicate} className="btn-ghost p-2 text-blue-400" title={t('spools.actions.duplicate')} aria-label={t('spools.actions.duplicate')}><Copy size={18} /></button>
-        <button onClick={onHistory} className="btn-ghost p-2 text-amber-400" title={t('spools.actions.history')} aria-label={t('spools.actions.history')}><History size={18} /></button>
+        <button onClick={onWeigh} className="btn-ghost p-2 text-ok" title={t('spools.actions.weigh')} aria-label={t('spools.actions.weigh')}><Scale size={18} /></button>
+        <button onClick={onLabel} className={`btn-ghost p-2 ${spool.label_printed_at ? 'text-ok' : 'text-gray-400'}`} title={t('labels.action')} aria-label={t('labels.action')}><QrCode size={18} /></button>
+        <button onClick={onDuplicate} className="btn-ghost p-2 text-info" title={t('spools.actions.duplicate')} aria-label={t('spools.actions.duplicate')}><Copy size={18} /></button>
+        <button onClick={onHistory} className="btn-ghost p-2 text-warn" title={t('spools.actions.history')} aria-label={t('spools.actions.history')}><History size={18} /></button>
         {spool.archived
-          ? <button onClick={onUnarchive} className="btn-ghost p-2 text-green-400 hover:text-green-300" title={t('spools.actions.unarchive')} aria-label={t('spools.actions.unarchive')}><ArchiveRestore size={18} /></button>
+          ? <button onClick={onUnarchive} className="btn-ghost p-2 text-ok hover:text-ok" title={t('spools.actions.unarchive')} aria-label={t('spools.actions.unarchive')}><ArchiveRestore size={18} /></button>
           : <button onClick={onArchive} className="btn-ghost p-2 text-gray-400 hover:text-gray-200" title={t('spools.actions.archive')} aria-label={t('spools.actions.archive')}><Archive size={18} /></button>
         }
-        <button onClick={onDelete} className="btn-ghost p-2 text-red-400 hover:text-red-300" title={t('spools.actions.delete')} aria-label={t('spools.actions.delete')}><Trash2 size={18} /></button>
+        <button onClick={onDelete} className="btn-ghost p-2 text-crit hover:text-crit" title={t('spools.actions.delete')} aria-label={t('spools.actions.delete')}><Trash2 size={18} /></button>
       </div>
     </div>
   )
@@ -1156,15 +1156,15 @@ function SpoolTable({ spools, onEdit, onWeigh, onLabel, onMoisture, onDuplicate,
     <td className="px-3 py-2 whitespace-nowrap">
       <div className="flex items-center gap-0.5">
         <button onClick={() => onEdit(s)} className="btn-ghost p-1" title={t('spools.actions.edit')}><Pencil size={12} /></button>
-        <button onClick={() => onWeigh(s)} className="btn-ghost p-1 text-emerald-400" title={t('spools.actions.weigh')} aria-label={t('spools.actions.weigh')}><Scale size={12} /></button>
-        <button onClick={() => onLabel(s)} className={`btn-ghost p-1 ${s.label_printed_at ? 'text-emerald-400' : 'text-gray-400'}`} title={t('labels.action')} aria-label={t('labels.action')}><QrCode size={12} /></button>
-        <button onClick={() => onDuplicate(s)} className="btn-ghost p-1 text-blue-400" title={t('spools.actions.duplicate')}><Copy size={12} /></button>
-        <button onClick={() => onHistory(s)} className="btn-ghost p-1 text-amber-400" title={t('spools.actions.history')}><History size={12} /></button>
+        <button onClick={() => onWeigh(s)} className="btn-ghost p-1 text-ok" title={t('spools.actions.weigh')} aria-label={t('spools.actions.weigh')}><Scale size={12} /></button>
+        <button onClick={() => onLabel(s)} className={`btn-ghost p-1 ${s.label_printed_at ? 'text-ok' : 'text-gray-400'}`} title={t('labels.action')} aria-label={t('labels.action')}><QrCode size={12} /></button>
+        <button onClick={() => onDuplicate(s)} className="btn-ghost p-1 text-info" title={t('spools.actions.duplicate')}><Copy size={12} /></button>
+        <button onClick={() => onHistory(s)} className="btn-ghost p-1 text-warn" title={t('spools.actions.history')}><History size={12} /></button>
         {s.archived
-          ? <button onClick={() => onUnarchive(s)} className="btn-ghost p-1 text-green-400 hover:text-green-300" title={t('spools.actions.unarchive')}><ArchiveRestore size={12} /></button>
+          ? <button onClick={() => onUnarchive(s)} className="btn-ghost p-1 text-ok hover:text-ok" title={t('spools.actions.unarchive')}><ArchiveRestore size={12} /></button>
           : <button onClick={() => onArchive(s)} className="btn-ghost p-1 text-gray-500 hover:text-gray-300" title={t('spools.actions.archive')}><Archive size={12} /></button>
         }
-        <button onClick={() => onDelete(s)} className="btn-ghost p-1 text-red-400" title={t('spools.actions.delete')}><Trash2 size={12} /></button>
+        <button onClick={() => onDelete(s)} className="btn-ghost p-1 text-crit" title={t('spools.actions.delete')}><Trash2 size={12} /></button>
       </div>
     </td>
   )
@@ -1177,7 +1177,7 @@ function SpoolTable({ spools, onEdit, onWeigh, onLabel, onMoisture, onDuplicate,
       case 'brand':            return <td key={c.key} className="px-3 py-2 font-medium text-white whitespace-nowrap">{s.brand}</td>
       case 'material':         return <td key={c.key} className="px-3 py-2 whitespace-nowrap">{s.material}</td>
       case 'subtype':          return <td key={c.key} className="px-3 py-2 whitespace-nowrap text-gray-300">{[s.subtype, s.subtype2].filter(Boolean).join(' · ') || '—'}</td>
-      case 'color_name':       return <td key={c.key} className="px-3 py-2 whitespace-nowrap"><span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full shrink-0 ring-1 ring-white/10" style={{ background: s.color_hex }} />{s.color_name}{s.bambu_spool_id && <span title={t('spools.bambuLinked')}><Cloud size={10} className="text-blue-400 shrink-0" /></span>}</span></td>
+      case 'color_name':       return <td key={c.key} className="px-3 py-2 whitespace-nowrap"><span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full shrink-0 ring-1 ring-white/10" style={{ background: s.color_hex }} />{s.color_name}{s.bambu_spool_id && <span title={t('spools.bambuLinked')}><Cloud size={10} className="text-info shrink-0" /></span>}</span></td>
       case 'color2_hex':       return <td key={c.key} className="px-3 py-2">{s.color2_hex ? <span className="w-4 h-4 rounded-full block ring-1 ring-white/10" style={{ background: s.color2_hex }} /> : <span className="text-gray-600">—</span>}</td>
       case 'color3_hex':       return <td key={c.key} className="px-3 py-2">{s.color3_hex ? <span className="w-4 h-4 rounded-full block ring-1 ring-white/10" style={{ background: s.color3_hex }} /> : <span className="text-gray-600">—</span>}</td>
       case 'color4_hex':       return <td key={c.key} className="px-3 py-2">{s.color4_hex ? <span className="w-4 h-4 rounded-full block ring-1 ring-white/10" style={{ background: s.color4_hex }} /> : <span className="text-gray-600">—</span>}</td>
@@ -1187,12 +1187,12 @@ function SpoolTable({ spools, onEdit, onWeigh, onLabel, onMoisture, onDuplicate,
       case 'initial_weight_g': return <td key={c.key} className="px-3 py-2 whitespace-nowrap text-gray-400">{fmtNum((s.initial_weight_g / 1000), 2)} kg</td>
       case 'purchase_price':   return <td key={c.key} className="px-3 py-2 whitespace-nowrap">{s.purchase_price != null ? fmtCurrency(s.purchase_price) : '—'}</td>
       case 'price_per_kg':     return <td key={c.key} className="px-3 py-2 whitespace-nowrap text-gray-400">{s.price_per_kg != null ? fmtCurrency(s.price_per_kg) : '—'}</td>
-      case 'is_refill_pack':   return <td key={c.key} className="px-3 py-2 whitespace-nowrap">{s.is_refill_pack ? <span className="text-xs bg-purple-900/40 px-1.5 py-0.5 rounded text-purple-400">{t('spools.table.refill')}</span> : <span className="text-gray-600">—</span>}</td>
+      case 'is_refill_pack':   return <td key={c.key} className="px-3 py-2 whitespace-nowrap">{s.is_refill_pack ? <span className="text-xs bg-extra/15 px-1.5 py-0.5 rounded text-extra">{t('spools.table.refill')}</span> : <span className="text-gray-600">—</span>}</td>
       case 'purchased_at':     return <td key={c.key} className="px-3 py-2 whitespace-nowrap text-gray-400">{s.purchased_at ? formatDateOnly(s.purchased_at) : '—'}</td>
       case 'last_dried_at':    return <td key={c.key} className="px-3 py-2 whitespace-nowrap text-gray-400">{s.last_dried_at ? formatDateOnly(s.last_dried_at) : '—'}</td>
       case 'moisture':         return <td key={c.key} className="px-2 py-1 whitespace-nowrap">{s.archived ? <span className="text-gray-600">—</span> : <MoistureBadge spool={s} onClick={() => onMoisture(s)} />}</td>
       case 'purchase_location':return <td key={c.key} className="px-3 py-2 whitespace-nowrap">{s.purchase_location ? <span className="text-xs bg-surface-3 px-1.5 py-0.5 rounded text-gray-400">{s.purchase_location}</span> : <span className="text-gray-600">—</span>}</td>
-      case 'storage_location': return <td key={c.key} className="px-3 py-2 whitespace-nowrap">{s.storage_location ? <span className="text-xs bg-surface-3 px-1.5 py-0.5 rounded text-green-400">{s.storage_location}</span> : <span className="text-gray-600">—</span>}</td>
+      case 'storage_location': return <td key={c.key} className="px-3 py-2 whitespace-nowrap">{s.storage_location ? <span className="text-xs bg-surface-3 px-1.5 py-0.5 rounded text-ok">{s.storage_location}</span> : <span className="text-gray-600">—</span>}</td>
       case 'ams_slot':         return (
         <td key={c.key} className="px-2 py-1 whitespace-nowrap">
           {s.archived
@@ -1202,7 +1202,7 @@ function SpoolTable({ spools, onEdit, onWeigh, onLabel, onMoisture, onDuplicate,
                 value={s.ams_slot}
                 onChange={slot => onAssignSlot(s, slot)}
                 spools={spools}
-                className={`bg-transparent rounded px-1 py-0.5 text-xs max-w-[9rem] hover:bg-surface-3 focus:outline-none focus:ring-1 focus:ring-accent ${s.ams_slot ? 'text-blue-400' : 'text-gray-600'}`}
+                className={`bg-transparent rounded px-1 py-0.5 text-xs max-w-[9rem] hover:bg-surface-3 focus:outline-none focus:ring-1 focus:ring-accent ${s.ams_slot ? 'text-info' : 'text-gray-600'}`}
               />}
         </td>
       )
@@ -1467,7 +1467,7 @@ export default function Spools() {
         <h2 className="text-lg font-bold">{t('spools.title')} ({spools.filter(s => !s.archived).length})</h2>
         <div className="flex items-center gap-1.5 sm:gap-2 sm:flex-wrap max-w-full overflow-x-auto sm:overflow-visible" style={{ scrollbarWidth: 'none' }}>
           <button
-            className={`btn-ghost shrink-0 px-2.5 py-1.5 text-xs flex items-center gap-1 transition-colors ${onlyMoist ? 'text-amber-400' : 'text-gray-400'}`}
+            className={`btn-ghost shrink-0 px-2.5 py-1.5 text-xs flex items-center gap-1 transition-colors ${onlyMoist ? 'text-warn' : 'text-gray-400'}`}
             onClick={() => setOnlyMoist(v => !v)}
             title={t('moisture.onlyMoistHint')}
           >
@@ -1475,7 +1475,7 @@ export default function Spools() {
             <span className="hidden sm:inline">{t('moisture.onlyMoist')}</span>{moistCount > 0 ? ` (${moistCount})` : ''}
           </button>
           <button
-            className={`btn-ghost shrink-0 px-2.5 py-1.5 text-xs flex items-center gap-1 transition-colors ${showArchived ? 'text-amber-400' : 'text-gray-400'}`}
+            className={`btn-ghost shrink-0 px-2.5 py-1.5 text-xs flex items-center gap-1 transition-colors ${showArchived ? 'text-warn' : 'text-gray-400'}`}
             onClick={() => setShowArchived(v => !v)}
             title={showArchived ? t('spools.hideArchived') : t('spools.showArchived')}
           >

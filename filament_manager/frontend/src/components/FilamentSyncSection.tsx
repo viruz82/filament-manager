@@ -35,7 +35,7 @@ export default function FilamentSyncSection({ isCloudConnected }: { isCloudConne
   if (isLoading || !syncStatus) return null
 
   if (!isCloudConnected) {
-    return <p className="text-xs text-yellow-500">{t('settings.filamentSync.requiresCloud')}</p>
+    return <p className="text-xs text-warn">{t('settings.filamentSync.requiresCloud')}</p>
   }
 
   const currentMode = syncStatus.sync_mode ?? 'off'
@@ -56,7 +56,7 @@ export default function FilamentSyncSection({ isCloudConnected }: { isCloudConne
               disabled={busy}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs border transition-colors
                 ${currentMode === value
-                  ? 'bg-blue-600 border-blue-500 text-white'
+                  ? 'bg-accent border-accent text-white'
                   : 'bg-surface-2 border-gray-600 text-gray-400 hover:border-gray-400 hover:text-gray-200'}`}
             >
               {busy && currentMode !== value ? null : icon}

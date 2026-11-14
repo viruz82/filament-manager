@@ -9,12 +9,20 @@
 
 :root {
   /* Dark theme defaults */
-  --fm-surface:       28 28 30;    /* #1c1c1e */
-  --fm-surface-2:     44 44 46;    /* #2c2c2e */
-  --fm-surface-3:     58 58 60;    /* #3a3a3c */
-  --fm-accent:        59 130 246;  /* #3b82f6 */
-  --fm-accent-hover:  37 99 235;   /* #2563eb */
-  --fm-text-primary:  #f3f4f6;     /* gray-100 */
+  --fm-surface:       17 19 24;    /* #111318 – page background */
+  --fm-surface-2:     28 31 38;    /* #1c1f26 – cards / sidebar */
+  --fm-surface-3:     38 42 51;    /* #262a33 – borders / inputs / hover */
+  --fm-surface-4:     48 53 63;    /* #30353f – selected / segment */
+  --fm-accent:        3 169 244;   /* #03a9f4 – Home-Assistant blue */
+  --fm-accent-hover:  2 136 209;   /* #0288d1 */
+  --fm-on-accent:     4 18 26;     /* text on accent surfaces */
+  /* status colours (text and, with alpha, soft backgrounds) */
+  --fm-crit:          255 138 135; /* red    */
+  --fm-warn:          255 193 99;  /* amber  */
+  --fm-ok:            143 220 146; /* green  */
+  --fm-info:          156 196 255; /* blue   */
+  --fm-extra:         196 167 255; /* violet */
+  --fm-text-primary:  #e3e6ec;
   color-scheme: dark;              /* dunkle Scrollbalken, Formularelemente */
 }
 
@@ -25,11 +33,18 @@
    ─────────────────────────────────────────────────────────────────────────── */
 
 html:not(.dark) {
-  --fm-surface:       242 242 247;  /* #f2f2f7 – page background */
+  --fm-surface:       242 244 247;  /* #f2f4f7 – page background */
   --fm-surface-2:     255 255 255;  /* #ffffff – cards / sidebar */
-  --fm-surface-3:     229 229 234;  /* #e5e5ea – borders / inputs */
-  --fm-accent:        59 130 246;   /* keep blue */
-  --fm-accent-hover:  37 99 235;
+  --fm-surface-3:     226 230 236;  /* #e2e6ec – borders / inputs */
+  --fm-surface-4:     208 214 223;  /* #d0d6df – selected / segment */
+  --fm-accent:        3 169 244;
+  --fm-accent-hover:  2 136 209;
+  --fm-on-accent:     4 18 26;
+  --fm-crit:          198 40 40;
+  --fm-warn:          180 83 9;
+  --fm-ok:            21 128 61;
+  --fm-info:          29 78 216;
+  --fm-extra:         109 40 217;
   --fm-text-primary:  #111827;      /* gray-900 */
   color-scheme: light;
 }
@@ -47,13 +62,13 @@ html:not(.dark) {
 
 @layer components {
   .card {
-    @apply bg-surface-2 rounded-xl p-4 border border-surface-3;
+    @apply bg-surface-2 rounded-2xl p-4 border border-surface-3/60;
   }
   .btn {
-    @apply px-3 py-1.5 rounded-lg text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-40 disabled:cursor-not-allowed;
+    @apply px-3 py-1.5 rounded-full text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-40 disabled:cursor-not-allowed;
   }
   .btn-primary {
-    @apply btn bg-accent hover:bg-accent-hover text-white;
+    @apply btn bg-accent hover:bg-accent-hover text-on-accent font-semibold;
   }
   .btn-ghost {
     @apply btn hover:bg-surface-3;
@@ -68,6 +83,27 @@ html:not(.dark) {
   .label {
     @apply block text-xs mb-1;
   }
+
+  /* status pill: .pill + one of .pill-crit/-warn/-ok/-info/-extra */
+  .pill {
+    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold leading-tight whitespace-nowrap bg-surface-3 text-gray-300;
+  }
+  .pill-crit  { @apply bg-crit/15  text-crit; }
+  .pill-warn  { @apply bg-warn/15  text-warn; }
+  .pill-ok    { @apply bg-ok/15    text-ok; }
+  .pill-info  { @apply bg-info/15  text-info; }
+  .pill-extra { @apply bg-extra/15 text-extra; }
+
+  /* filter chip: .chip, active = .chip-on */
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs whitespace-nowrap bg-surface-2 text-gray-400 hover:bg-surface-3 transition-colors;
+  }
+  .chip-on { @apply bg-accent hover:bg-accent text-on-accent font-semibold; }
+
+  /* segmented switch: <div class="seg"><button class="seg-item seg-item-on">…</button></div> */
+  .seg      { @apply inline-flex rounded-full bg-surface-2 p-0.5 shrink-0; }
+  .seg-item { @apply inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs text-gray-400 whitespace-nowrap transition-colors; }
+  .seg-item-on { @apply bg-surface-4 text-gray-100 font-semibold; }
 }
 
 /* ── Light-mode neutral text overrides ───────────────────────────────────────
@@ -96,16 +132,13 @@ html:not(.dark) .placeholder-gray-500::placeholder { color: #9ca3af; }
    ─────────────────────────────────────────────────────────────────────────── */
 
 /* Primary / danger buttons keep white text on their coloured background */
-html:not(.dark) .btn-primary,
 html:not(.dark) .btn-danger { color: white; }
+html:not(.dark) .btn-primary { color: rgb(var(--fm-on-accent)); }
 
-/* Any element that carries an explicit bg-accent class (e.g. active NavLink) */
-html:not(.dark) .bg-accent { color: white; }
-
-/* Status badges */
-html:not(.dark) .bg-green-900,
-html:not(.dark) .bg-red-900,
-html:not(.dark) .bg-blue-900 { color: white; }
+/* Text on accent surfaces (chips, selected buttons) follows --fm-on-accent;
+   .text-white next to .bg-accent would otherwise turn dark in light mode. */
+.bg-accent.text-white,
+.bg-accent .text-white { color: rgb(var(--fm-on-accent)); }
 
 /* btn-ghost: in light mode use dark text / accent hover */
 html:not(.dark) .btn-ghost         { color: #374151; }

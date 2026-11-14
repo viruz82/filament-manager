@@ -195,7 +195,7 @@ function CostReportModal({ project, onClose }: { project: Project; onClose: () =
                   placeholder={t('projects.report.extraName')} onChange={ev => setExtra(i, { name: ev.target.value })} />
                 <input className="input w-24 text-right" inputMode="decimal" value={e.amount}
                   placeholder="0,00" onChange={ev => setExtra(i, { amount: ev.target.value })} />
-                <button className="btn-ghost p-1.5 text-red-400 shrink-0" title={t('common.delete')}
+                <button className="btn-ghost p-1.5 text-crit shrink-0" title={t('common.delete')}
                   aria-label={t('common.delete')} onClick={() => setExtras(list => list.filter((_, j) => j !== i))}>
                   <Trash2 size={14} />
                 </button>
@@ -220,7 +220,7 @@ function CostReportModal({ project, onClose }: { project: Project; onClose: () =
 
         <div className="rounded-xl bg-surface-3/40 p-3 text-sm space-y-0.5">
           <div className="label mb-1">{t('projects.report.preview')}</div>
-          {isError && <div className="text-red-400 text-xs">{t('projects.report.previewFailed')}</div>}
+          {isError && <div className="text-crit text-xs">{t('projects.report.previewFailed')}</div>}
           {sum && (
             <>
               <Row label={t('projects.prints')} value={`${sum.prints}${sum.test_prints_excluded ? ` (−${sum.test_prints_excluded} ${t('projects.testStats')})` : ''} · ${fmtNum(sum.grams, 1)} g · ${fmtNum(sum.hours, 1)} h`} />
@@ -319,8 +319,8 @@ function AssignPrintsModal({
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-white truncate">{job.name}</span>
                   {job.success
-                    ? <span className="text-xs text-green-400">✓</span>
-                    : <span className="text-xs text-red-400">✗</span>}
+                    ? <span className="text-xs text-ok">✓</span>
+                    : <span className="text-xs text-crit">✗</span>}
                 </div>
                 <div className="text-xs text-gray-400">
                   {formatDateTimeTZ(job.started_at, tz)}
@@ -392,7 +392,7 @@ function ProjectCard({
             <span className="font-semibold text-white truncate">{project.name}</span>
             <span className="text-xs text-gray-500 shrink-0">{project.print_count} {t('projects.prints')}</span>
             {project.test_print_count > 0 && (
-              <span className="text-xs text-amber-500 shrink-0 flex items-center gap-0.5">
+              <span className="text-xs text-warn shrink-0 flex items-center gap-0.5">
                 <FlaskConical size={11} />
                 {project.test_print_count}
               </span>
@@ -403,7 +403,7 @@ function ProjectCard({
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={e => e.stopPropagation()}
-                className="text-gray-500 hover:text-blue-400 shrink-0"
+                className="text-gray-500 hover:text-info shrink-0"
                 title={project.url}
               >
                 <ExternalLink size={11} />
@@ -454,7 +454,7 @@ function ProjectCard({
           <button className="btn-ghost p-1.5" onClick={onEdit} title={t('common.edit')}>
             <Pencil size={14} />
           </button>
-          <button className="btn-ghost p-1.5 text-red-400" onClick={onDelete} title={t('common.delete')}>
+          <button className="btn-ghost p-1.5 text-crit" onClick={onDelete} title={t('common.delete')}>
             <Trash2 size={14} />
           </button>
         </div>
@@ -504,7 +504,7 @@ function ProjectCard({
                   </span>
                 </div>
                 <div>
-                  <span className="text-amber-500 flex items-center gap-1 inline-flex"><FlaskConical size={11} />{t('projects.testStats')}: </span>
+                  <span className="text-warn flex items-center gap-1 inline-flex"><FlaskConical size={11} />{t('projects.testStats')}: </span>
                   <span className="text-gray-300">
                     {project.test_print_count} {t('projects.prints')}
                     {' · '}{fmtNum((project.test_total_grams / 1000), 2)} {t('common.kg')}
@@ -540,7 +540,7 @@ function PrintJobRow({ job, projectId }: { job: PrintJob; projectId: number }) {
 
   return (
     <div className="flex items-center gap-3 py-1.5 text-sm border-b border-surface-3 last:border-0">
-      <span className={job.success ? 'text-green-400' : 'text-red-400'}>
+      <span className={job.success ? 'text-ok' : 'text-crit'}>
         {job.success ? '✓' : '✗'}
       </span>
       <span className="flex-1 truncate text-gray-200">{job.name}</span>
@@ -552,7 +552,7 @@ function PrintJobRow({ job, projectId }: { job: PrintJob; projectId: number }) {
         <span className="text-xs text-gray-400 shrink-0">{fmtCurrency(job.material_cost)}</span>
       )}
       {job.energy_kwh != null && (
-        <span className="text-xs text-yellow-500 shrink-0">
+        <span className="text-xs text-warn shrink-0">
           {fmtNum(job.energy_kwh, 2)} kWh
           {job.energy_cost != null && <> · {fmtCurrency(job.energy_cost)}</>}
         </span>
@@ -564,11 +564,11 @@ function PrintJobRow({ job, projectId }: { job: PrintJob; projectId: number }) {
         <span className="text-xs text-white shrink-0 font-medium">= {fmtCurrency(job.total_cost)}</span>
       )}
       {job.nozzle_diameter && (
-        <span className="text-xs text-blue-400 shrink-0">⌀{job.nozzle_diameter}</span>
+        <span className="text-xs text-info shrink-0">⌀{job.nozzle_diameter}</span>
       )}
       <button
         title={job.is_test_print ? t('projects.unmarkTestPrint') : t('projects.markTestPrint')}
-        className={`shrink-0 p-1 rounded transition-colors ${job.is_test_print ? 'text-amber-400 bg-amber-400/10' : 'text-gray-600 hover:text-amber-400'}`}
+        className={`shrink-0 p-1 rounded transition-colors ${job.is_test_print ? 'text-warn bg-warn/10' : 'text-gray-600 hover:text-warn'}`}
         onClick={() => toggleTestMut.mutate(!job.is_test_print)}
         disabled={toggleTestMut.isPending}
       >

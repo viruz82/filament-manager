@@ -10,9 +10,9 @@ import { fmtNum, parseDecimal } from '../utils/number'
 import Modal from '../components/Modal'
 
 const LEVEL_STYLE: Record<string, { bar: string; badge: string }> = {
-  due:  { bar: 'bg-red-500',     badge: 'bg-red-500/15 text-red-400' },
-  soon: { bar: 'bg-amber-500',   badge: 'bg-amber-500/15 text-amber-400' },
-  ok:   { bar: 'bg-emerald-500', badge: 'bg-emerald-500/15 text-emerald-400' },
+  due:  { bar: 'bg-crit',     badge: 'bg-crit/15 text-crit' },
+  soon: { bar: 'bg-warn',   badge: 'bg-warn/15 text-warn' },
+  ok:   { bar: 'bg-ok', badge: 'bg-ok/15 text-ok' },
   off:  { bar: 'bg-gray-600',    badge: 'bg-surface-3 text-gray-400' },
   none: { bar: 'bg-gray-600',    badge: 'bg-surface-3 text-gray-400' },
 }
@@ -182,7 +182,7 @@ function LogModal({ task, onClose }: { task: MaintenanceTask; onClose: () => voi
               </div>
               {e.note && <div className="text-xs text-gray-300 mt-1 whitespace-pre-wrap break-words">{e.note}</div>}
             </div>
-            <button className="btn-ghost p-1 self-start text-gray-500 hover:text-red-400" title={t('common.delete')}
+            <button className="btn-ghost p-1 self-start text-gray-500 hover:text-crit" title={t('common.delete')}
               onClick={() => del.mutate(e.id)} disabled={del.isPending}>
               <Trash2 size={14} />
             </button>
@@ -223,7 +223,7 @@ function TaskCard({ task, onDone, onEdit, onDelete, onLog }: {
           </div>
           <div className="flex flex-wrap justify-between gap-x-3 gap-y-0.5 text-xs text-gray-400 mt-1">
             <Limits task={task} />
-            {rest && <span className={task.level === 'due' ? 'text-red-400' : task.level === 'soon' ? 'text-amber-400' : ''}>{rest}</span>}
+            {rest && <span className={task.level === 'due' ? 'text-crit' : task.level === 'soon' ? 'text-warn' : ''}>{rest}</span>}
           </div>
           <div className="text-xs text-gray-500 mt-0.5">
             {t('maintenance.lastDone', { date: formatDateTZ(task.last_done_at, tz) })}
@@ -236,7 +236,7 @@ function TaskCard({ task, onDone, onEdit, onDelete, onLog }: {
           <History size={14} />{task.log_count > 0 && <span>{task.log_count}</span>}
         </button>
         <button className="btn-ghost p-1.5" onClick={onEdit} title={t('common.edit')}><Pencil size={14} /></button>
-        <button className="btn-ghost p-1.5 hover:text-red-400" onClick={onDelete} title={t('common.delete')}><Trash2 size={14} /></button>
+        <button className="btn-ghost p-1.5 hover:text-crit" onClick={onDelete} title={t('common.delete')}><Trash2 size={14} /></button>
         {task.enabled && (
           <button className="btn-primary px-3 py-1.5 text-sm flex items-center gap-1 ml-1" onClick={onDone}>
             <Check size={14} /> {t('maintenance.done')}
@@ -370,7 +370,7 @@ export default function Maintenance() {
           <label className="label">{t('maintenance.note')}</label>
           <textarea className="input h-20 resize-none" value={note} onChange={e => setNote(e.target.value)}
             placeholder={t('maintenance.notePlaceholder')} autoFocus />
-          {doneMut.isError && <p className="text-xs text-red-400 mt-2">{String(doneMut.error)}</p>}
+          {doneMut.isError && <p className="text-xs text-crit mt-2">{String(doneMut.error)}</p>}
           <div className="flex justify-end gap-2 pt-4">
             <button className="btn-ghost px-4 py-2" onClick={() => setDoneTask(null)}>{t('common.cancel')}</button>
             <button className="btn-primary px-4 py-2 flex items-center gap-1" onClick={() => doneMut.mutate()} disabled={doneMut.isPending}>

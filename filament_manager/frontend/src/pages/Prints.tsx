@@ -430,7 +430,7 @@ function PrintForm({
                           : `Spool #${u.spool_id}`}
                       </span>
                       <span className="text-gray-300">{fmtNum(u.grams_used, 1)}g</span>
-                      {u.ams_slot && <span className="text-blue-400">{slotLabel(u.ams_slot)}</span>}
+                      {u.ams_slot && <span className="text-info">{slotLabel(u.ams_slot)}</span>}
                     </div>
                   )
                 })
@@ -476,7 +476,7 @@ function PrintForm({
                         <option key={k} value={k}>{slotLabel(k)}</option>
                       ))}
                     </select>
-                    <button onClick={() => removeUsage(i)} className="text-red-400 hover:text-red-300"><X size={14} /></button>
+                    <button onClick={() => removeUsage(i)} className="text-crit hover:text-crit"><X size={14} /></button>
                   </div>
                 ))}
               </>
@@ -576,7 +576,7 @@ function LogUsageModal({
         </div>
 
         <div className="p-5 space-y-4">
-          <p className="text-xs text-blue-400 bg-blue-950/40 rounded px-3 py-1.5">
+          <p className="text-xs text-info bg-info/15 rounded px-3 py-1.5">
             {t('prints.cloudSuggestion')}
           </p>
 
@@ -592,9 +592,9 @@ function LogUsageModal({
           {Object.entries(grouped).map(([slot, entries]) => {
             const isSwap = entries.length > 1
             return (
-              <div key={slot} className={isSwap ? 'rounded-lg border border-amber-700/50 bg-amber-950/20 p-3 space-y-2' : ''}>
+              <div key={slot} className={isSwap ? 'rounded-lg border border-warn/40 bg-warn/15 p-3 space-y-2' : ''}>
                 {isSwap && (
-                  <p className="text-xs text-amber-400 font-medium">
+                  <p className="text-xs text-warn font-medium">
                     {t('prints.spoolSwapDetected')} · {slot}
                   </p>
                 )}
@@ -620,14 +620,14 @@ function LogUsageModal({
                               {spool.brand} {spool.material}
                               {spool.subtype ? ` ${spool.subtype}` : ''} · {spool.color_name}
                               {swapLabel && (
-                                <span className="ml-1.5 text-xs text-amber-400">({swapLabel})</span>
+                                <span className="ml-1.5 text-xs text-warn">({swapLabel})</span>
                               )}
                             </p>
                             <p className="text-xs text-gray-500">
                               {!isSwap && `${slot} · `}{spool.remaining_pct}%
                               {` (${fmtNum((spool.current_weight_g / 1000), 3)} kg)`}
                               {s.estimated && (
-                                <span className="ml-1.5 text-yellow-600">{t('common.est')}</span>
+                                <span className="ml-1.5 text-warn">{t('common.est')}</span>
                               )}
                             </p>
                           </>
@@ -636,13 +636,13 @@ function LogUsageModal({
                             <p className="text-sm text-gray-400">
                               {slot}{s.filament_type ? ` · ${s.filament_type}` : ''}
                               {swapLabel && (
-                                <span className="ml-1.5 text-xs text-amber-400">({swapLabel})</span>
+                                <span className="ml-1.5 text-xs text-warn">({swapLabel})</span>
                               )}
                             </p>
                             <div className="flex items-center gap-2 mt-0.5">
-                              <p className="text-xs text-yellow-600">{t('prints.spoolNotMatched')}</p>
+                              <p className="text-xs text-warn">{t('prints.spoolNotMatched')}</p>
                               <button
-                                className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-0.5"
+                                className="text-xs text-info hover:text-info flex items-center gap-0.5"
                                 onClick={() => refetchTrays()}
                                 disabled={traysLoading}
                                 title={t('prints.reloadSlot')}
@@ -756,14 +756,14 @@ function PrintRow({ job, printer, onEdit, onDelete, onLogUsage }: {
     <div className="card cursor-pointer" onClick={() => setExpanded(e => !e)}>
       <div className="flex items-center gap-3">
         {job.success
-          ? <CheckCircle size={16} className="text-green-400 shrink-0" />
-          : <XCircle size={16} className="text-red-400 shrink-0" />
+          ? <CheckCircle size={16} className="text-ok shrink-0" />
+          : <XCircle size={16} className="text-crit shrink-0" />
         }
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-sm font-medium text-white truncate">{job.name}</p>
             {job.source === 'auto' && (
-              <span className="text-xs bg-blue-900 text-blue-300 px-1.5 py-0.5 rounded flex items-center gap-0.5 shrink-0">
+              <span className="text-xs bg-info/15 text-info px-1.5 py-0.5 rounded flex items-center gap-0.5 shrink-0">
                 <Zap size={9} /> auto
               </span>
             )}
@@ -778,7 +778,7 @@ function PrintRow({ job, printer, onEdit, onDelete, onLogUsage }: {
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={e => e.stopPropagation()}
-                className="text-gray-500 hover:text-blue-400 shrink-0"
+                className="text-gray-500 hover:text-info shrink-0"
                 title={job.url}
               >
                 <ExternalLink size={11} />
@@ -822,7 +822,7 @@ function PrintRow({ job, printer, onEdit, onDelete, onLogUsage }: {
         <div className="flex gap-1 ml-2" onClick={e => e.stopPropagation()}>
           {needsUsage && (
             <button
-              className="btn-ghost p-1 text-yellow-400"
+              className="btn-ghost p-1 text-warn"
               onClick={onLogUsage}
               title="Log filament usage"
             >
@@ -830,7 +830,7 @@ function PrintRow({ job, printer, onEdit, onDelete, onLogUsage }: {
             </button>
           )}
           <button className="btn-ghost p-1" onClick={onEdit}><Pencil size={12} /></button>
-          <button className="btn-ghost p-1 text-red-400" onClick={onDelete}><Trash2 size={12} /></button>
+          <button className="btn-ghost p-1 text-crit" onClick={onDelete}><Trash2 size={12} /></button>
         </div>
       </div>
 
@@ -856,7 +856,7 @@ function PrintRow({ job, printer, onEdit, onDelete, onLogUsage }: {
               </span>
               <span>{fmtNum(u.grams_used, 1)}g</span>
               {u.cost && <span className="text-gray-500">{fmtCurrency(u.cost)}</span>}
-              {u.ams_slot && <span className="text-blue-400">{slotLabel(u.ams_slot)}</span>}
+              {u.ams_slot && <span className="text-info">{slotLabel(u.ams_slot)}</span>}
             </div>
           ))}
         </div>
@@ -1013,7 +1013,7 @@ export default function Prints() {
             )}
             className={`px-2.5 py-1 text-xs rounded-lg transition-colors ${
               dateFilter?.mode === m
-                ? 'bg-blue-900 text-blue-200'
+                ? 'bg-info/15 text-info'
                 : 'text-gray-400 hover:text-white hover:bg-surface-3 border border-surface-3'
             }`}
           >

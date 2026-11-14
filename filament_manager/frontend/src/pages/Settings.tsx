@@ -119,7 +119,7 @@ function CloudPrinterFormContent({
     <>
       <div className="p-5 space-y-4">
         {!isConnected ? (
-          <div className="flex items-start gap-2 text-xs text-yellow-400 bg-yellow-900/20 border border-yellow-800 rounded px-3 py-3">
+          <div className="flex items-start gap-2 text-xs text-warn bg-warn/15 border border-warn/40 rounded px-3 py-3">
             <AlertCircle size={13} className="mt-0.5 shrink-0" />
             <span>{t('settings.bambuCloud.notConnectedHint')}</span>
           </div>
@@ -174,7 +174,7 @@ function CloudPrinterFormContent({
             <label className="flex items-center gap-2 text-sm cursor-pointer">
               <input type="checkbox" checked={autoDeduct} onChange={e => setAutoDeduct(e.target.checked)} />
               <span>{t('settings.printers.autoDeduct')}</span>
-              <span className="text-[10px] text-amber-400 border border-amber-400/50 rounded px-1 py-0.5 leading-none">{t('common.experimental')}</span>
+              <span className="text-[10px] text-warn border border-warn/40 rounded px-1 py-0.5 leading-none">{t('common.experimental')}</span>
             </label>
 
             <div className="border-t border-surface-3 pt-3 space-y-3">
@@ -194,7 +194,7 @@ function CloudPrinterFormContent({
                   {energyEntities.map(e => <option key={e.entity_id} value={e.entity_id}>{e.name} · {e.value} {e.unit}</option>)}
                 </datalist>
                 {energySensorEntityId && energySensorPreview !== undefined && (
-                  <p className={`text-[11px] mt-1 font-mono ${energySensorPreview === null ? 'text-red-400' : 'text-green-400'}`}>
+                  <p className={`text-[11px] mt-1 font-mono ${energySensorPreview === null ? 'text-crit' : 'text-ok'}`}>
                     {energySensorPreview === null ? '✗ entity not found or not numeric' : `✓ ${energySensorPreview} kWh`}
                   </p>
                 )}
@@ -218,7 +218,7 @@ function CloudPrinterFormContent({
                   {priceEntities.map(e => <option key={e.entity_id} value={e.entity_id}>{e.name} · {e.value} {e.unit}</option>)}
                 </datalist>
                 {priceSensorEntityId && priceSensorPreview !== undefined && (
-                  <p className={`text-[11px] mt-1 font-mono ${priceSensorPreview === null ? 'text-red-400' : 'text-green-400'}`}>
+                  <p className={`text-[11px] mt-1 font-mono ${priceSensorPreview === null ? 'text-crit' : 'text-ok'}`}>
                     {priceSensorPreview === null ? '✗ entity not found or not numeric' : `✓ ${priceSensorPreview} ${currencySymbol}/kWh`}
                   </p>
                 )}
@@ -268,7 +268,7 @@ function CloudPrinterFormContent({
                               key={u}
                               onClick={() => setActiveAmsUnit(u)}
                               className={`px-2.5 py-0.5 transition-colors ${
-                                visibleAmsUnit === u ? 'bg-blue-700 text-white' : 'text-gray-400 hover:text-gray-200'
+                                visibleAmsUnit === u ? 'bg-accent text-white' : 'text-gray-400 hover:text-gray-200'
                               }`}
                             >
                               AMS {u}
@@ -479,7 +479,7 @@ function AMSTrayPanel({ printer }: { printer: PrinterConfig }) {
                   key={u}
                   onClick={() => setActiveUnit(u)}
                   className={`px-2.5 py-0.5 transition-colors ${
-                    visibleUnit === u ? 'bg-blue-700 text-white' : 'text-gray-400 hover:text-gray-200'
+                    visibleUnit === u ? 'bg-accent text-white' : 'text-gray-400 hover:text-gray-200'
                   }`}
                 >
                   AMS {u}
@@ -497,7 +497,7 @@ function AMSTrayPanel({ printer }: { printer: PrinterConfig }) {
                   key={v}
                   onClick={() => changeSpoolSort(v)}
                   className={`px-2 py-0.5 transition-colors ${
-                    spoolSort === v ? 'bg-blue-700 text-white' : 'text-gray-400 hover:text-gray-200'
+                    spoolSort === v ? 'bg-accent text-white' : 'text-gray-400 hover:text-gray-200'
                   }`}
                 >
                   {v === 'name' ? t('settings.printers.sortName') : t('settings.printers.sortNumber')}
@@ -649,8 +649,8 @@ function AMSTrayRow({
               ? `${t('settings.printers.autoMatchTray')}: ${match.custom_id != null ? `#${match.custom_id} ` : ''}${match.brand} ${match.material} · ${match.color_name} (${Math.round(match.remaining_pct)}%)`
               : t('settings.printers.autoMatchNone')}
             className={`btn-ghost p-1 shrink-0 ${
-              alreadyOptimal ? 'text-green-400 cursor-default' :
-              match ? 'text-amber-400 hover:text-amber-300' :
+              alreadyOptimal ? 'text-ok cursor-default' :
+              match ? 'text-warn hover:text-warn' :
               'text-gray-600 cursor-not-allowed'
             }`}
           >
@@ -734,13 +734,13 @@ function SensorLine({ label, entityId, unit }: { label: string; entityId: string
 
   let status: React.ReactNode
   if (!entityId) {
-    status = <span className="text-red-400">✗ {t('settings.printers.sensorNotSet')}</span>
+    status = <span className="text-crit">✗ {t('settings.printers.sensorNotSet')}</span>
   } else if (isPending) {
     status = <span className="text-gray-500">…</span>
   } else if (data?.value == null) {
-    status = <span className="text-red-400">✗ {t('settings.printers.sensorMissing')}</span>
+    status = <span className="text-crit">✗ {t('settings.printers.sensorMissing')}</span>
   } else {
-    status = <span className="text-green-400">✓ {data.value} {unit}</span>
+    status = <span className="text-ok">✓ {data.value} {unit}</span>
   }
 
   return (
@@ -793,7 +793,7 @@ function WearSection({ printer, onEdit }: { printer: PrinterConfig; onEdit?: () 
           <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wide mb-0.5">{t('settings.printers.wearCost')}</p>
           <p className="text-sm text-gray-200">{rate > 0 ? `${fmtCurrency(rate)} / h` : '—'}</p>
           {result && (
-            <p className="text-[10px] text-green-400 mt-0.5">
+            <p className="text-[10px] text-ok mt-0.5">
               {t('settings.printers.wearRecalcDone', { count: result.updated, total: fmtCurrency(result.total_wear_cost) })}
             </p>
           )}
@@ -856,8 +856,8 @@ function PrinterCard({ printer, onEdit, onDelete }: {
           </div>
           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
             <span className={`text-xs px-2 py-0.5 rounded-full ${
-              isPrinting ? 'bg-blue-900 text-blue-300' :
-              stage === 'finish' ? 'bg-green-900 text-green-300' :
+              isPrinting ? 'bg-info/15 text-info' :
+              stage === 'finish' ? 'bg-ok/15 text-ok' :
               'bg-surface-3 text-gray-400'
             }`}>{stage}</span>
           </div>
@@ -869,7 +869,7 @@ function PrinterCard({ printer, onEdit, onDelete }: {
           <button className="btn-ghost px-2 py-1 text-xs flex items-center gap-1" onClick={onEdit}>
             <Pencil size={12} /> {t('common.edit')}
           </button>
-          <button className="btn-ghost p-1 text-red-400" onClick={onDelete}><Trash2 size={12} /></button>
+          <button className="btn-ghost p-1 text-crit" onClick={onDelete}><Trash2 size={12} /></button>
         </div>
       </div>
 
@@ -1027,13 +1027,13 @@ function BrandWeightsSection({ actionsLast }: { actionsLast: boolean }) {
                 {!actionsLast && (
                   <>
                     <button className="btn-ghost p-1" onClick={() => startEdit(e)}><Pencil size={12} /></button>
-                    <button className="btn-ghost p-1 text-red-400" onClick={() => deleteMut.mutate(e.id)}><Trash2 size={12} /></button>
+                    <button className="btn-ghost p-1 text-crit" onClick={() => deleteMut.mutate(e.id)}><Trash2 size={12} /></button>
                   </>
                 )}
                 <span className="flex-1 min-w-0 text-sm text-white truncate">
                   {e.brand}
                   {applied?.id === e.id && (
-                    <span className="ml-2 text-[11px] text-green-400">{t('settings.brandWeights.applied', { count: applied.updated })}</span>
+                    <span className="ml-2 text-[11px] text-ok">{t('settings.brandWeights.applied', { count: applied.updated })}</span>
                   )}
                 </span>
                 <span className="text-sm text-gray-300 tabular-nums">{fmtNum(e.spool_weight_g, 0)} g</span>
@@ -1049,7 +1049,7 @@ function BrandWeightsSection({ actionsLast }: { actionsLast: boolean }) {
                 {actionsLast && (
                   <>
                     <button className="btn-ghost p-1" onClick={() => startEdit(e)}><Pencil size={12} /></button>
-                    <button className="btn-ghost p-1 text-red-400" onClick={() => deleteMut.mutate(e.id)}><Trash2 size={12} /></button>
+                    <button className="btn-ghost p-1 text-crit" onClick={() => deleteMut.mutate(e.id)}><Trash2 size={12} /></button>
                   </>
                 )}
               </>
@@ -1161,14 +1161,14 @@ function NameListSection({
                 {!actionsLast && (
                   <>
                     <button className="btn-ghost p-1" onClick={() => { setEditingId(e.id); setEditName(e.name) }}><Pencil size={12} /></button>
-                    <button className="btn-ghost p-1 text-red-400" onClick={() => deleteMut.mutate(e.id)}><Trash2 size={12} /></button>
+                    <button className="btn-ghost p-1 text-crit" onClick={() => deleteMut.mutate(e.id)}><Trash2 size={12} /></button>
                   </>
                 )}
                 <span className="flex-1 text-sm text-white">{e.name}</span>
                 {actionsLast && (
                   <>
                     <button className="btn-ghost p-1" onClick={() => { setEditingId(e.id); setEditName(e.name) }}><Pencil size={12} /></button>
-                    <button className="btn-ghost p-1 text-red-400" onClick={() => deleteMut.mutate(e.id)}><Trash2 size={12} /></button>
+                    <button className="btn-ghost p-1 text-crit" onClick={() => deleteMut.mutate(e.id)}><Trash2 size={12} /></button>
                   </>
                 )}
               </>
@@ -1356,7 +1356,7 @@ function DataTransferSection() {
             onClick={() => setTransferTab(tab.id)}
             className={`pb-2 pt-0.5 px-3 text-xs font-medium border-b-2 transition-colors whitespace-nowrap shrink-0 -mb-px ${
               transferTab === tab.id
-                ? 'border-blue-500 text-white'
+                ? 'border-accent text-white'
                 : 'border-transparent text-gray-400 hover:text-gray-200'
             }`}
           >
@@ -1381,11 +1381,11 @@ function DataTransferSection() {
             </label>
           </div>
           {importResult && (
-            <div className="rounded-lg bg-green-900/30 border border-green-700 p-4 text-sm text-green-300">
+            <div className="rounded-lg bg-ok/15 border border-ok/40 p-4 text-sm text-ok">
               <div className="flex items-center gap-2 font-medium mb-2">
                 <CheckCircle size={16} /> {t('settings.dataTransfer.importSuccessTitle')}
               </div>
-              <ul className="grid grid-cols-2 gap-x-6 gap-y-1 text-green-400">
+              <ul className="grid grid-cols-2 gap-x-6 gap-y-1 text-ok">
                 {Object.entries(importResult).map(([key, count]) => (
                   <li key={key} className="flex justify-between">
                     <span className="capitalize">{key.replace(/_/g, ' ')}</span>
@@ -1396,7 +1396,7 @@ function DataTransferSection() {
             </div>
           )}
           {importError && (
-            <div className="rounded-lg bg-red-900/30 border border-red-700 p-4 text-sm text-red-300 flex items-start gap-2">
+            <div className="rounded-lg bg-crit/15 border border-crit/40 p-4 text-sm text-crit flex items-start gap-2">
               <AlertCircle size={16} className="mt-0.5 shrink-0" />
               <span>{importError}</span>
             </div>
@@ -1421,13 +1421,13 @@ function DataTransferSection() {
             </label>
           </div>
           {importSpoolsCsvResult && (
-            <div className="rounded-lg bg-green-900/30 border border-green-700 p-3 text-sm text-green-300 flex items-center justify-between">
+            <div className="rounded-lg bg-ok/15 border border-ok/40 p-3 text-sm text-ok flex items-center justify-between">
               <span>{t('settings.dataTransfer.importSpoolsCsvResult', { created: importSpoolsCsvResult.created, updated: importSpoolsCsvResult.updated, skipped: importSpoolsCsvResult.skipped })}</span>
-              <button className="ml-4 text-green-400 hover:text-white" onClick={() => setImportSpoolsCsvResult(null)}>✕</button>
+              <button className="ml-4 text-ok hover:text-white" onClick={() => setImportSpoolsCsvResult(null)}>✕</button>
             </div>
           )}
           {importSpoolsCsvError && (
-            <div className="rounded-lg bg-red-900/30 border border-red-700 p-3 text-sm text-red-300 flex items-start gap-2">
+            <div className="rounded-lg bg-crit/15 border border-crit/40 p-3 text-sm text-crit flex items-start gap-2">
               <AlertCircle size={16} className="mt-0.5 shrink-0" />
               <span>{importSpoolsCsvError}</span>
             </div>
@@ -1451,16 +1451,16 @@ function DataTransferSection() {
             </button>
           </div>
           {!cloudConnected && (
-            <p className="text-xs text-yellow-500">{t('settings.dataTransfer.bambuNotConnected')}</p>
+            <p className="text-xs text-warn">{t('settings.dataTransfer.bambuNotConnected')}</p>
           )}
           {cloudImportResult && (
-            <div className="rounded-lg bg-green-900/30 border border-green-700 p-3 text-sm text-green-300">
+            <div className="rounded-lg bg-ok/15 border border-ok/40 p-3 text-sm text-ok">
               <CheckCircle size={14} className="inline mr-1.5 mb-0.5" />
               {t('settings.dataTransfer.importCloudResult', cloudImportResult)}
             </div>
           )}
           {cloudImportError && (
-            <div className="rounded-lg bg-red-900/30 border border-red-700 p-3 text-sm text-red-300 flex items-start gap-2">
+            <div className="rounded-lg bg-crit/15 border border-crit/40 p-3 text-sm text-crit flex items-start gap-2">
               <AlertCircle size={14} className="mt-0.5 shrink-0" />
               <span>{t('settings.dataTransfer.importCloudError', { error: cloudImportError })}</span>
             </div>
@@ -1478,7 +1478,7 @@ function DataTransferSection() {
             <button onClick={handleExportSpoolman} disabled={exportingSpoolman} className="btn-ghost flex items-center gap-2">
               <Download size={14} />
               {exportingSpoolman ? t('settings.dataTransfer.exporting') : t('settings.dataTransfer.exportSpoolmanBtn')}
-              <span className="ml-1 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-yellow-900/60 text-yellow-400 border border-yellow-700">
+              <span className="ml-1 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-warn/15 text-warn border border-warn/40">
                 {t('settings.dataTransfer.experimental')}
               </span>
             </button>
@@ -1492,20 +1492,20 @@ function DataTransferSection() {
             <label className={`btn-ghost flex items-center gap-2 cursor-pointer ${importingSpoolman ? 'opacity-50 pointer-events-none' : ''}`}>
               <Upload size={14} />
               {importingSpoolman ? t('settings.dataTransfer.importingSpoolman') : t('settings.dataTransfer.importSpoolmanBtn')}
-              <span className="ml-1 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-yellow-900/60 text-yellow-400 border border-yellow-700">
+              <span className="ml-1 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-warn/15 text-warn border border-warn/40">
                 {t('settings.dataTransfer.experimental')}
               </span>
               <input ref={spoolmanJsonRef} type="file" accept=".json" className="hidden" onChange={handleImportSpoolmanJson} disabled={importingSpoolman} />
             </label>
           </div>
           {importSpoolmanResult && (
-            <div className="rounded-lg bg-green-900/30 border border-green-700 p-3 text-sm text-green-300 flex items-center justify-between">
+            <div className="rounded-lg bg-ok/15 border border-ok/40 p-3 text-sm text-ok flex items-center justify-between">
               <span>{t('settings.dataTransfer.importSpoolmanResult', importSpoolmanResult)}</span>
-              <button className="ml-4 text-green-400 hover:text-white" onClick={() => setImportSpoolmanResult(null)}>✕</button>
+              <button className="ml-4 text-ok hover:text-white" onClick={() => setImportSpoolmanResult(null)}>✕</button>
             </div>
           )}
           {importSpoolmanError && (
-            <div className="rounded-lg bg-red-900/30 border border-red-700 p-3 text-sm text-red-300 flex items-start gap-2">
+            <div className="rounded-lg bg-crit/15 border border-crit/40 p-3 text-sm text-crit flex items-start gap-2">
               <AlertCircle size={16} className="mt-0.5 shrink-0" />
               <span>{importSpoolmanError}</span>
             </div>
@@ -1588,7 +1588,7 @@ function CatalogEditRow({ entry, editForm, setEditForm, onSave, onCancel, brands
               <input type="color" className="w-6 h-6 rounded cursor-pointer border border-surface-3 bg-transparent p-0 shrink-0" value={editForm.color_hex} onChange={e => set('color_hex', e.target.value)} />
               <div className="flex items-center">
                 <span className="px-1.5 py-0.5 text-xs text-gray-400 bg-surface-3 border border-r-0 border-surface-3 rounded-l select-none">#</span>
-                <input className={`input text-xs py-0.5 w-16 font-mono rounded-l-none ${!hexValid ? 'border-red-500 focus:border-red-500' : ''}`} value={editForm.color_hex.replace(/^#/, '')} onChange={e => set('color_hex', '#' + e.target.value.replace(/^#/, ''))} maxLength={6} />
+                <input className={`input text-xs py-0.5 w-16 font-mono rounded-l-none ${!hexValid ? 'border-crit focus:border-crit' : ''}`} value={editForm.color_hex.replace(/^#/, '')} onChange={e => set('color_hex', '#' + e.target.value.replace(/^#/, ''))} maxLength={6} />
               </div>
             </div>
             {(['color2_hex', 'color3_hex', 'color4_hex'] as const).map(k => (
@@ -1604,7 +1604,7 @@ function CatalogEditRow({ entry, editForm, setEditForm, onSave, onCancel, brands
                     placeholder="opt" maxLength={6} />
                 </div>
                 {editForm[k] && (
-                  <button type="button" className="text-gray-600 hover:text-red-400 p-0.5"
+                  <button type="button" className="text-gray-600 hover:text-crit p-0.5"
                     onClick={() => setEditForm({ ...editForm, [k]: null })}>
                     <X size={10} />
                   </button>
@@ -1827,9 +1827,9 @@ function FilamentDataSection({ actionsLast }: { actionsLast: boolean }) {
       </div>
 
       {importResult && (
-        <div className="text-xs px-3 py-2 rounded bg-green-900/40 border border-green-700/50 text-green-300 flex items-center justify-between">
+        <div className="text-xs px-3 py-2 rounded bg-ok/15 border border-ok/40 text-ok flex items-center justify-between">
           <span>{t('settings.filamentCatalog.importResult', { added: importResult.added, updated: importResult.updated })}</span>
-          <button className="ml-4 text-green-400 hover:text-white" onClick={() => setImportResult(null)}>✕</button>
+          <button className="ml-4 text-ok hover:text-white" onClick={() => setImportResult(null)}>✕</button>
         </div>
       )}
 
@@ -1877,7 +1877,7 @@ function FilamentDataSection({ actionsLast }: { actionsLast: boolean }) {
                 <input type="color" className="w-8 h-8 rounded cursor-pointer border border-surface-3 bg-transparent p-0.5 shrink-0" value={form.color_hex} onChange={e => setForm(f => ({ ...f, color_hex: e.target.value }))} />
                 <div className="flex items-center flex-1">
                   <span className="px-2 py-1 text-xs text-gray-400 bg-surface-3 border border-r-0 border-surface-3 rounded-l select-none">#</span>
-                  <input className={`input text-xs py-1 font-mono flex-1 rounded-l-none ${!addHexValid ? 'border-red-500 focus:border-red-500' : ''}`} value={form.color_hex.replace(/^#/, '')} onChange={e => setForm(f => ({ ...f, color_hex: '#' + e.target.value.replace(/^#/, '') }))} maxLength={6} />
+                  <input className={`input text-xs py-1 font-mono flex-1 rounded-l-none ${!addHexValid ? 'border-crit focus:border-crit' : ''}`} value={form.color_hex.replace(/^#/, '')} onChange={e => setForm(f => ({ ...f, color_hex: '#' + e.target.value.replace(/^#/, '') }))} maxLength={6} />
                 </div>
               </div>
             </div>
@@ -1910,7 +1910,7 @@ function FilamentDataSection({ actionsLast }: { actionsLast: boolean }) {
                       placeholder={t('common.optional')} maxLength={6} />
                   </div>
                   {form[k] && (
-                    <button type="button" className="text-gray-600 hover:text-red-400 p-0.5"
+                    <button type="button" className="text-gray-600 hover:text-crit p-0.5"
                       onClick={() => setForm(f => ({ ...f, [k]: null }))}>
                       <X size={10} />
                     </button>
@@ -2010,7 +2010,7 @@ function FilamentDataSection({ actionsLast }: { actionsLast: boolean }) {
                   <td className="px-3 py-2 whitespace-nowrap">
                     <div className="flex gap-1">
                       <button className="btn-ghost p-1 text-gray-400 hover:text-white" onClick={() => startEdit(entry)}><Pencil size={12} /></button>
-                      <button className="btn-ghost p-1 text-red-400 hover:text-red-300" onClick={() => deleteMut.mutate(entry.id)}><Trash2 size={12} /></button>
+                      <button className="btn-ghost p-1 text-crit hover:text-crit" onClick={() => deleteMut.mutate(entry.id)}><Trash2 size={12} /></button>
                     </div>
                   </td>
                 )}
@@ -2033,7 +2033,7 @@ function FilamentDataSection({ actionsLast }: { actionsLast: boolean }) {
                   <td className="px-3 py-2 whitespace-nowrap">
                     <div className="flex gap-1">
                       <button className="btn-ghost p-1 text-gray-400 hover:text-white" onClick={() => startEdit(entry)}><Pencil size={12} /></button>
-                      <button className="btn-ghost p-1 text-red-400 hover:text-red-300" onClick={() => deleteMut.mutate(entry.id)}><Trash2 size={12} /></button>
+                      <button className="btn-ghost p-1 text-crit hover:text-crit" onClick={() => deleteMut.mutate(entry.id)}><Trash2 size={12} /></button>
                     </div>
                   </td>
                 )}
@@ -2170,8 +2170,8 @@ function CloudPrinterStatus({ printer, onEdit }: { printer: PrinterConfig; onEdi
             {/* MQTT connection indicator */}
             {mqttInfo !== null && (
               mqttConnected
-                ? <span className="flex items-center gap-1 text-[10px] text-green-400"><Wifi size={10} /> MQTT</span>
-                : <span className="flex items-center gap-1 text-[10px] text-red-400"><WifiOff size={10} /> {t('settings.bambuCloud.notConnected')}</span>
+                ? <span className="flex items-center gap-1 text-[10px] text-ok"><Wifi size={10} /> MQTT</span>
+                : <span className="flex items-center gap-1 text-[10px] text-crit"><WifiOff size={10} /> {t('settings.bambuCloud.notConnected')}</span>
             )}
           </div>
         </div>
@@ -2186,7 +2186,7 @@ function CloudPrinterStatus({ printer, onEdit }: { printer: PrinterConfig; onEdi
             {downloadingTasks ? t('settings.bambuCloud.fetchingTasks') : t('settings.bambuCloud.tasks')}
           </button>
           <button
-            className="btn-ghost p-1 text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+            className="btn-ghost p-1 text-xs text-info hover:text-info flex items-center gap-1"
             onClick={handleReconnect}
             disabled={reconnecting}
             title="Reconnect MQTT and request fresh data"
@@ -2230,7 +2230,7 @@ function CloudPrinterStatus({ printer, onEdit }: { printer: PrinterConfig; onEdi
                     key={u}
                     onClick={() => setActiveUnit(u)}
                     className={`px-2.5 py-0.5 transition-colors ${
-                      visibleUnit === u ? 'bg-blue-700 text-white' : 'text-gray-400 hover:text-gray-200'
+                      visibleUnit === u ? 'bg-accent text-white' : 'text-gray-400 hover:text-gray-200'
                     }`}
                   >
                     AMS {u}
@@ -2337,7 +2337,7 @@ function CloudPrinterStatus({ printer, onEdit }: { printer: PrinterConfig; onEdi
                 <div className="space-y-1">
                   {Object.entries(rawAmsCache).sort(([a], [b]) => a.localeCompare(b)).map(([slot, td]) => (
                     <div key={slot} className="text-[11px] font-mono">
-                      <span className="text-blue-400">{slot}</span>
+                      <span className="text-info">{slot}</span>
                       <span className="text-gray-600"> → </span>
                       {Object.entries(td as Record<string, unknown>).map(([k, v]) => (
                         <span key={k} className="text-gray-500 mr-3">
@@ -2441,7 +2441,7 @@ function MoistureFactorsSection() {
                 <span className="text-xs text-gray-300 flex-1 min-w-0 truncate">{k}</span>
                 <input className="input text-xs py-0.5 w-16 text-right" inputMode="decimal" value={v}
                   onChange={e => setMaterials(m => m.map((row, j) => j === i ? [row[0], e.target.value] : row))} />
-                <button className="btn-ghost p-0.5 text-gray-500 hover:text-red-400" title={t('common.delete')}
+                <button className="btn-ghost p-0.5 text-gray-500 hover:text-crit" title={t('common.delete')}
                   onClick={() => setMaterials(m => m.filter((_, j) => j !== i))}><X size={12} /></button>
               </div>
             ))}
@@ -2463,7 +2463,7 @@ function MoistureFactorsSection() {
         <button className="btn-ghost text-xs px-3 py-1.5" onClick={() => resetMut.mutate()} disabled={resetMut.isPending}>
           {t('settings.moisture.reset')}
         </button>
-        {saved && <span className="text-xs text-green-400">✓</span>}
+        {saved && <span className="text-xs text-ok">✓</span>}
       </div>
     </div>
   )
@@ -2604,12 +2604,12 @@ export default function Settings() {
             onClick={() => setMainTab(tab.id)}
             className={`pb-2.5 pt-1 px-2.5 sm:px-4 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 -mb-px ${
               mainTab === tab.id
-                ? 'border-blue-500 text-white'
+                ? 'border-accent text-white'
                 : 'border-transparent text-gray-400 hover:text-gray-200'
             }`}
           >
             {tab.label}
-            {tab.dot && <span className="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0" />}
+            {tab.dot && <span className="w-1.5 h-1.5 rounded-full bg-ok shrink-0" />}
           </button>
         ))}
       </div>
@@ -2635,7 +2635,7 @@ export default function Settings() {
                       onClick={() => setActivePrinterId(p.id)}
                       className={`pb-2.5 pt-2 px-3 text-xs font-medium border-b-2 transition-colors whitespace-nowrap flex-shrink-0 ${
                         activePrinter?.id === p.id
-                          ? 'border-blue-500 text-white'
+                          ? 'border-accent text-white'
                           : 'border-transparent text-gray-400 hover:text-gray-200'
                       }`}
                     >
@@ -2676,7 +2676,7 @@ export default function Settings() {
                   onClick={() => setDataTab(st.id)}
                   className={`pb-2.5 pt-1 px-3 text-xs font-medium border-b-2 transition-colors whitespace-nowrap -mb-px ${
                     dataTab === st.id
-                      ? 'border-blue-500 text-white'
+                      ? 'border-accent text-white'
                       : 'border-transparent text-gray-400 hover:text-gray-200'
                   }`}
                 >
@@ -2870,7 +2870,7 @@ export default function Settings() {
               >
                 {prefsSaved ? t('settings.appearance.regionalSaved') : t('settings.appearance.regionalSave')}
               </button>
-              {prefsSaved && <span className="text-xs text-green-400">✓</span>}
+              {prefsSaved && <span className="text-xs text-ok">✓</span>}
             </div>
           </div>
 
@@ -2892,7 +2892,7 @@ export default function Settings() {
           <div className="card">
             <div className="flex items-center gap-2 mb-3">
               <h3 className="text-sm font-semibold text-gray-300">{t('settings.filamentSync.title')}</h3>
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-900/40 border border-yellow-700 text-yellow-400">{t('common.experimental')}</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-warn/15 border border-warn/40 text-warn">{t('common.experimental')}</span>
             </div>
             <FilamentSyncSection isCloudConnected={isCloudConnected} />
           </div>

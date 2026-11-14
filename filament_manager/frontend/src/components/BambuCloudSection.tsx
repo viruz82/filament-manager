@@ -98,7 +98,7 @@ export default function BambuCloudSection() {
       {isConnected && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm text-green-400">
+            <div className="flex items-center gap-2 text-sm text-ok">
               <Wifi size={15} />
               <span>{t('settings.bambuCloud.connectedAs', { email: cloudStatus?.email })}</span>
 
@@ -106,7 +106,7 @@ export default function BambuCloudSection() {
             <button
               onClick={handleLogout}
               disabled={busy}
-              className="btn-ghost flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300"
+              className="btn-ghost flex items-center gap-1.5 text-xs text-crit hover:text-crit"
             >
               <LogOut size={13} />
               {t('settings.bambuCloud.disconnect')}
@@ -121,7 +121,7 @@ export default function BambuCloudSection() {
               <div className="space-y-1.5">
                 {(devices as BambuCloudDevice[]).map(d => (
                   <div key={d.serial} className="flex items-center gap-2 text-xs text-gray-300 bg-surface-2 rounded px-3 py-2">
-                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${d.online ? 'bg-green-400' : 'bg-gray-600'}`} />
+                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${d.online ? 'bg-ok' : 'bg-gray-600'}`} />
                     <span className="font-medium">{d.name}</span>
                     <span className="text-gray-500">{d.model}</span>
                     <span className="ml-auto text-gray-600 font-mono text-[10px]">{'•'.repeat(8)}{d.serial.slice(-4)}</span>
@@ -136,7 +136,7 @@ export default function BambuCloudSection() {
 
       {/* ── Backend error/session-expired banner ── */}
       {!isConnected && !isPending2fa && cloudStatus?.error && (
-        <div className="flex items-start gap-2 text-xs text-yellow-400 bg-yellow-900/20 border border-yellow-800 rounded px-3 py-2 mb-3">
+        <div className="flex items-start gap-2 text-xs text-warn bg-warn/15 border border-warn/40 rounded px-3 py-2 mb-3">
           <AlertCircle size={13} className="mt-0.5 shrink-0" />
           <span>{cloudStatus.error}</span>
         </div>
@@ -145,7 +145,7 @@ export default function BambuCloudSection() {
       {/* ── 2FA step ── */}
       {!isConnected && isPending2fa && (
         <form onSubmit={handleVerify} className="space-y-3">
-          <div className="flex items-center gap-2 text-xs text-yellow-400 mb-1">
+          <div className="flex items-center gap-2 text-xs text-warn mb-1">
             <AlertCircle size={14} />
             <span>{t('settings.bambuCloud.twoFaPrompt')}</span>
           </div>
@@ -162,7 +162,7 @@ export default function BambuCloudSection() {
             />
           </div>
           {error && (
-            <div className="flex items-start gap-2 text-xs text-red-400">
+            <div className="flex items-start gap-2 text-xs text-crit">
               <AlertCircle size={13} className="mt-0.5 shrink-0" />
               <span>{t('settings.bambuCloud.errorVerify', { error })}</span>
             </div>
@@ -214,7 +214,7 @@ export default function BambuCloudSection() {
             />
           </div>
           {error && (
-            <div className="flex items-start gap-2 text-xs text-red-400">
+            <div className="flex items-start gap-2 text-xs text-crit">
               <AlertCircle size={13} className="mt-0.5 shrink-0" />
               <span>{t('settings.bambuCloud.errorConnect', { error })}</span>
             </div>

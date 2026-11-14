@@ -31,9 +31,9 @@ function ColorDot({ hex, size = 10 }: { hex: string; size?: number }) {
 
 function ConfidenceBadge({ score }: { score: number }) {
   const color =
-    score >= 80 ? 'bg-green-900/40 text-green-400 border-green-700' :
-    score >= 60 ? 'bg-blue-900/40 text-blue-400 border-blue-700' :
-                  'bg-yellow-900/40 text-yellow-400 border-yellow-700'
+    score >= 80 ? 'bg-ok/15 text-ok border-ok/40' :
+    score >= 60 ? 'bg-info/15 text-info border-info/40' :
+                  'bg-warn/15 text-warn border-warn/40'
   return (
     <span className={`text-[10px] px-1.5 py-0.5 rounded border ${color}`}>
       {score}%
@@ -187,7 +187,7 @@ export default function SyncReviewModal({ syncMode, onClose }: Props) {
             <h2 className="text-base font-semibold text-gray-100">
               {t('settings.filamentSync.modal.title')}
             </h2>
-            <span className="text-[10px] px-2 py-0.5 rounded bg-blue-900/40 border border-blue-700 text-blue-400 capitalize">
+            <span className="text-[10px] px-2 py-0.5 rounded bg-info/15 border border-info/40 text-info capitalize">
               {t(`settings.filamentSync.mode_${syncMode}`)}
             </span>
           </div>
@@ -208,7 +208,7 @@ export default function SyncReviewModal({ syncMode, onClose }: Props) {
 
           {/* Error */}
           {phase === 'error' && (
-            <div className="flex items-start gap-2 text-sm text-red-400 bg-red-900/20 border border-red-800 rounded px-3 py-2">
+            <div className="flex items-start gap-2 text-sm text-crit bg-crit/15 border border-crit/40 rounded px-3 py-2">
               <AlertCircle size={14} className="mt-0.5 shrink-0" />
               <span>{errorMsg}</span>
             </div>
@@ -217,7 +217,7 @@ export default function SyncReviewModal({ syncMode, onClose }: Props) {
           {/* Done */}
           {phase === 'done' && result && (
             <div className="space-y-3">
-              <div className="flex items-start gap-2 text-sm text-green-400 bg-green-900/20 border border-green-800 rounded px-3 py-2">
+              <div className="flex items-start gap-2 text-sm text-ok bg-ok/15 border border-ok/40 rounded px-3 py-2">
                 <CheckCircle size={14} className="mt-0.5 shrink-0" />
                 <span>
                   {t('settings.filamentSync.modal.result', {
@@ -231,7 +231,7 @@ export default function SyncReviewModal({ syncMode, onClose }: Props) {
                 </span>
               </div>
               {result.errors > 0 && (
-                <p className="text-xs text-yellow-400">
+                <p className="text-xs text-warn">
                   {t('settings.filamentSync.modal.resultErrors', { n: result.errors })}
                 </p>
               )}
@@ -274,7 +274,7 @@ export default function SyncReviewModal({ syncMode, onClose }: Props) {
                           key={key}
                           className={`flex items-center gap-3 p-2.5 rounded cursor-pointer border transition-colors
                             ${checked
-                              ? 'bg-blue-900/20 border-blue-700'
+                              ? 'bg-info/15 border-info/40'
                               : 'bg-surface-2 border-gray-700 hover:border-gray-500'}`}
                         >
                           <input
@@ -316,7 +316,7 @@ export default function SyncReviewModal({ syncMode, onClose }: Props) {
                         key={c.cloud_id}
                         className={`flex items-center gap-3 p-2.5 rounded cursor-pointer border transition-colors
                           ${checkedImport.has(c.cloud_id)
-                            ? 'bg-green-900/20 border-green-800'
+                            ? 'bg-ok/15 border-ok/40'
                             : 'bg-surface-2 border-gray-700 hover:border-gray-500'}`}
                       >
                         <input
@@ -352,7 +352,7 @@ export default function SyncReviewModal({ syncMode, onClose }: Props) {
                         key={l.local_id}
                         className={`flex items-center gap-3 p-2.5 rounded cursor-pointer border transition-colors
                           ${checkedPush.has(l.local_id)
-                            ? 'bg-blue-900/20 border-blue-700'
+                            ? 'bg-info/15 border-info/40'
                             : 'bg-surface-2 border-gray-700 hover:border-gray-500'}`}
                       >
                         <input
@@ -381,7 +381,7 @@ export default function SyncReviewModal({ syncMode, onClose }: Props) {
                   </p>
                   <div className="space-y-2">
                     {plan.cloud_deleted.map((d: SyncCloudDeleted) => (
-                      <div key={d.local_id} className="flex items-center gap-3 p-2.5 rounded bg-surface-2 border border-yellow-800/50">
+                      <div key={d.local_id} className="flex items-center gap-3 p-2.5 rounded bg-surface-2 border border-warn/40">
                         <span className="text-xs text-gray-200 flex-1 truncate">{d.local_summary}</span>
                         <div className="flex gap-1 shrink-0">
                           {(['archive', 'keep', 'delete'] as const).map(action => (
@@ -393,7 +393,7 @@ export default function SyncReviewModal({ syncMode, onClose }: Props) {
                                 ${deletedActions[d.local_id] === action
                                   ? action === 'delete'
                                     ? 'bg-red-700 border-red-600 text-white'
-                                    : 'bg-blue-600 border-blue-500 text-white'
+                                    : 'bg-accent border-accent text-white'
                                   : 'bg-surface-1 border-gray-600 text-gray-400 hover:border-gray-400'}`}
                             >
                               {t(`settings.filamentSync.modal.action_${action}`)}

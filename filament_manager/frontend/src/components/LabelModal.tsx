@@ -267,7 +267,7 @@ export default function LabelModal({ spools, initialIds, onClose }: {
           <div className="flex items-center gap-3">
             {single && (
               <label className="flex items-center gap-1.5 text-xs text-gray-400" title={t('labels.hasLabelHint')}>
-                <Tag size={13} className={single.label_printed_at ? 'text-emerald-400' : ''} />
+                <Tag size={13} className={single.label_printed_at ? 'text-ok' : ''} />
                 <span className="hidden sm:inline">{t('labels.hasLabel')}</span>
                 <Switch on={!!single.label_printed_at} onChange={v => markPrinted([single.id], v)} label={t('labels.hasLabel')} />
               </label>
@@ -313,7 +313,7 @@ export default function LabelModal({ spools, initialIds, onClose }: {
                 </div>
               )}
               {!grid && clipped && (
-                <p className="text-[11px] text-amber-400">{t('labels.clipped', { mm: Math.floor(printer.printheadPixels / 8) })}</p>
+                <p className="text-[11px] text-warn">{t('labels.clipped', { mm: Math.floor(printer.printheadPixels / 8) })}</p>
               )}
             </section>
 
@@ -331,10 +331,10 @@ export default function LabelModal({ spools, initialIds, onClose }: {
               </div>
               {settings.profile && !profileEdit && (
                 <div className="flex items-center gap-1 flex-wrap text-xs">
-                  {profileDirty && <span className="text-amber-400 mr-1">{t('labels.profileChanged')}</span>}
+                  {profileDirty && <span className="text-warn mr-1">{t('labels.profileChanged')}</span>}
                   <button className="btn-ghost px-2 py-1 flex items-center gap-1" disabled={busy !== ''} onClick={overwriteProfile}><Save size={12} /> {t('labels.overwriteProfile')}</button>
                   <button className="btn-ghost px-2 py-1 flex items-center gap-1" onClick={() => { setProfileEdit('rename'); setProfileName(settings.profile) }}><Pencil size={12} /> {t('labels.renameProfile')}</button>
-                  <button className="btn-ghost px-2 py-1 flex items-center gap-1 text-red-400" disabled={busy !== ''} onClick={deleteProfile}><Trash2 size={12} /> {t('labels.deleteProfile')}</button>
+                  <button className="btn-ghost px-2 py-1 flex items-center gap-1 text-crit" disabled={busy !== ''} onClick={deleteProfile}><Trash2 size={12} /> {t('labels.deleteProfile')}</button>
                 </div>
               )}
               {profileEdit && (
@@ -353,20 +353,20 @@ export default function LabelModal({ spools, initialIds, onClose }: {
             <section className="space-y-2">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-400">{t('labels.printer')}</h3>
               {!hasBt ? (
-                <div className="rounded-lg border border-amber-700/60 bg-amber-900/20 p-3 text-xs text-amber-300 space-y-2">
+                <div className="rounded-lg border border-warn/40 bg-warn/15 p-3 text-xs text-warn space-y-2">
                   <p className="flex items-start gap-1.5"><BluetoothOff size={14} className="shrink-0 mt-0.5" /> {t(window.isSecureContext ? 'labels.noBluetooth' : 'labels.noBluetoothHttp')}</p>
                   <div className="flex flex-wrap gap-2">
-                    <a className="btn-ghost px-2.5 py-1.5 text-xs flex items-center gap-1 text-amber-200" href={browserUrl} target="_blank" rel="noopener noreferrer">
+                    <a className="btn-ghost px-2.5 py-1.5 text-xs flex items-center gap-1 text-warn" href={browserUrl} target="_blank" rel="noopener noreferrer">
                       <ExternalLink size={13} /> {t('labels.openInBrowser')}
                     </a>
-                    <button className="btn-ghost px-2.5 py-1.5 text-xs flex items-center gap-1 text-amber-200" onClick={copyLink}>
+                    <button className="btn-ghost px-2.5 py-1.5 text-xs flex items-center gap-1 text-warn" onClick={copyLink}>
                       <Copy size={13} /> {copied ? t('labels.copied') : t('labels.copyLink')}
                     </button>
                   </div>
                 </div>
               ) : printer.connected ? (
                 <div className="flex items-center justify-between gap-2 text-sm flex-wrap">
-                  <span className="flex items-center gap-1.5 text-emerald-400">
+                  <span className="flex items-center gap-1.5 text-ok">
                     <Bluetooth size={14} /> {printer.model ?? 'Niimbot'}
                     {printer.labelsLeft != null && <span className="text-gray-400 text-xs">· {t('labels.labelsLeft', { n: printer.labelsLeft })}</span>}
                   </span>
@@ -408,7 +408,7 @@ export default function LabelModal({ spools, initialIds, onClose }: {
                         onChange={() => setSelected(sel => sel.includes(s.id) ? sel.filter(x => x !== s.id) : [...sel, s.id])} />
                       <span className="w-3 h-3 rounded-full shrink-0 ring-1 ring-white/10" style={{ background: s.color_hex }} />
                       <span className="truncate flex-1">{spoolTitle(s)}</span>
-                      {s.label_printed_at && <Tag size={12} className="text-emerald-400 shrink-0" aria-label={t('labels.hasLabel')} />}
+                      {s.label_printed_at && <Tag size={12} className="text-ok shrink-0" aria-label={t('labels.hasLabel')} />}
                     </label>
                   ))}
                   {shownList.length === 0 && <p className="px-3 py-2 text-xs text-gray-500">{t('labels.noMatch')}</p>}
@@ -568,7 +568,7 @@ export default function LabelModal({ spools, initialIds, onClose }: {
           </div>
         </div>
 
-        {error && <p className="px-5 pb-2 text-xs text-red-400">{error}</p>}
+        {error && <p className="px-5 pb-2 text-xs text-crit">{error}</p>}
         <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-surface-3 flex-wrap">
           <button className="btn-ghost px-3 py-1.5 text-sm flex items-center gap-1.5" onClick={downloadPng} disabled={nothing}>
             <ImageIcon size={14} /> PNG
