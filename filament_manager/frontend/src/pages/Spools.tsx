@@ -4,8 +4,10 @@ import { useTranslation } from 'react-i18next'
 import { api } from '../api'
 import type { Spool, BrandSpoolWeight, FilamentCatalog, SpoolAuditEntry, Packaging } from '../types'
 import { PACKAGING_TYPES } from '../types'
-import { Plus, Pencil, Trash2, X, LayoutGrid, Table2, ChevronUp, ChevronDown, ChevronsUpDown, Copy, History, RotateCcw, Archive, ArchiveRestore, Columns3, Cloud, Recycle, Scale, Droplet, Flame, FileDown, Loader2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, LayoutGrid, Table2, ChevronUp, ChevronDown, ChevronsUpDown, Copy, History, RotateCcw, Archive, ArchiveRestore, Columns3, Cloud, Recycle, Scale, Droplet, Flame, FileDown, Loader2, QrCode } from 'lucide-react'
 import Modal from '../components/Modal'
+import LabelModal from '../components/LabelModal'
+import { useSearchParams } from 'react-router-dom'
 import { formatDateOnly, formatDateTimeTZ } from '../utils/time'
 import { useHATZ, useCurrencyFormatter, useCurrencySymbol, useHACurrency } from '../hooks/useHATZ'
 import { saveBlob } from '../utils/download'
@@ -845,8 +847,8 @@ function WeighModal({ spool, onClose }: { spool: Spool; onClose: () => void }) {
 
 // ── Spool Card ────────────────────────────────────────────────────────────────
 
-function SpoolCard({ spool, spools, onEdit, onWeigh, onMoisture, onDuplicate, onHistory, onDelete, onArchive, onUnarchive, onAssignSlot }: {
-  spool: Spool; spools: Spool[]; onEdit: () => void; onWeigh: () => void; onMoisture: () => void; onDuplicate: () => void; onHistory: () => void; onDelete: () => void
+function SpoolCard({ spool, spools, onEdit, onWeigh, onLabel, onMoisture, onDuplicate, onHistory, onDelete, onArchive, onUnarchive, onAssignSlot }: {
+  spool: Spool; spools: Spool[]; onEdit: () => void; onWeigh: () => void; onLabel: () => void; onMoisture: () => void; onDuplicate: () => void; onHistory: () => void; onDelete: () => void
   onArchive: () => void; onUnarchive: () => void; onAssignSlot: (slot: string | null) => void
 }) {
   const { t } = useTranslation()
@@ -888,9 +890,10 @@ function SpoolCard({ spool, spools, onEdit, onWeigh, onMoisture, onDuplicate, on
             </div>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-0.5 shrink-0 ml-2">
+        <div className="grid grid-cols-2 gap-0.5 shrink-0 ml-2 content-start">
           <button onClick={onEdit} className="btn-ghost p-1" title={t('spools.actions.edit')}><Pencil size={13} /></button>
           <button onClick={onWeigh} className="btn-ghost p-1 text-emerald-400" title={t('spools.actions.weigh')} aria-label={t('spools.actions.weigh')}><Scale size={13} /></button>
+          <button onClick={onLabel} className="btn-ghost p-1 text-violet-400" title={t('labels.action')} aria-label={t('labels.action')}><QrCode size={13} /></button>
           <button onClick={onDuplicate} className="btn-ghost p-1 text-blue-400" title={t('spools.actions.duplicate')}><Copy size={13} /></button>
           <button onClick={onHistory} className="btn-ghost p-1 text-amber-400" title={t('spools.actions.history')}><History size={13} /></button>
           {spool.archived
@@ -952,8 +955,8 @@ function SortIcon({ col, sort }: { col: SortKey; sort: { key: SortKey; dir: Sort
     : <ChevronDown size={12} className="text-accent" />
 }
 
-function SpoolTable({ spools, onEdit, onWeigh, onMoisture, onDuplicate, onHistory, onDelete, onArchive, onUnarchive, onAssignSlot }: {
-  spools: Spool[]; onEdit: (s: Spool) => void; onWeigh: (s: Spool) => void; onMoisture: (s: Spool) => void; onDuplicate: (s: Spool) => void; onHistory: (s: Spool) => void; onDelete: (s: Spool) => void
+function SpoolTable({ spools, onEdit, onWeigh, onLabel, onMoisture, onDuplicate, onHistory, onDelete, onArchive, onUnarchive, onAssignSlot }: {
+  spools: Spool[]; onEdit: (s: Spool) => void; onWeigh: (s: Spool) => void; onLabel: (s: Spool) => void; onMoisture: (s: Spool) => void; onDuplicate: (s: Spool) => void; onHistory: (s: Spool) => void; onDelete: (s: Spool) => void
   onArchive: (s: Spool) => void; onUnarchive: (s: Spool) => void; onAssignSlot: (s: Spool, slot: string | null) => void
 }) {
   const { t } = useTranslation()
@@ -1144,6 +1147,7 @@ function SpoolTable({ spools, onEdit, onWeigh, onMoisture, onDuplicate, onHistor
       <div className="flex items-center gap-0.5">
         <button onClick={() => onEdit(s)} className="btn-ghost p-1" title={t('spools.actions.edit')}><Pencil size={12} /></button>
         <button onClick={() => onWeigh(s)} className="btn-ghost p-1 text-emerald-400" title={t('spools.actions.weigh')} aria-label={t('spools.actions.weigh')}><Scale size={12} /></button>
+        <button onClick={() => onLabel(s)} className="btn-ghost p-1 text-violet-400" title={t('labels.action')} aria-label={t('labels.action')}><QrCode size={12} /></button>
         <button onClick={() => onDuplicate(s)} className="btn-ghost p-1 text-blue-400" title={t('spools.actions.duplicate')}><Copy size={12} /></button>
         <button onClick={() => onHistory(s)} className="btn-ghost p-1 text-amber-400" title={t('spools.actions.history')}><History size={12} /></button>
         {s.archived
@@ -1344,11 +1348,25 @@ export default function Spools() {
     try { localStorage.setItem('fm_spool_view', v) } catch { /* private mode etc. */ }
   }
   const [showArchived, setShowArchived] = useState(false)
+  // Label dialog: ids of the spools to print; labelPick = choose from the list
+  const [labelIds, setLabelIds] = useState<number[] | null>(null)
+  const [labelPick, setLabelPick] = useState(false)
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const { data: spools = [], isLoading } = useQuery<Spool[]>({
     queryKey: ['spools', showArchived],
     queryFn: () => api.getSpools(showArchived),
   })
+
+  // Deep link from a spool label's QR code (#/spools?spool=12): open that spool
+  useEffect(() => {
+    const id = Number(searchParams.get('spool'))
+    if (!id || isLoading) return
+    const hit = spools.find(s => s.id === id)
+    if (hit) setEditing(hit)
+    else if (!showArchived) { setShowArchived(true); return }
+    const next = new URLSearchParams(searchParams); next.delete('spool'); setSearchParams(next, { replace: true })
+  }, [searchParams, spools, isLoading, showArchived, setSearchParams])
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['spools'] })
   const [weighing, setWeighing] = useState<Spool | null>(null)
@@ -1472,6 +1490,15 @@ export default function Spools() {
             <span className="hidden sm:inline">{t('spools.inventoryPdf')}</span>
           </button>
 
+          <button
+            className="btn-ghost px-2.5 py-1.5 text-xs flex items-center gap-1 text-gray-400"
+            onClick={() => { setLabelPick(true); setLabelIds([]) }}
+            title={t('labels.title')}
+          >
+            <QrCode size={13} />
+            <span className="hidden sm:inline">{t('labels.title')}</span>
+          </button>
+
           <button className="btn-primary flex items-center gap-1.5" onClick={() => setShowForm(true)}>
             <Plus size={14} /> {t('spools.addSpool')}
           </button>
@@ -1491,6 +1518,7 @@ export default function Spools() {
                 onAssignSlot={slot => assignSlotMut.mutate({ id: spool.id, slot })}
                 onEdit={() => setEditing(spool)}
                 onWeigh={() => setWeighing(spool)}
+                onLabel={() => setLabelIds([spool.id])}
                 onMoisture={() => setMoistureSpool(spool)}
                 onDuplicate={() => setDuplicating(spool)}
                 onHistory={() => setAuditSpool(spool)}
@@ -1506,6 +1534,7 @@ export default function Spools() {
           spools={shown}
           onEdit={s => setEditing(s)}
           onWeigh={s => setWeighing(s)}
+          onLabel={s => setLabelIds([s.id])}
           onMoisture={s => setMoistureSpool(s)}
           onDuplicate={s => setDuplicating(s)}
           onHistory={s => setAuditSpool(s)}
@@ -1514,6 +1543,16 @@ export default function Spools() {
           onUnarchive={s => unarchiveMut.mutate(s.id)}
           onAssignSlot={(s, slot) => assignSlotMut.mutate({ id: s.id, slot })}
         />
+      )}
+
+      {labelIds && (
+        <Modal>
+          <LabelModal
+            spools={labelPick ? shown : spools.filter(s => labelIds.includes(s.id))}
+            initialIds={labelIds}
+            onClose={() => { setLabelIds(null); setLabelPick(false) }}
+          />
+        </Modal>
       )}
 
       {editing && (

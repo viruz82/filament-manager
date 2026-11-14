@@ -6,6 +6,17 @@ import App from './App'
 import './index.css'
 import i18n, { applyDocLang } from './i18n'
 
+// Deep link from a spool label QR code: ".../spool-12" (or "?spool=12") → #/spools?spool=12
+{
+  const m = window.location.pathname.match(/\/spool-(\d+)\/?$/)
+  const q = new URLSearchParams(window.location.search).get('spool')
+  const id = m ? m[1] : (q && /^\d+$/.test(q) ? q : null)
+  if (id) {
+    const path = m ? window.location.pathname.slice(0, m.index! + 1) : window.location.pathname
+    window.history.replaceState(null, '', `${path}#/spools?spool=${id}`)
+  }
+}
+
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
 })

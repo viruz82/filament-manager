@@ -275,6 +275,11 @@ export const api = {
     fetch(`${BASE}/reports/inventory.pdf?lang=${encodeURIComponent(lang)}&currency=${encodeURIComponent(currency)}`)
       .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.blob() }),
 
+  labelsPdf: (body: { width_mm: number; height_mm: number; images: string[] }) =>
+    fetch(`${BASE}/reports/labels.pdf`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    }).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.blob() }),
+
   // Data transfer
   exportData: () => fetch(`${BASE}/data/export`).then(r => r.blob()),
   exportSpoolsCsv: () => fetch(`${BASE}/data/export-spools-csv`).then(r => r.blob()),

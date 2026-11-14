@@ -538,3 +538,42 @@ def inventory_pdf(lang: str = "de", currency: str = "EUR",
     tx = _t(lang)
     stamp = utcnow().strftime("%Y-%m-%d")
     return _pdf_response(pdf, f"{_slug(tx['inventory_title'])}_{stamp}.pdf")
+
+
+# ── label sheets ────────────────────────────────────────────────────────────
+
+class LabelPdfRequest(BaseModel):
+    """Label images rendered by the frontend (PNG, base64 or data URL), one PDF page each."""
+    width_mm: float = Field(30, gt=5, le=300)
+    height_mm: float = Field(15, gt=5, le=300)
+    images: list[str] = Field(..., min_length=1, max_length=200)
+
+
+def labels_pdf(req: LabelPdfRequest) -> bytes:
+    """One page per label in the label's own size, image filling the page (for the label printer app)."""
+    import base64
+    import binascii
+    import io
+
+    orientation = "L" if req.width_mm >= req.height_mm else "P"
+    pdf = FPDF(orientation=orientation, unit="mm", format=(min(req.width_mm, req.height_mm),
+                                                           max(req.width_mm, req.height_mm)))
+    pdf.set_auto_page_break(False)
+    pdf.set_margin(0)
+    for raw in req.images:
+        data = raw.split(",", 1)[1] if raw.startswith("data:") else raw
+        try:
+            png = base64.b64decode(data, validate=True)
+        except (binascii.Error, ValueError):
+            raise HTTPException(status_code=422, detail="invalid image data")
+        if not png.startswith(b"\x89PNG"):
+            raise HTTPException(status_code=422, detail="images must be PNG")
+        pdf.add_page()
+        pdf.image(io.BytesIO(png), x=0, y=0, w=req.width_mm, h=req.height_mm)
+    return bytes(pdf.output())
+
+
+@router.post("/labels.pdf")
+def labels_pdf_endpoint(req: LabelPdfRequest):
+    return Response(content=labels_pdf(req), media_type="application/pdf",
+                    headers={"Content-Disposition": 'attachment; filename="etiketten.pdf"'})

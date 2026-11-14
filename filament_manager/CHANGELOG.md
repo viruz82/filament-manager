@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.9.0
+
+- Feature: **spool labels with QR code for Niimbot label printers** (tested model D110) — new dialog "Labels" (button with the QR icon on every spool card/table row, and "Labels" in the toolbar to pick several spools). Selectable fields: QR code, number, material, brand, color, remaining weight, location, purchase date, price/kg, article number; label size (default 30 × 15 mm, presets), density, copies per spool; live preview. Settings are remembered in the browser
+- Printing goes directly over **Web Bluetooth** (Chrome/Edge on desktop and Android) using [niimbluelib](https://github.com/MultiMote/niimbluelib) (MIT); shows the model and the labels left on the roll. Browsers without Bluetooth (e.g. the Home Assistant app) get "open in browser" / "copy link"
+- Download as **PNG** (one per spool) or **PDF** (one page per label in label size, `POST /api/reports/labels.pdf`)
+- The QR code opens the spool in the add-on: `<HA address>/<add-on panel>/spool-<id>` (or `?spool=<id>`, or `#/spools?spool=<id>`); the target address can be overridden in the dialog
+
 ## 1.8.1
 
 - Fix: the spools page remembers the chosen view (cards or table) in the browser instead of falling back to the table on every visit
