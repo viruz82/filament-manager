@@ -154,7 +154,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const mainNav = nav.slice(0, 4)
   const moreNav = nav.slice(4)
   const moreActive = moreNav.some(n => location.pathname.startsWith(n.to))
-  const pageTitle = nav.find(n => location.pathname.startsWith(n.to))?.label ?? t('nav.appName')
 
   useEffect(() => {
     setMoreOpen(false)
@@ -227,10 +226,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {/* ── Main content area ────────────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
-        {/* Phone top bar: just the page title */}
+        {/* Phone top bar: app name (the page itself shows its title) */}
         <header className="flex items-center gap-2 px-4 py-3 bg-surface-2 shrink-0 md:hidden">
           <span className="text-accent shrink-0"><AppIcon size={18} /></span>
-          <p className="text-base font-semibold text-white truncate">{pageTitle}</p>
+          <p className="text-base font-semibold text-white truncate">{t('nav.appName')}</p>
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 md:p-6">

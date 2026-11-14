@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.11.0
+
+- New look: Home-Assistant blue accent, softer surfaces, rounder cards and pill buttons; status colours (ok / warning / critical / info) are now theme tokens that work in light and dark mode.
+- Own confirmation dialog in the Home Assistant style instead of the browser's confirm() (delete spool / print / printer, force-finish, label profile, recalculate wear, apply brand weight). Deleting a spool offers "Archive" as a safer alternative.
+- Archiving and restoring a spool needs no confirmation any more; a message with "Undo" stays for 8 seconds.
+- Error and info messages are shown as toasts instead of browser alert() boxes.
+- Phone: bottom navigation (Overview, Spools, Prints, Projects, More) replaces the burger menu; "More" holds Maintenance, Settings, language and version.
+- Shared building blocks: `Ring` (spool colour disc), `.pill`, `.chip`, `.seg` classes.
+
 ## 1.10.2
 
 - Numbers now follow the UI language everywhere (dashboard, prints, spools, settings): decimal comma instead of `toFixed` dots ("0,920 kg").
