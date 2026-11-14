@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.8.1
+
+- Fix: the spools page remembers the chosen view (cards or table) in the browser instead of falling back to the table on every visit
+
 ## 1.8.0
 
 - Feature: **maintenance log** — new page "Maintenance" (`#/maintenance`) with recurring tasks that are due after print hours, calendar days and/or grams of filament (whichever is reached first, counted from the last time the task was done; hours and grams come from the prints finished since then, optionally only of one printer). Levels ok, due soon (from 90 %), due, off. Cards with progress bar and rest, "Done" with an optional note (counting restarts), history per task, edit, delete. Button "Bambu recommendations" adds the periodic maintenance from the Bambu Lab wiki for the A1 series (rails and hotend monthly, lead screw and idler pulley every 3 months, cutter every 3 spools, nozzle and extruder gear every 5, PTFE tube every 6, fans weekly but disabled), counted from now; existing ones are not duplicated

@@ -1335,7 +1335,14 @@ export default function Spools() {
   const [editing, setEditing] = useState<Spool | null>(null)
   const [duplicating, setDuplicating] = useState<Spool | null>(null)
   const [auditSpool, setAuditSpool] = useState<Spool | null>(null)
-  const [view, setView] = useState<'cards' | 'table'>('table')
+  // Chosen view is remembered per browser until the user switches it again
+  const [view, setViewState] = useState<'cards' | 'table'>(() => {
+    try { return localStorage.getItem('fm_spool_view') === 'cards' ? 'cards' : 'table' } catch { return 'table' }
+  })
+  const setView = (v: 'cards' | 'table') => {
+    setViewState(v)
+    try { localStorage.setItem('fm_spool_view', v) } catch { /* private mode etc. */ }
+  }
   const [showArchived, setShowArchived] = useState(false)
 
   const { data: spools = [], isLoading } = useQuery<Spool[]>({
