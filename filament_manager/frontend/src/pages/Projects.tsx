@@ -1,10 +1,13 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { useToast } from '../components/ui/Feedback'
+import { useToast, useConfirm } from '../components/ui/Feedback'
+import Menu from '../components/ui/Menu'
+import PageHeader from '../components/ui/PageHeader'
+import StatTile from '../components/ui/StatTile'
 import { api } from '../api'
 import type { Project, ProjectDetail, PrintJob, ProjectReportOptions, ProjectReportSummary, ReportExtra } from '../types'
-import { Plus, Pencil, Trash2, X, FolderOpen, ChevronDown, ChevronRight, Layers, FlaskConical, ExternalLink, FileDown, Loader2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, Ellipsis, X, FolderOpen, ChevronDown, ChevronRight, Layers, FlaskConical, ExternalLink, FileDown, Loader2 } from 'lucide-react'
 import { useHATZ, useCurrencyFormatter, useHACurrency } from '../hooks/useHATZ'
 import { saveBlob, fileSlug } from '../utils/download'
 import { formatDateTimeTZ } from '../utils/time'
@@ -353,6 +356,45 @@ function AssignPrintsModal({
 
 // ── Project Card ──────────────────────────────────────────────────────────────
 
+// Key figures of a project (all prints, or only production / test prints).
+interface Totals {
+  count: number
+  grams: number
+  cost: number
+  kwh: number | null
+  energyCost: number | null
+  wear: number | null
+  seconds?: number
+}
+
+function TotalsGrid({ x, showCount = true, testCount }: { x: Totals; showCount?: boolean; testCount?: number }) {
+  const { t } = useTranslation()
+  const fmtCurrency = useCurrencyFormatter()
+  const hours = x.seconds && x.seconds > 0 ? fmtNum(x.seconds / 3600, 1) : null
+  return (
+    <div className="grid grid-cols-3 lg:grid-cols-6 gap-x-3 gap-y-3">
+      {showCount && (
+        <StatTile
+          label={t('projects.prints')}
+          value={x.count}
+          detail={testCount ? t('projects.testCount', { count: testCount }) : undefined}
+        />
+      )}
+      <StatTile label={t('projects.weight')} value={`${fmtNum(x.grams / 1000, 2)} ${t('common.kg')}`} />
+      <StatTile label={t('projects.cost')} value={fmtCurrency(x.cost)} tone={x.cost > 0 ? 'default' : 'muted'} />
+      {x.kwh != null && (
+        <StatTile
+          label={t('prints.energy')}
+          value={`${fmtNum(x.kwh, 2)} kWh`}
+          detail={x.energyCost != null ? fmtCurrency(x.energyCost) : undefined}
+        />
+      )}
+      {x.wear != null && <StatTile label={t('prints.wearCost')} value={fmtCurrency(x.wear)} />}
+      {hours && <StatTile label={t('projects.duration')} value={`${hours} h`} />}
+    </div>
+  )
+}
+
 function ProjectCard({
   project,
   onEdit,
@@ -365,7 +407,6 @@ function ProjectCard({
   onManagePrints: () => void
 }) {
   const { t } = useTranslation()
-  const fmtCurrency = useCurrencyFormatter()
   const [expanded, setExpanded] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
 
@@ -375,103 +416,111 @@ function ProjectCard({
     enabled: expanded,
   })
 
-  const durationH = project.total_duration_seconds > 0
-    ? fmtNum((project.total_duration_seconds / 3600), 1)
-    : null
+  const all: Totals = {
+    count: project.print_count,
+    grams: project.total_grams,
+    cost: project.total_cost,
+    kwh: project.total_energy_kwh,
+    energyCost: project.total_energy_cost,
+    wear: project.total_wear_cost,
+    seconds: project.total_duration_seconds,
+  }
+
+  const sub = (a: number | null, b: number | null) => (a != null && b != null ? a - b : a)
+  const production: Totals = {
+    count: project.print_count - project.test_print_count,
+    grams: project.total_grams - project.test_total_grams,
+    cost: project.total_cost - project.test_total_cost,
+    kwh: sub(project.total_energy_kwh, project.test_total_energy_kwh),
+    energyCost: sub(project.total_energy_cost, project.test_total_energy_cost),
+    wear: sub(project.total_wear_cost, project.test_total_wear_cost),
+  }
+  const tests: Totals = {
+    count: project.test_print_count,
+    grams: project.test_total_grams,
+    cost: project.test_total_cost,
+    kwh: project.test_total_energy_kwh,
+    energyCost: project.test_total_energy_cost,
+    wear: project.test_total_wear_cost,
+  }
 
   return (
     <div className="card">
-      <div
-        className="flex items-center gap-3 cursor-pointer"
-        onClick={() => setExpanded(e => !e)}
-      >
-        <span className="text-accent shrink-0">
-          {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-        </span>
-        <FolderOpen size={16} className="text-accent shrink-0" />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-white truncate">{project.name}</span>
-            <span className="text-xs text-gray-500 shrink-0">{project.print_count} {t('projects.prints')}</span>
-            {project.test_print_count > 0 && (
-              <span className="text-xs text-warn shrink-0 flex items-center gap-0.5">
-                <FlaskConical size={11} />
-                {project.test_print_count}
-              </span>
-            )}
-            {project.url && (
-              <a
-                href={project.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={e => e.stopPropagation()}
-                className="text-gray-500 hover:text-info shrink-0"
-                title={project.url}
-              >
-                <ExternalLink size={11} />
-              </a>
-            )}
-          </div>
-          {project.description && (
-            <p className="text-xs text-gray-400 truncate">{project.description}</p>
-          )}
-        </div>
-
-        <div className="hidden sm:flex items-center gap-4 text-xs text-gray-400 shrink-0">
-          {project.total_grams > 0 && (
-            <span>{fmtNum((project.total_grams / 1000), 2)} {t('common.kg')}</span>
-          )}
-          {project.total_cost > 0 && (
-            <span>{fmtCurrency(project.total_cost)}</span>
-          )}
-          {project.total_energy_kwh != null && (
-            <span>
-              {fmtNum(project.total_energy_kwh, 2)} kWh
-              {project.total_energy_cost != null && <> · {fmtCurrency(project.total_energy_cost)}</>}
+      <div className="flex items-start gap-2">
+        <button
+          type="button"
+          className="flex items-start gap-2 flex-1 min-w-0 text-left"
+          aria-expanded={expanded}
+          onClick={() => setExpanded(e => !e)}
+        >
+          <span className="text-accent shrink-0 mt-0.5">
+            {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="flex items-center gap-2">
+              <FolderOpen size={15} className="text-accent shrink-0" />
+              <span className="font-semibold text-white line-clamp-2 break-words">{project.name}</span>
             </span>
-          )}
-          {project.total_wear_cost != null && (
-            <span>{t('prints.wearCost')} {fmtCurrency(project.total_wear_cost)}</span>
-          )}
-          {durationH && <span>{durationH}h</span>}
-        </div>
+            {project.description && (
+              <span className="block text-xs text-gray-400 mt-0.5 line-clamp-2 break-words">{project.description}</span>
+            )}
+          </span>
+        </button>
 
-        <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center gap-0.5 shrink-0">
+          {project.url && (
+            <a
+              href={project.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-ghost !p-1.5 text-gray-400 hover:text-info"
+              title={project.url}
+              aria-label={project.url}
+            >
+              <ExternalLink size={14} />
+            </a>
+          )}
           <button
-            className="btn-ghost p-1.5"
+            className="btn-ghost !p-1.5"
             onClick={() => setReportOpen(true)}
             title={t('projects.pdfHint')}
             aria-label={t('projects.pdfHint')}
           >
-            <FileDown size={14} />
+            <FileDown size={15} />
           </button>
           {reportOpen && <Modal><CostReportModal project={project} onClose={() => setReportOpen(false)} /></Modal>}
           <button
-            className="btn-ghost p-1.5"
+            className="btn-ghost !p-1.5"
             onClick={onManagePrints}
             title={t('projects.managePrints')}
+            aria-label={t('projects.managePrints')}
           >
-            <Layers size={14} />
+            <Layers size={15} />
           </button>
-          <button className="btn-ghost p-1.5" onClick={onEdit} title={t('common.edit')}>
-            <Pencil size={14} />
-          </button>
-          <button className="btn-ghost p-1.5 text-crit" onClick={onDelete} title={t('common.delete')}>
-            <Trash2 size={14} />
-          </button>
+          <Menu
+            label={t('projects.actions')}
+            triggerClassName="p-1.5 text-gray-400"
+            trigger={<Ellipsis size={16} />}
+            items={[
+              { key: 'edit', label: t('common.edit'), icon: <Pencil size={14} />, onClick: onEdit },
+              { key: 'delete', label: t('common.delete'), icon: <Trash2 size={14} />, onClick: onDelete, danger: true },
+            ]}
+          />
         </div>
+      </div>
+
+      <div className="mt-3">
+        <TotalsGrid x={all} testCount={project.test_print_count} />
       </div>
 
       {expanded && (
         <div className="mt-3 pt-3 border-t border-surface-3">
           {project.material_usage.length > 0 && (
-            <div className="flex items-center gap-3 flex-wrap mb-3 pb-2 border-b border-surface-3">
+            <div className="flex items-center gap-1.5 flex-wrap mb-3">
               {project.material_usage.map((m, i) => (
-                <span key={i} className="flex items-center gap-1 text-xs">
-                  <span className="w-2 h-2 rounded-full shrink-0 ring-1 ring-white/10"
-                        style={{ background: m.color_hex }} />
-                  <span className="text-gray-400">{m.material}</span>
-                  <span className="text-gray-500">{fmtNum(m.grams, 0)}g</span>
+                <span key={i} className="pill">
+                  <span className="w-2 h-2 rounded-full shrink-0 ring-1 ring-white/10" style={{ background: m.color_hex }} />
+                  {m.material} <span className="text-gray-500 font-medium">{fmtNum(m.grams, 0)} {t('common.g')}</span>
                 </span>
               ))}
             </div>
@@ -485,40 +534,22 @@ function ProjectCard({
           {detail && detail.print_jobs.map(job => (
             <PrintJobRow key={job.id} job={job} projectId={project.id} />
           ))}
-          {project.test_print_count > 0 && project.print_count > 0 && (() => {
-            const prodEnergyKwh = project.total_energy_kwh != null && project.test_total_energy_kwh != null
-              ? project.total_energy_kwh - project.test_total_energy_kwh : project.total_energy_kwh
-            const prodEnergyCost = project.total_energy_cost != null && project.test_total_energy_cost != null
-              ? project.total_energy_cost - project.test_total_energy_cost : project.total_energy_cost
-            const prodWearCost = project.total_wear_cost != null && project.test_total_wear_cost != null
-              ? project.total_wear_cost - project.test_total_wear_cost : project.total_wear_cost
-            return (
-              <div className="mt-2 pt-2 border-t border-surface-3 flex gap-6 text-xs flex-wrap">
-                <div>
-                  <span className="text-gray-500">{t('projects.normalStats')}: </span>
-                  <span className="text-gray-300">
-                    {project.print_count - project.test_print_count} {t('projects.prints')}
-                    {' · '}{fmtNum(((project.total_grams - project.test_total_grams) / 1000), 2)} {t('common.kg')}
-                    {' · '}{fmtCurrency(project.total_cost - project.test_total_cost)}
-                    {prodEnergyKwh != null && <>{' · '}{fmtNum(prodEnergyKwh, 3)} kWh</>}
-                    {prodEnergyCost != null && <>{' · '}{fmtCurrency(prodEnergyCost)}</>}
-                    {prodWearCost != null && <>{' · '}{t('prints.wearCost')} {fmtCurrency(prodWearCost)}</>}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-warn flex items-center gap-1 inline-flex"><FlaskConical size={11} />{t('projects.testStats')}: </span>
-                  <span className="text-gray-300">
-                    {project.test_print_count} {t('projects.prints')}
-                    {' · '}{fmtNum((project.test_total_grams / 1000), 2)} {t('common.kg')}
-                    {' · '}{fmtCurrency(project.test_total_cost)}
-                    {project.test_total_energy_kwh != null && <>{' · '}{fmtNum(project.test_total_energy_kwh, 3)} kWh</>}
-                    {project.test_total_energy_cost != null && <>{' · '}{fmtCurrency(project.test_total_energy_cost)}</>}
-                    {project.test_total_wear_cost != null && <>{' · '}{t('prints.wearCost')} {fmtCurrency(project.test_total_wear_cost)}</>}
-                  </span>
-                </div>
+          {project.test_print_count > 0 && project.print_count > 0 && (
+            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="rounded-xl border border-surface-3 p-3 space-y-2">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  {t('projects.normalStats')} · {production.count}
+                </p>
+                <TotalsGrid x={production} showCount={false} />
               </div>
-            )
-          })()}
+              <div className="rounded-xl border border-warn/40 p-3 space-y-2">
+                <p className="text-xs font-semibold text-warn uppercase tracking-wider flex items-center gap-1">
+                  <FlaskConical size={11} /> {t('projects.testStats')} · {tests.count}
+                </p>
+                <TotalsGrid x={tests} showCount={false} />
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -542,41 +573,39 @@ function PrintJobRow({ job, projectId }: { job: PrintJob; projectId: number }) {
   })
 
   return (
-    <div className="flex items-center gap-3 py-1.5 text-sm border-b border-surface-3 last:border-0">
-      <span className={job.success ? 'text-ok' : 'text-crit'}>
-        {job.success ? '✓' : '✗'}
-      </span>
-      <span className="flex-1 truncate text-gray-200">{job.name}</span>
-      <span className="text-xs text-gray-400 shrink-0">{formatDateTimeTZ(job.started_at, tz)}</span>
-      {job.total_grams > 0 && (
-        <span className="text-xs text-gray-400 shrink-0">{fmtNum(job.total_grams, 1)}g</span>
-      )}
-      {job.material_cost > 0 && (
-        <span className="text-xs text-gray-400 shrink-0">{fmtCurrency(job.material_cost)}</span>
-      )}
-      {job.energy_kwh != null && (
-        <span className="text-xs text-warn shrink-0">
-          {fmtNum(job.energy_kwh, 2)} kWh
-          {job.energy_cost != null && <> · {fmtCurrency(job.energy_cost)}</>}
+    <div className="py-2 border-b border-surface-3 last:border-0">
+      <div className="flex items-center gap-2 text-sm">
+        <span className={job.success ? 'text-ok' : 'text-crit'}>
+          {job.success ? '✓' : '✗'}
         </span>
-      )}
-      {job.wear_cost != null && (
-        <span className="text-xs text-gray-400 shrink-0">{t('prints.wearCost')} {fmtCurrency(job.wear_cost)}</span>
-      )}
-      {job.total_cost > 0 && (
-        <span className="text-xs text-white shrink-0 font-medium">= {fmtCurrency(job.total_cost)}</span>
-      )}
-      {job.nozzle_diameter && (
-        <span className="text-xs text-info shrink-0">⌀{job.nozzle_diameter}</span>
-      )}
-      <button
-        title={job.is_test_print ? t('projects.unmarkTestPrint') : t('projects.markTestPrint')}
-        className={`shrink-0 p-1 rounded transition-colors ${job.is_test_print ? 'text-warn bg-warn/10' : 'text-gray-600 hover:text-warn'}`}
-        onClick={() => toggleTestMut.mutate(!job.is_test_print)}
-        disabled={toggleTestMut.isPending}
-      >
-        <FlaskConical size={13} />
-      </button>
+        <span className="flex-1 min-w-0 line-clamp-2 break-words text-gray-200">{job.name}</span>
+        {job.total_cost > 0 && (
+          <span className="text-sm text-white shrink-0 font-medium tabular-nums">{fmtCurrency(job.total_cost)}</span>
+        )}
+        <button
+          title={job.is_test_print ? t('projects.unmarkTestPrint') : t('projects.markTestPrint')}
+          aria-label={job.is_test_print ? t('projects.unmarkTestPrint') : t('projects.markTestPrint')}
+          aria-pressed={job.is_test_print}
+          className={`shrink-0 p-1.5 rounded-full transition-colors ${job.is_test_print ? 'text-warn bg-warn/15' : 'text-gray-600 hover:text-warn hover:bg-surface-3'}`}
+          onClick={() => toggleTestMut.mutate(!job.is_test_print)}
+          disabled={toggleTestMut.isPending}
+        >
+          <FlaskConical size={14} />
+        </button>
+      </div>
+      <p className="pl-6 mt-0.5 text-xs text-gray-500 flex flex-wrap gap-x-3 gap-y-0.5 tabular-nums">
+        <span>{formatDateTimeTZ(job.started_at, tz)}</span>
+        {job.total_grams > 0 && <span>{fmtNum(job.total_grams, 1)} {t('common.g')}</span>}
+        {job.material_cost > 0 && <span>{t('prints.material')} {fmtCurrency(job.material_cost)}</span>}
+        {job.energy_kwh != null && (
+          <span>
+            {fmtNum(job.energy_kwh, 2)} kWh
+            {job.energy_cost != null && <> · {fmtCurrency(job.energy_cost)}</>}
+          </span>
+        )}
+        {job.wear_cost != null && <span>{t('prints.wearCost')} {fmtCurrency(job.wear_cost)}</span>}
+        {job.nozzle_diameter && <span className="text-info">⌀{job.nozzle_diameter}</span>}
+      </p>
     </div>
   )
 }
@@ -585,11 +614,11 @@ function PrintJobRow({ job, projectId }: { job: PrintJob; projectId: number }) {
 
 export default function Projects() {
   const { t } = useTranslation()
+  const { confirm } = useConfirm()
   const qc = useQueryClient()
 
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Project | null>(null)
-  const [deleting, setDeleting] = useState<Project | null>(null)
   const [managingPrints, setManagingPrints] = useState<Project | null>(null)
 
   const { data: projects = [], isLoading } = useQuery<Project[]>({
@@ -620,27 +649,34 @@ export default function Projects() {
   })
 
   const deleteMut = useMutation({
-    mutationFn: () => api.deleteProject(deleting!.id),
+    mutationFn: (id: number) => api.deleteProject(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['projects'] })
       qc.invalidateQueries({ queryKey: ['prints'] })
       qc.invalidateQueries({ queryKey: ['prints-count'] })
-      setDeleting(null)
     },
   })
 
+  const askDelete = async (p: Project) => {
+    if (await confirm({
+      title: t('projects.deleteConfirm', { name: p.name }),
+      message: t('projects.deleteNote'),
+      danger: true,
+    })) deleteMut.mutate(p.id)
+  }
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-white">{t('projects.title')}</h1>
-          <p className="text-sm text-gray-400">{t('projects.subtitle')}</p>
-        </div>
-        <button className="btn-primary flex items-center gap-2 px-3 py-2" onClick={() => setShowForm(true)}>
-          <Plus size={16} />
-          <span className="hidden sm:inline">{t('projects.new')}</span>
-        </button>
-      </div>
+      <PageHeader
+        title={t('projects.title')}
+        subtitle={t('projects.subtitle')}
+        actions={
+          <button className="btn-primary flex items-center gap-1.5" onClick={() => setShowForm(true)}>
+            <Plus size={14} />
+            <span className="hidden sm:inline">{t('projects.new')}</span>
+          </button>
+        }
+      />
 
       {isLoading && <p className="text-sm text-gray-400">{t('common.loading')}</p>}
       {!isLoading && projects.length === 0 && (
@@ -657,7 +693,7 @@ export default function Projects() {
           key={p.id}
           project={p}
           onEdit={() => setEditing(p)}
-          onDelete={() => setDeleting(p)}
+          onDelete={() => askDelete(p)}
           onManagePrints={() => setManagingPrints(p)}
         />
       ))}
@@ -678,27 +714,6 @@ export default function Projects() {
             onSave={data => updateMut.mutate(data)}
             onCancel={() => setEditing(null)}
           />
-        </ModalShell>
-      )}
-
-      {deleting && (
-        <ModalShell title={t('projects.deleteTitle')} onClose={() => setDeleting(null)}>
-          <p className="text-sm text-gray-300 mb-4">
-            {t('projects.deleteConfirm', { name: deleting.name })}
-          </p>
-          <p className="text-xs text-gray-400 mb-6">{t('projects.deleteNote')}</p>
-          <div className="flex justify-end gap-2">
-            <button className="btn-ghost px-4 py-2" onClick={() => setDeleting(null)}>
-              {t('common.cancel')}
-            </button>
-            <button
-              className="btn-danger px-4 py-2"
-              onClick={() => deleteMut.mutate()}
-              disabled={deleteMut.isPending}
-            >
-              {t('common.delete')}
-            </button>
-          </div>
         </ModalShell>
       )}
 

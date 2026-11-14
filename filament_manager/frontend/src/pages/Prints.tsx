@@ -4,8 +4,12 @@ import { useTranslation } from 'react-i18next'
 import { useConfirm } from '../components/ui/Feedback'
 import { api } from '../api'
 import type { PrintJob, Spool, AMSTray, PrinterConfig, SuggestedUsage, PrinterStatus, Project } from '../types'
-import { Plus, Pencil, Trash2, X, CheckCircle, XCircle, Zap, Scale, FileText, Download, Search, CalendarDays, FolderOpen, ExternalLink, RefreshCw } from 'lucide-react'
+import { Plus, Pencil, Trash2, Ellipsis, X, CheckCircle, XCircle, Zap, Scale, FileText, Download, Search, CalendarDays, FolderOpen, ExternalLink, RefreshCw } from 'lucide-react'
 import Modal from '../components/Modal'
+import Menu, { type MenuItem } from '../components/ui/Menu'
+import PageHeader from '../components/ui/PageHeader'
+import StatTile from '../components/ui/StatTile'
+import { discBackground } from '../components/ui/Ring'
 import { useHATZ, useCurrencyFormatter } from '../hooks/useHATZ'
 import { useAmsSlotLabel } from '../hooks/useAmsSlots'
 import { fmtNum } from '../utils/number'
@@ -752,87 +756,77 @@ function PrintRow({ job, printer, onEdit, onDelete, onLogUsage }: {
   const needsUsage = job.source === 'auto' && job.finished_at && job.total_grams === 0 && job.suggested_usages !== null
   const showModel = job.model_name && job.model_name !== job.name
   const showDesignTitle = job.design_title && job.design_title !== job.name
+  const designLabel = showDesignTitle ? job.design_title : showModel ? job.model_name : null
+  const hasDetail = job.usages.length > 0 || job.energy_kwh != null || job.wear_cost != null
+
+  const menuItems: MenuItem[] = [
+    { key: 'edit', label: t('common.edit'), icon: <Pencil size={14} />, onClick: onEdit },
+    ...(needsUsage ? [{ key: 'usage', label: t('prints.logUsage'), icon: <Scale size={14} />, onClick: onLogUsage }] : []),
+    { key: 'delete', label: t('common.delete'), icon: <Trash2 size={14} />, onClick: onDelete, danger: true },
+  ]
 
   return (
-    <div className="card cursor-pointer" onClick={() => setExpanded(e => !e)}>
-      <div className="flex items-center gap-3">
+    <div className="card !p-3 cursor-pointer" onClick={() => setExpanded(e => !e)}>
+      <div className="flex items-start gap-3">
         {job.success
-          ? <CheckCircle size={16} className="text-ok shrink-0" />
-          : <XCircle size={16} className="text-crit shrink-0" />
+          ? <CheckCircle size={18} className="text-ok shrink-0 mt-0.5" />
+          : <XCircle size={18} className="text-crit shrink-0 mt-0.5" />
         }
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-sm font-medium text-white truncate">{job.name}</p>
-            {job.source === 'auto' && (
-              <span className="text-xs bg-info/15 text-info px-1.5 py-0.5 rounded flex items-center gap-0.5 shrink-0">
-                <Zap size={9} /> auto
-              </span>
-            )}
-            {job.project_name && (
-              <span className="text-xs bg-surface-3 text-gray-300 px-1.5 py-0.5 rounded shrink-0">
-                {job.project_name}
-              </span>
-            )}
-            {job.url && (
-              <a
-                href={job.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={e => e.stopPropagation()}
-                className="text-gray-500 hover:text-info shrink-0"
-                title={job.url}
-              >
-                <ExternalLink size={11} />
-              </a>
-            )}
-          </div>
-          <p className="text-xs text-gray-500">
+          <p className="text-sm font-medium text-white line-clamp-2 break-words">{job.name}</p>
+          <p className="text-xs text-gray-500 mt-0.5">
             {formatDateTimeTZ(job.started_at, tz)}
             {job.printer_name && ` · ${job.printer_name}`}
-            {job.duration_hours && ` · ${job.duration_hours}h`}
+            {job.duration_hours && ` · ${fmtNum(Number(job.duration_hours), 1)} h`}
           </p>
+          {(job.source === 'auto' || !job.success || job.project_name || job.url || needsUsage) && (
+            <div className="flex flex-wrap items-center gap-1 mt-1.5">
+              {!job.success && <span className="pill pill-crit">{t('prints.failed')}</span>}
+              {job.source === 'auto' && <span className="pill pill-info"><Zap size={9} /> auto</span>}
+              {job.project_name && <span className="pill max-w-full"><FolderOpen size={9} className="shrink-0" /> <span className="truncate">{job.project_name}</span></span>}
+              {needsUsage && (
+                <button
+                  type="button"
+                  className="pill pill-warn hover:brightness-125"
+                  onClick={e => { e.stopPropagation(); onLogUsage() }}
+                >
+                  <Scale size={9} /> {t('prints.usageMissing')}
+                </button>
+              )}
+              {job.url && (
+                <a
+                  href={job.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={e => e.stopPropagation()}
+                  className="pill hover:text-info"
+                  title={job.url}
+                >
+                  <ExternalLink size={9} /> {t('prints.link')}
+                </a>
+              )}
+            </div>
+          )}
           {job.description && (
-            <p className="text-xs text-gray-400 mt-0.5 truncate">{job.description}</p>
+            <p className="text-xs text-gray-400 mt-1 line-clamp-2 break-words">{job.description}</p>
           )}
-          {showDesignTitle && (
-            <p className="text-xs text-gray-600 flex items-center gap-1 mt-0.5">
-              <FileText size={10} />
-              {job.design_title}
-            </p>
-          )}
-          {showModel && !showDesignTitle && (
-            <p className="text-xs text-gray-600 flex items-center gap-1 mt-0.5">
-              <FileText size={10} />
-              {job.model_name}
+          {designLabel && (
+            <p className="text-xs text-gray-600 flex items-center gap-1 mt-0.5 min-w-0">
+              <FileText size={10} className="shrink-0" />
+              <span className="truncate">{designLabel}</span>
             </p>
           )}
         </div>
         <div className="text-right shrink-0">
-          <p className="text-sm text-white">{fmtNum(job.total_grams, 1)}g</p>
-          {job.total_cost > 0 && <p className="text-xs text-gray-400">{fmtCurrency(job.total_cost)}</p>}
-          {job.energy_kwh != null && (
-            <p className="text-xs text-gray-500">
-              {fmtNum(job.energy_kwh, 2)} kWh
-              {job.energy_cost != null && <> · {fmtCurrency(job.energy_cost)}</>}
-            </p>
-          )}
-          {job.wear_cost != null && (
-            <p className="text-xs text-gray-500">{t('prints.wearCost')} {fmtCurrency(job.wear_cost)}</p>
-          )}
+          <p className="text-sm text-white tabular-nums">{fmtNum(job.total_grams, 1)} {t('common.g')}</p>
+          {job.total_cost > 0 && <p className="text-xs text-gray-400 tabular-nums">{fmtCurrency(job.total_cost)}</p>}
         </div>
-        <div className="flex gap-1 ml-2" onClick={e => e.stopPropagation()}>
-          {needsUsage && (
-            <button
-              className="btn-ghost p-1 text-warn"
-              onClick={onLogUsage}
-              title="Log filament usage"
-            >
-              <Scale size={12} />
-            </button>
-          )}
-          <button className="btn-ghost p-1" onClick={onEdit}><Pencil size={12} /></button>
-          <button className="btn-ghost p-1 text-crit" onClick={onDelete}><Trash2 size={12} /></button>
-        </div>
+        <Menu
+          label={t('prints.actions')}
+          triggerClassName="p-1.5 text-gray-400"
+          trigger={<Ellipsis size={16} />}
+          items={menuItems}
+        />
       </div>
 
       {/* Live status — always visible for active (open) jobs that have a known printer */}
@@ -840,26 +834,41 @@ function PrintRow({ job, printer, onEdit, onDelete, onLogUsage }: {
         <LivePrintStatus printerId={printer.id} />
       )}
 
-      {expanded && job.usages.length > 0 && (
-        <div className="mt-3 pt-3 border-t border-surface-3 space-y-1">
-          {job.usages.map(u => (
-            <div key={u.id} className="flex items-center gap-2 text-xs text-gray-400">
-              {u.spool && (
-                <span
-                  className="w-2.5 h-2.5 rounded-full shrink-0"
-                  style={{ background: u.spool.color_hex }}
+      {expanded && hasDetail && (
+        <div className="mt-3 pt-3 border-t border-surface-3 space-y-3">
+          {(job.energy_kwh != null || job.wear_cost != null) && (
+            <div className="grid grid-cols-3 gap-3">
+              <StatTile label={t('prints.material')} value={fmtCurrency(job.material_cost ?? 0)} />
+              {job.energy_kwh != null && (
+                <StatTile
+                  label={t('prints.energy')}
+                  value={`${fmtNum(job.energy_kwh, 2)} kWh`}
+                  detail={job.energy_cost != null ? fmtCurrency(job.energy_cost) : undefined}
                 />
               )}
-              <span className="flex-1">
-                {u.spool
-                  ? `${u.spool.brand} ${u.spool.material}${u.spool.subtype ? ` ${u.spool.subtype}` : ''} — ${u.spool.color_name}`
-                  : `Spool #${u.spool_id}`}
-              </span>
-              <span>{fmtNum(u.grams_used, 1)}g</span>
-              {u.cost && <span className="text-gray-500">{fmtCurrency(u.cost)}</span>}
-              {u.ams_slot && <span className="text-info">{slotLabel(u.ams_slot)}</span>}
+              {job.wear_cost != null && <StatTile label={t('prints.wearCost')} value={fmtCurrency(job.wear_cost)} />}
             </div>
-          ))}
+          )}
+          {job.usages.length > 0 && (
+            <div className="space-y-1.5">
+              {job.usages.map(u => (
+                <div key={u.id} className="flex items-center gap-2 text-xs text-gray-400">
+                  <span
+                    className="w-3 h-3 rounded-full shrink-0 ring-1 ring-white/10"
+                    style={{ background: u.spool ? discBackground(u.spool) : 'rgba(128,128,128,0.4)' }}
+                  />
+                  <span className="flex-1 min-w-0 truncate">
+                    {u.spool
+                      ? `${u.spool.brand} ${u.spool.material}${u.spool.subtype ? ` ${u.spool.subtype}` : ''} — ${u.spool.color_name}`
+                      : `Spool #${u.spool_id}`}
+                  </span>
+                  {u.ams_slot && <span className="pill pill-info">{slotLabel(u.ams_slot)}</span>}
+                  <span className="tabular-nums text-gray-300 shrink-0">{fmtNum(u.grams_used, 1)} {t('common.g')}</span>
+                  {u.cost && <span className="text-gray-500 tabular-nums shrink-0">{fmtCurrency(u.cost)}</span>}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -974,81 +983,73 @@ export default function Prints() {
   const totalGrams = filtered.reduce((s, j) => s + j.total_grams, 0)
   const totalCost  = filtered.reduce((s, j) => s + j.total_cost, 0)
 
-  return (
-    <div className="flex flex-col gap-4 h-full">
-      <div className="flex-none flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h2 className="text-lg font-bold">
-            {t('prints.history')} ({isFiltered ? `${filtered.length} ${t('prints.countOf')} ` : ''}{shown.length}{totalCount > shown.length ? ` ${t('prints.countOf')} ${totalCount}` : ''})
-          </h2>
-          {filtered.length > 0 && (
-            <p className="text-xs text-gray-500">
-              {fmtNum(totalGrams, 0)}g · {fmtCurrency(totalCost)}
-            </p>
+  const modeSeg = (
+    <div className="seg">
+      {(['month', 'week', 'day'] as FilterMode[]).map(m => (
+        <button
+          key={m}
+          onClick={() => setDateFilter(f =>
+            f?.mode === m ? null : { mode: m, preset: 'this', custom: presetToCustom(m, 'this', today) }
           )}
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
-            <input
-              className="input pl-7 py-1.5 text-sm w-48"
-              placeholder={t('prints.search')}
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-          </div>
-          <button className="btn-primary flex items-center gap-1.5" onClick={() => setShowForm(true)}>
-            <Plus size={14} /> {t('prints.logPrint')}
-          </button>
-        </div>
-      </div>
+          className={`seg-item ${dateFilter?.mode === m ? 'seg-item-on' : 'hover:text-white'}`}
+        >
+          {t(`prints.filter.${m}`)}
+        </button>
+      ))}
+    </div>
+  )
 
-      {/* Date filter bar */}
-      <div className="flex-none card py-2.5 px-3 flex items-center gap-2 flex-wrap">
-        <CalendarDays size={13} className="text-gray-500 shrink-0" />
+  return (
+    <div className="flex flex-col gap-3 h-full">
+      <PageHeader
+        title={`${t('prints.history')} (${isFiltered ? `${filtered.length} ${t('prints.countOf')} ` : ''}${shown.length}${totalCount > shown.length ? ` ${t('prints.countOf')} ${totalCount}` : ''})`}
+        subtitle={filtered.length > 0 ? `${fmtNum(totalGrams, 0)} ${t('common.g')} · ${fmtCurrency(totalCost)}` : undefined}
+        actions={
+          <>
+            <div className="relative w-full sm:w-52 order-last sm:order-none">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+              <input
+                type="search"
+                className="input !rounded-full !bg-surface-2 pl-9 !py-1.5"
+                placeholder={t('prints.search')}
+                aria-label={t('prints.search')}
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+            </div>
+            <button className="btn-primary flex items-center gap-1.5" onClick={() => setShowForm(true)}>
+              <Plus size={14} /> {t('prints.logPrint')}
+            </button>
+          </>
+        }
+      />
 
-        {(['month', 'week', 'day'] as FilterMode[]).map(m => (
-          <button
-            key={m}
-            onClick={() => setDateFilter(f =>
-              f?.mode === m ? null : { mode: m, preset: 'this', custom: presetToCustom(m, 'this', today) }
-            )}
-            className={`px-2.5 py-1 text-xs rounded-lg transition-colors ${
-              dateFilter?.mode === m
-                ? 'bg-info/15 text-info'
-                : 'text-gray-400 hover:text-white hover:bg-surface-3 border border-surface-3'
-            }`}
-          >
-            {t(`prints.filter.${m}`)}
-          </button>
-        ))}
-
+      {/* Date filter: one row, scrolls sideways on narrow screens */}
+      <div className="flex-none flex items-center gap-2 overflow-x-auto pb-1 [&>*]:shrink-0">
+        <CalendarDays size={14} className="text-gray-500" />
+        {modeSeg}
         {dateFilter && (
           <>
-            <div className="w-px h-4 bg-surface-3 mx-0.5" />
-
-            {(['this', 'last'] as const).map(p => (
-              <button
-                key={p}
-                onClick={() => setDateFilter(f => f ? { ...f, preset: p, custom: presetToCustom(f.mode, p, today) } : null)}
-                className={`px-2.5 py-1 text-xs rounded-lg transition-colors ${
-                  dateFilter.preset === p
-                    ? 'bg-surface-3 text-white'
-                    : 'text-gray-400 hover:text-white hover:bg-surface-3'
-                }`}
-              >
-                {dateFilter.mode === 'month'
-                  ? (p === 'this' ? t('prints.filter.thisMonth') : t('prints.filter.lastMonth'))
-                  : dateFilter.mode === 'week'
-                  ? (p === 'this' ? t('prints.filter.thisWeek') : t('prints.filter.lastWeek'))
-                  : (p === 'this' ? t('prints.filter.today') : t('prints.filter.yesterday'))}
-              </button>
-            ))}
+            <div className="seg">
+              {(['this', 'last'] as const).map(p => (
+                <button
+                  key={p}
+                  onClick={() => setDateFilter(f => f ? { ...f, preset: p, custom: presetToCustom(f.mode, p, today) } : null)}
+                  className={`seg-item ${dateFilter.preset === p ? 'seg-item-on' : 'hover:text-white'}`}
+                >
+                  {dateFilter.mode === 'month'
+                    ? (p === 'this' ? t('prints.filter.thisMonth') : t('prints.filter.lastMonth'))
+                    : dateFilter.mode === 'week'
+                    ? (p === 'this' ? t('prints.filter.thisWeek') : t('prints.filter.lastWeek'))
+                    : (p === 'this' ? t('prints.filter.today') : t('prints.filter.yesterday'))}
+                </button>
+              ))}
+            </div>
 
             <input
               type={dateFilter.mode === 'month' ? 'month' : 'date'}
-              className="input py-0.5 text-xs"
-              style={{ width: 132 }}
+              className="input !rounded-full !py-1 text-xs"
+              style={{ width: 138 }}
               value={dateFilter.custom}
               onChange={e => {
                 if (!e.target.value) return
@@ -1069,10 +1070,11 @@ export default function Prints() {
 
             <button
               onClick={() => setDateFilter(null)}
-              className="text-gray-500 hover:text-white ml-0.5"
+              className="chip"
               title={t('prints.filter.clear')}
+              aria-label={t('prints.filter.clear')}
             >
-              <X size={13} />
+              <X size={12} /> {t('common.clear')}
             </button>
           </>
         )}
