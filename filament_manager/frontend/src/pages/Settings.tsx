@@ -9,7 +9,7 @@ import BambuCloudSection from '../components/BambuCloudSection'
 import FilamentSyncSection from '../components/FilamentSyncSection'
 import { findBestSpoolMatch } from '../utils/amsMatch'
 import { useCurrencySymbol, useCurrencyFormatter } from '../hooks/useHATZ'
-import { parseDecimal } from '../utils/number'
+import { parseDecimal, fmtNum } from '../utils/number'
 
 // ── Cloud Printer Form ────────────────────────────────────────────────────────
 
@@ -703,7 +703,7 @@ function StandbySection({ printer }: { printer: PrinterConfig }) {
         <div>
           <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wide mb-0.5">{t('settings.printers.standbyKwh')}</p>
           <p className="text-sm text-gray-200">
-            {printer.standby_kwh != null ? `${printer.standby_kwh.toFixed(3)} kWh` : '—'}
+            {printer.standby_kwh != null ? `${fmtNum(printer.standby_kwh, 3)} kWh` : '—'}
           </p>
           <p className="text-[10px] text-gray-500 mt-0.5">{t('settings.printers.standbyHint')}</p>
         </div>
@@ -943,7 +943,7 @@ function BrandWeightsSection({ actionsLast }: { actionsLast: boolean }) {
     onSuccess: (data, id) => { setApplied({ id, updated: data.updated }); qc.invalidateQueries({ queryKey: ['spools'] }) },
   })
   const confirmApply = (e: BrandSpoolWeight) => {
-    if (window.confirm(t('settings.brandWeights.applyConfirm', { brand: e.brand, g: e.spool_weight_g.toFixed(0) }))) {
+    if (window.confirm(t('settings.brandWeights.applyConfirm', { brand: e.brand, g: fmtNum(e.spool_weight_g, 0) }))) {
       applyMut.mutate(e.id)
     }
   }
@@ -1036,7 +1036,7 @@ function BrandWeightsSection({ actionsLast }: { actionsLast: boolean }) {
                     <span className="ml-2 text-[11px] text-green-400">{t('settings.brandWeights.applied', { count: applied.updated })}</span>
                   )}
                 </span>
-                <span className="text-sm text-gray-300 tabular-nums">{e.spool_weight_g.toFixed(0)} g</span>
+                <span className="text-sm text-gray-300 tabular-nums">{fmtNum(e.spool_weight_g, 0)} g</span>
                 <button
                   className="btn-ghost p-1"
                   onClick={() => confirmApply(e)}
@@ -1349,12 +1349,12 @@ function DataTransferSection() {
       <h3 className="text-sm font-semibold text-gray-300 mb-3">{t('settings.dataTransfer.title')}</h3>
 
       {/* Sub-tab bar */}
-      <div className="flex border-b border-surface-3 gap-0 mb-5">
+      <div className="flex border-b border-surface-3 gap-0 mb-5 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
         {TRANSFER_TABS.map(tab => (
           <button
             key={tab.id}
             onClick={() => setTransferTab(tab.id)}
-            className={`pb-2 pt-0.5 px-3 text-xs font-medium border-b-2 transition-colors -mb-px ${
+            className={`pb-2 pt-0.5 px-3 text-xs font-medium border-b-2 transition-colors whitespace-nowrap shrink-0 -mb-px ${
               transferTab === tab.id
                 ? 'border-blue-500 text-white'
                 : 'border-transparent text-gray-400 hover:text-gray-200'
@@ -1923,7 +1923,7 @@ function FilamentDataSection({ actionsLast }: { actionsLast: boolean }) {
       )}
 
       {/* Table */}
-      <div className="overflow-x-auto overflow-y-auto max-h-[calc(100svh-18rem)] rounded-xl border border-surface-3 bg-surface-2">
+      <div className="overflow-x-auto rounded-xl border border-surface-3 bg-surface-2">
         <table className="w-full text-xs text-left" style={{ minWidth: '700px' }}>
           <thead>
             <tr className="border-b border-surface-3">
@@ -2597,12 +2597,12 @@ export default function Settings() {
       </div>
 
       {/* Main tab bar */}
-      <div className="flex border-b border-surface-3 gap-0">
+      <div className="flex border-b border-surface-3 gap-0 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
         {MAIN_TABS.map(tab => (
           <button
             key={tab.id}
             onClick={() => setMainTab(tab.id)}
-            className={`pb-2.5 pt-1 px-4 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 -mb-px ${
+            className={`pb-2.5 pt-1 px-2.5 sm:px-4 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 -mb-px ${
               mainTab === tab.id
                 ? 'border-blue-500 text-white'
                 : 'border-transparent text-gray-400 hover:text-gray-200'

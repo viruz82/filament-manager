@@ -279,6 +279,7 @@
     "tray": "Fach {{n}}",
     "remainingInfo": "{{pct}}% verbleibend ({{kg}} kg)",
     "history": "Druckverlauf",
+    "countOf": "von",
     "confirmDelete": "Druck \"{{name}}\" löschen?",
     "loadMore": "Mehr laden ({{n}} verbleibend)",
     "saveUsage": "Verbrauch speichern",

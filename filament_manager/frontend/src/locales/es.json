@@ -279,6 +279,7 @@
     "tray": "Bandeja {{n}}",
     "remainingInfo": "{{pct}}% restante ({{kg}} kg)",
     "history": "Historial de impresiones",
+    "countOf": "de",
     "confirmDelete": "¿Eliminar impresión \"{{name}}\"?",
     "loadMore": "Cargar más ({{n}} restantes)",
     "saveUsage": "Guardar uso",

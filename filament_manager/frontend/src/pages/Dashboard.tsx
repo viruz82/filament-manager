@@ -9,6 +9,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { enUS, de, es, type Locale } from 'date-fns/locale'
 import { useHATZ, useCurrencyFormatter, useCurrencySymbol } from '../hooks/useHATZ'
 import { parseUTC } from '../utils/time'
+import { fmtNum } from '../utils/number'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
   PieChart, Pie, Legend, CartesianGrid,
@@ -91,7 +92,7 @@ function InventoryCard({ stats }: { stats: DashboardStats }) {
                 {r.spools}
               </td>
               <td className={`py-2.5 pl-5 text-right text-sm font-semibold tabular-nums whitespace-nowrap ${r.dim ? 'text-gray-500' : 'text-white'}`}>
-                {r.kg.toFixed(2)} kg
+                {fmtNum(r.kg, 2)} kg
               </td>
               <td className={`py-2.5 pl-5 text-right text-sm tabular-nums whitespace-nowrap ${r.dim ? 'text-gray-500' : 'text-gray-300'}`}>
                 {fmtCurrency(r.eur)}
@@ -211,7 +212,7 @@ function PrintRow({ job }: { job: PrintJob }) {
         </p>
       </div>
       <div className="text-right shrink-0 ml-4">
-        <p className="text-sm text-white">{(job.total_grams / 1000).toFixed(3)} kg</p>
+        <p className="text-sm text-white">{fmtNum((job.total_grams / 1000), 3)} kg</p>
         {job.total_cost > 0 && (
           <p className="text-xs text-gray-400">{fmtCurrency(job.total_cost)}</p>
         )}
@@ -305,7 +306,7 @@ function ChartSection({ stats }: { stats: DashboardStats }) {
                   labelStyle={TT_LABEL}
                   itemStyle={TT_ITEM}
                   formatter={(value: number, name: string, props) => [
-                    `${value} ${value === 1 ? t('dashboard.chart.spool') : t('dashboard.chart.spools')} · ${props.payload.kg.toFixed(2)} kg`, name,
+                    `${value} ${value === 1 ? t('dashboard.chart.spool') : t('dashboard.chart.spools')} · ${fmtNum(props.payload.kg, 2)} kg`, name,
                   ]}
                 />
                 <Legend formatter={(v, entry: any) => (
@@ -341,7 +342,7 @@ function ChartSection({ stats }: { stats: DashboardStats }) {
               <BarChart data={weightData} barSize={48}>
                 <XAxis dataKey="name" tick={{ fill: '#9ca3af', fontSize: 12 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: '#9ca3af', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={TT_STYLE} labelStyle={TT_LABEL} itemStyle={TT_ITEM} separator="" formatter={(v: number) => [`${v.toFixed(3)} kg`, '']} />
+                <Tooltip contentStyle={TT_STYLE} labelStyle={TT_LABEL} itemStyle={TT_ITEM} separator="" formatter={(v: number) => [`${fmtNum(v, 3)} kg`, '']} />
                 <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                   <Cell fill="#3b82f6" />
                   <Cell fill="#ef4444" />
@@ -449,7 +450,7 @@ function ChartSection({ stats }: { stats: DashboardStats }) {
                   labelStyle={TT_LABEL}
                   itemStyle={TT_ITEM}
                   formatter={(v: number, name: string) =>
-                    name === 'energy_kwh' ? [`${v.toFixed(3)} kWh`, t('dashboard.chart.energyKwh')] : [fmtCurrency(v), t('dashboard.chart.energyCost')]
+                    name === 'energy_kwh' ? [`${fmtNum(v, 3)} kWh`, t('dashboard.chart.energyKwh')] : [fmtCurrency(v), t('dashboard.chart.energyCost')]
                   }
                 />
                 <Bar dataKey="energy_kwh" radius={[4, 4, 0, 0]} name="energy_kwh">

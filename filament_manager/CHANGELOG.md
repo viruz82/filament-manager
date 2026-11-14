@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.10.2
+
+- Numbers now follow the UI language everywhere (dashboard, prints, spools, settings): decimal comma instead of `toFixed` dots ("0,920 kg").
+- Print history title uses a translated "of" ("von" / "de").
+- Dark/light `color-scheme`: scrollbars and form controls follow the theme.
+- Settings: removed the nested scroll box around the filament catalog table.
+- Phone: settings tabs and the spools toolbar stay on one line (labels collapse to icons) and no longer overflow sideways.
+
 ## 1.10.1
 
 - Prints → Edit → "Edit usage": the **AMS slot is now a dropdown** instead of free text. It lists the trays of the print's printer (live, falling back to AMS units × 4 when the printer is offline); the stored value stays the plain key (`ams1_tray2`), older free-text values remain selectable.

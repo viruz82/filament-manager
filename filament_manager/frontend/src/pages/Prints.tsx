@@ -7,6 +7,7 @@ import { Plus, Pencil, Trash2, X, CheckCircle, XCircle, Zap, Scale, FileText, Do
 import Modal from '../components/Modal'
 import { useHATZ, useCurrencyFormatter } from '../hooks/useHATZ'
 import { useAmsSlotLabel } from '../hooks/useAmsSlots'
+import { fmtNum } from '../utils/number'
 import { formatDateTimeTZ, nowInTZ, utcToLocalInput, localInputToUTC } from '../utils/time'
 
 const PAGE_SIZE = 50
@@ -428,7 +429,7 @@ function PrintForm({
                           ? `${spool.brand} ${spool.material}${spool.subtype ? ` ${spool.subtype}` : ''} — ${spool.color_name}`
                           : `Spool #${u.spool_id}`}
                       </span>
-                      <span className="text-gray-300">{u.grams_used.toFixed(1)}g</span>
+                      <span className="text-gray-300">{fmtNum(u.grams_used, 1)}g</span>
                       {u.ams_slot && <span className="text-blue-400">{slotLabel(u.ams_slot)}</span>}
                     </div>
                   )
@@ -624,7 +625,7 @@ function LogUsageModal({
                             </p>
                             <p className="text-xs text-gray-500">
                               {!isSwap && `${slot} · `}{spool.remaining_pct}%
-                              {` (${(spool.current_weight_g / 1000).toFixed(3)} kg)`}
+                              {` (${fmtNum((spool.current_weight_g / 1000), 3)} kg)`}
                               {s.estimated && (
                                 <span className="ml-1.5 text-yellow-600">{t('common.est')}</span>
                               )}
@@ -806,11 +807,11 @@ function PrintRow({ job, printer, onEdit, onDelete, onLogUsage }: {
           )}
         </div>
         <div className="text-right shrink-0">
-          <p className="text-sm text-white">{job.total_grams.toFixed(1)}g</p>
+          <p className="text-sm text-white">{fmtNum(job.total_grams, 1)}g</p>
           {job.total_cost > 0 && <p className="text-xs text-gray-400">{fmtCurrency(job.total_cost)}</p>}
           {job.energy_kwh != null && (
             <p className="text-xs text-gray-500">
-              {job.energy_kwh.toFixed(2)} kWh
+              {fmtNum(job.energy_kwh, 2)} kWh
               {job.energy_cost != null && <> · {fmtCurrency(job.energy_cost)}</>}
             </p>
           )}
@@ -853,7 +854,7 @@ function PrintRow({ job, printer, onEdit, onDelete, onLogUsage }: {
                   ? `${u.spool.brand} ${u.spool.material}${u.spool.subtype ? ` ${u.spool.subtype}` : ''} — ${u.spool.color_name}`
                   : `Spool #${u.spool_id}`}
               </span>
-              <span>{u.grams_used.toFixed(1)}g</span>
+              <span>{fmtNum(u.grams_used, 1)}g</span>
               {u.cost && <span className="text-gray-500">{fmtCurrency(u.cost)}</span>}
               {u.ams_slot && <span className="text-blue-400">{slotLabel(u.ams_slot)}</span>}
             </div>
@@ -976,11 +977,11 @@ export default function Prints() {
       <div className="flex-none flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-lg font-bold">
-            {t('prints.history')} ({isFiltered ? `${filtered.length} of ` : ''}{shown.length}{totalCount > shown.length ? ` of ${totalCount}` : ''})
+            {t('prints.history')} ({isFiltered ? `${filtered.length} ${t('prints.countOf')} ` : ''}{shown.length}{totalCount > shown.length ? ` ${t('prints.countOf')} ${totalCount}` : ''})
           </h2>
           {filtered.length > 0 && (
             <p className="text-xs text-gray-500">
-              {totalGrams.toFixed(0)}g · {fmtCurrency(totalCost)}
+              {fmtNum(totalGrams, 0)}g · {fmtCurrency(totalCost)}
             </p>
           )}
         </div>

@@ -340,7 +340,7 @@ function SpoolForm({
                         }`}
                         onClick={() => setOwnTare(String(v.spool_weight_g))}
                       >
-                        {v.brand} · {v.spool_weight_g.toFixed(0)} g
+                        {v.brand} · {fmtNum(v.spool_weight_g, 0)} g
                       </button>
                     ))}
                   </div>
@@ -382,7 +382,7 @@ function SpoolForm({
               </div>
               {form.initial_weight_g > 0 && (
                 <p className="text-xs text-gray-500 mt-1.5">
-                  {t('spools.form.percentRemaining', { pct: ((form.current_weight_g / form.initial_weight_g) * 100).toFixed(1) })}
+                  {t('spools.form.percentRemaining', { pct: fmtNum(((form.current_weight_g / form.initial_weight_g) * 100), 1) })}
                 </p>
               )}
             </div>
@@ -535,8 +535,8 @@ function SpoolAuditModal({ spool, onClose }: { spool: Spool; onClose: () => void
   const handleCorrect = (e: SpoolAuditEntry) => {
     const sign = e.delta_g < 0 ? '' : '+'
     const msg = t('spools.audit.correctConfirm', {
-      delta: `${sign}${e.delta_g.toFixed(1)}`,
-      reverse: `${e.delta_g < 0 ? '+' : ''}${(-e.delta_g).toFixed(1)}`,
+      delta: `${sign}${fmtNum(e.delta_g, 1)}`,
+      reverse: `${e.delta_g < 0 ? '+' : ''}${fmtNum((-e.delta_g), 1)}`,
     })
     if (confirm(msg)) correctMut.mutate(e.id)
   }
@@ -588,13 +588,13 @@ function SpoolAuditModal({ spool, onClose }: { spool: Spool; onClose: () => void
                         </span>
                       </td>
                       <td className="px-4 py-2 text-right text-gray-400 whitespace-nowrap">
-                        {e.weight_before != null ? `${e.weight_before.toFixed(1)} g` : '—'}
+                        {e.weight_before != null ? `${fmtNum(e.weight_before, 1)} g` : '—'}
                       </td>
                       <td className={`px-4 py-2 text-right font-medium whitespace-nowrap ${positive ? 'text-green-400' : 'text-red-400'}`}>
-                        {positive ? '+' : ''}{e.delta_g.toFixed(1)} g
+                        {positive ? '+' : ''}{fmtNum(e.delta_g, 1)} g
                       </td>
                       <td className="px-4 py-2 text-right text-gray-300 whitespace-nowrap">
-                        {e.weight_after != null ? `${e.weight_after.toFixed(1)} g` : '—'}
+                        {e.weight_after != null ? `${fmtNum(e.weight_after, 1)} g` : '—'}
                       </td>
                       <td className="px-4 py-2 text-gray-400">
                         {e.print_name ?? '—'}
@@ -810,7 +810,7 @@ function WeighModal({ spool, onClose }: { spool: Spool; onClose: () => void }) {
             </div>
             <p className="text-xs text-gray-500 mt-1">
               {tare > 0
-                ? t('spools.weigh.tare', { g: tare.toFixed(0) })
+                ? t('spools.weigh.tare', { g: fmtNum(tare, 0) })
                 : t('spools.weigh.noTare')}
             </p>
           </div>
@@ -818,19 +818,19 @@ function WeighModal({ spool, onClose }: { spool: Spool; onClose: () => void }) {
           <div className="grid grid-cols-3 gap-2 text-center">
             <div className="bg-surface-3/40 rounded-lg py-2">
               <p className="text-[10px] text-gray-500 uppercase tracking-wide">{t('spools.weigh.before')}</p>
-              <p className="text-sm text-gray-300 tabular-nums">{spool.current_weight_g.toFixed(0)} g</p>
+              <p className="text-sm text-gray-300 tabular-nums">{fmtNum(spool.current_weight_g, 0)} g</p>
             </div>
             <div className="bg-surface-3/40 rounded-lg py-2">
               <p className="text-[10px] text-gray-500 uppercase tracking-wide">{t('spools.weigh.after')}</p>
               <p className="text-sm text-white font-semibold tabular-nums">
-                {remaining != null ? `${remaining.toFixed(0)} g` : '—'}
+                {remaining != null ? `${fmtNum(remaining, 0)} g` : '—'}
               </p>
-              {pct != null && <p className="text-[10px] text-gray-500 tabular-nums">{pct.toFixed(0)} %</p>}
+              {pct != null && <p className="text-[10px] text-gray-500 tabular-nums">{fmtNum(pct, 0)} %</p>}
             </div>
             <div className="bg-surface-3/40 rounded-lg py-2">
               <p className="text-[10px] text-gray-500 uppercase tracking-wide">{t('spools.weigh.delta')}</p>
               <p className={`text-sm tabular-nums ${delta == null || delta === 0 ? 'text-gray-400' : delta < 0 ? 'text-amber-400' : 'text-green-400'}`}>
-                {delta != null ? `${delta > 0 ? '+' : ''}${delta.toFixed(0)} g` : '—'}
+                {delta != null ? `${delta > 0 ? '+' : ''}${fmtNum(delta, 0)} g` : '—'}
               </p>
             </div>
           </div>
@@ -1183,8 +1183,8 @@ function SpoolTable({ spools, onEdit, onWeigh, onLabel, onMoisture, onDuplicate,
       case 'color4_hex':       return <td key={c.key} className="px-3 py-2">{s.color4_hex ? <span className="w-4 h-4 rounded-full block ring-1 ring-white/10" style={{ background: s.color4_hex }} /> : <span className="text-gray-600">—</span>}</td>
       case 'article_number':   return <td key={c.key} className="px-3 py-2 whitespace-nowrap text-gray-400 font-mono">{s.article_number ?? '—'}</td>
       case 'remaining_pct':    return <td key={c.key} className="px-3 py-2 whitespace-nowrap"><div className="flex items-center gap-2"><div className="w-16 h-1.5 rounded-full bg-surface-3 overflow-hidden"><div className="h-full rounded-full" style={{ width: `${pct}%`, background: barColor }} /></div><span style={{ color: barColor }}>{pct}%</span></div></td>
-      case 'current_weight_g': return <td key={c.key} className="px-3 py-2 whitespace-nowrap text-gray-300">{(s.current_weight_g / 1000).toFixed(3)} kg</td>
-      case 'initial_weight_g': return <td key={c.key} className="px-3 py-2 whitespace-nowrap text-gray-400">{(s.initial_weight_g / 1000).toFixed(2)} kg</td>
+      case 'current_weight_g': return <td key={c.key} className="px-3 py-2 whitespace-nowrap text-gray-300">{fmtNum((s.current_weight_g / 1000), 3)} kg</td>
+      case 'initial_weight_g': return <td key={c.key} className="px-3 py-2 whitespace-nowrap text-gray-400">{fmtNum((s.initial_weight_g / 1000), 2)} kg</td>
       case 'purchase_price':   return <td key={c.key} className="px-3 py-2 whitespace-nowrap">{s.purchase_price != null ? fmtCurrency(s.purchase_price) : '—'}</td>
       case 'price_per_kg':     return <td key={c.key} className="px-3 py-2 whitespace-nowrap text-gray-400">{s.price_per_kg != null ? fmtCurrency(s.price_per_kg) : '—'}</td>
       case 'is_refill_pack':   return <td key={c.key} className="px-3 py-2 whitespace-nowrap">{s.is_refill_pack ? <span className="text-xs bg-purple-900/40 px-1.5 py-0.5 rounded text-purple-400">{t('spools.table.refill')}</span> : <span className="text-gray-600">—</span>}</td>
@@ -1220,9 +1220,9 @@ function SpoolTable({ spools, onEdit, onWeigh, onLabel, onMoisture, onDuplicate,
     const avgPpkg = withPpkg.length ? withPpkg.reduce((s, r) => s + r.price_per_kg!, 0) / withPpkg.length : null
     if (idx === 0) return <td key={c.key} className="px-3 py-2 text-xs text-gray-400">{n} {n !== 1 ? t('dashboard.chart.spools') : t('dashboard.chart.spool')}</td>
     switch (c.key) {
-      case 'remaining_pct':    return <td key={c.key} className="px-3 py-2 whitespace-nowrap text-xs"><span className="text-gray-300">{avgPct.toFixed(1)}%</span></td>
-      case 'current_weight_g': return <td key={c.key} className="px-3 py-2 whitespace-nowrap text-xs">{totalRemKg.toFixed(3)} kg</td>
-      case 'initial_weight_g': return <td key={c.key} className="px-3 py-2 whitespace-nowrap text-xs text-gray-400">{(processed.reduce((s, r) => s + r.initial_weight_g, 0) / 1000).toFixed(2)} kg</td>
+      case 'remaining_pct':    return <td key={c.key} className="px-3 py-2 whitespace-nowrap text-xs"><span className="text-gray-300">{fmtNum(avgPct, 1)}%</span></td>
+      case 'current_weight_g': return <td key={c.key} className="px-3 py-2 whitespace-nowrap text-xs">{fmtNum(totalRemKg, 3)} kg</td>
+      case 'initial_weight_g': return <td key={c.key} className="px-3 py-2 whitespace-nowrap text-xs text-gray-400">{fmtNum(processed.reduce((s, r) => s + r.initial_weight_g, 0) / 1000, 2)} kg</td>
       case 'purchase_price':   return <td key={c.key} className="px-3 py-2 whitespace-nowrap text-xs">{avgPrice != null ? fmtCurrency(avgPrice) : '—'}</td>
       case 'price_per_kg':     return <td key={c.key} className="px-3 py-2 whitespace-nowrap text-xs text-gray-400">{avgPpkg != null ? fmtCurrency(avgPpkg) : '—'}</td>
       default:                 return <td key={c.key} />
@@ -1465,24 +1465,24 @@ export default function Spools() {
       {/* Toolbar */}
       <div className="flex-none flex items-center justify-between flex-wrap gap-3">
         <h2 className="text-lg font-bold">{t('spools.title')} ({spools.filter(s => !s.archived).length})</h2>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-1.5 sm:gap-2 sm:flex-wrap max-w-full overflow-x-auto sm:overflow-visible" style={{ scrollbarWidth: 'none' }}>
           <button
-            className={`btn-ghost px-2.5 py-1.5 text-xs flex items-center gap-1 transition-colors ${onlyMoist ? 'text-amber-400' : 'text-gray-400'}`}
+            className={`btn-ghost shrink-0 px-2.5 py-1.5 text-xs flex items-center gap-1 transition-colors ${onlyMoist ? 'text-amber-400' : 'text-gray-400'}`}
             onClick={() => setOnlyMoist(v => !v)}
             title={t('moisture.onlyMoistHint')}
           >
             <Droplet size={13} />
-            {t('moisture.onlyMoist')}{moistCount > 0 ? ` (${moistCount})` : ''}
+            <span className="hidden sm:inline">{t('moisture.onlyMoist')}</span>{moistCount > 0 ? ` (${moistCount})` : ''}
           </button>
           <button
-            className={`btn-ghost px-2.5 py-1.5 text-xs flex items-center gap-1 transition-colors ${showArchived ? 'text-amber-400' : 'text-gray-400'}`}
+            className={`btn-ghost shrink-0 px-2.5 py-1.5 text-xs flex items-center gap-1 transition-colors ${showArchived ? 'text-amber-400' : 'text-gray-400'}`}
             onClick={() => setShowArchived(v => !v)}
             title={showArchived ? t('spools.hideArchived') : t('spools.showArchived')}
           >
             <Archive size={13} />
-            {showArchived ? t('spools.hideArchived') : t('spools.showArchived')}
+            <span className="hidden sm:inline">{showArchived ? t('spools.hideArchived') : t('spools.showArchived')}</span>
           </button>
-          <div className="flex rounded-lg border border-surface-3 overflow-hidden">
+          <div className="flex shrink-0 rounded-lg border border-surface-3 overflow-hidden">
             <button
               className={`px-2.5 py-1.5 text-xs flex items-center gap-1 transition-colors ${view === 'cards' ? 'bg-accent text-white' : 'text-gray-400 hover:text-white hover:bg-surface-3'}`}
               onClick={() => setView('cards')}
@@ -1500,7 +1500,7 @@ export default function Spools() {
           </div>
 
           <button
-            className="btn-ghost px-2.5 py-1.5 text-xs flex items-center gap-1 text-gray-400"
+            className="btn-ghost shrink-0 px-2.5 py-1.5 text-xs flex items-center gap-1 text-gray-400"
             onClick={downloadInventory}
             disabled={inventoryBusy}
             title={t('spools.inventoryPdfHint')}
@@ -1510,7 +1510,7 @@ export default function Spools() {
           </button>
 
           <button
-            className="btn-ghost px-2.5 py-1.5 text-xs flex items-center gap-1 text-gray-400"
+            className="btn-ghost shrink-0 px-2.5 py-1.5 text-xs flex items-center gap-1 text-gray-400"
             onClick={() => { setLabelPick(true); setLabelIds([]) }}
             title={t('labels.title')}
           >
@@ -1518,7 +1518,7 @@ export default function Spools() {
             <span className="hidden sm:inline">{t('labels.title')}</span>
           </button>
 
-          <button className="btn-primary flex items-center gap-1.5" onClick={() => setShowForm(true)}>
+          <button className="btn-primary shrink-0 flex items-center gap-1.5" onClick={() => setShowForm(true)}>
             <Plus size={14} /> {t('spools.addSpool')}
           </button>
         </div>

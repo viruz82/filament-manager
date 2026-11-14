@@ -15,6 +15,7 @@
   --fm-accent:        59 130 246;  /* #3b82f6 */
   --fm-accent-hover:  37 99 235;   /* #2563eb */
   --fm-text-primary:  #f3f4f6;     /* gray-100 */
+  color-scheme: dark;              /* dunkle Scrollbalken, Formularelemente */
 }
 
 /* ── Light theme ─────────────────────────────────────────────────────────────
@@ -30,6 +31,7 @@ html:not(.dark) {
   --fm-accent:        59 130 246;   /* keep blue */
   --fm-accent-hover:  37 99 235;
   --fm-text-primary:  #111827;      /* gray-900 */
+  color-scheme: light;
 }
 
 /* ── Base styles ─────────────────────────────────────────────────────────────*/

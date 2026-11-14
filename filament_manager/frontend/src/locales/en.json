@@ -279,6 +279,7 @@
     "tray": "Tray {{n}}",
     "remainingInfo": "{{pct}}% remaining ({{kg}} kg)",
     "history": "Print History",
+    "countOf": "of",
     "confirmDelete": "Delete print \"{{name}}\"?",
     "loadMore": "Load more ({{n}} remaining)",
     "saveUsage": "Save Usage",
