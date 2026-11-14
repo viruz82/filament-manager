@@ -1,12 +1,11 @@
-import { useState, useMemo, useRef, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useConfirm, useToast } from '../components/ui/Feedback'
-import Ring, { ringColor } from '../components/ui/Ring'
 import { api } from '../api'
 import type { Spool, BrandSpoolWeight, FilamentCatalog, SpoolAuditEntry, Packaging } from '../types'
 import { PACKAGING_TYPES } from '../types'
-import { Plus, Pencil, Trash2, X, LayoutGrid, Table2, ChevronUp, ChevronDown, ChevronsUpDown, Copy, History, RotateCcw, Archive, ArchiveRestore, Columns3, Cloud, Recycle, Scale, Droplet, Flame, FileDown, Loader2, QrCode } from 'lucide-react'
+import { Plus, Trash2, X, RotateCcw, Droplet, Flame, Scale } from 'lucide-react'
 import Modal from '../components/Modal'
 import LabelModal from '../components/LabelModal'
 import { useSearchParams } from 'react-router-dom'
@@ -14,7 +13,18 @@ import { formatDateOnly, formatDateTimeTZ } from '../utils/time'
 import { useHATZ, useCurrencyFormatter, useCurrencySymbol, useHACurrency } from '../hooks/useHATZ'
 import { saveBlob } from '../utils/download'
 import { parseDecimal, fmtNum } from '../utils/number'
-import { AmsSlotSelect, useAmsSlotLabel } from '../hooks/useAmsSlots'
+import { AmsSlotSelect } from '../hooks/useAmsSlots'
+import { useMediaQuery } from '../hooks/useMediaQuery'
+import SpoolToolbar from '../components/spools/SpoolToolbar'
+import type { SpoolView } from '../components/spools/SpoolToolbar'
+import { SpoolTiles, SpoolList } from '../components/spools/SpoolViews'
+import type { ViewActions } from '../components/spools/SpoolViews'
+import { SpoolDetailColumn, SpoolDetailSheet } from '../components/spools/SpoolDetail'
+import type { DetailActions } from '../components/spools/SpoolDetail'
+import {
+  EMPTY_FILTER, FILTER_PARAM, defaultDir, filterSpools, isLow, isMoist, loadSort, saveSort, sortSpools,
+} from '../components/spools/spoolFilters'
+import type { SortKey, SortState, SpoolFilter } from '../components/spools/spoolFilters'
 
 // ── Spool Form ────────────────────────────────────────────────────────────────
 
@@ -634,23 +644,6 @@ const MOISTURE_BAR: Record<string, string> = {
   dry: '#4ade80', good: '#38bdf8', warning: '#fbbf24', critical: '#f87171', drying: '#fb923c', unknown: '#6b7280',
 }
 
-function MoistureBadge({ spool, onClick, showPct = true, iconSize = 12 }: { spool: Spool; onClick: () => void; showPct?: boolean; iconSize?: number }) {
-  const { t } = useTranslation()
-  const m = spool.moisture
-  const label = t(`moisture.level.${m.level}`)
-  return (
-    <button
-      onClick={onClick}
-      className={`btn-ghost px-1 py-0.5 inline-flex items-center gap-1 text-xs ${MOISTURE_COLOR[m.level]}`}
-      title={`${t('moisture.title')}: ${label}${m.pct != null ? ` (${Math.round(m.pct)} %)` : ''}`}
-      aria-label={`${t('moisture.title')}: ${label}`}
-    >
-      {m.level === 'drying' ? <Flame size={iconSize} /> : <Droplet size={iconSize} />}
-      {showPct && (m.pct != null ? <span>{Math.round(m.pct)}%</span> : m.level === 'drying' ? <span>{label}</span> : null)}
-    </button>
-  )
-}
-
 function MoistureModal({ spool, onClose }: { spool: Spool; onClose: () => void }) {
   const { t } = useTranslation()
   const qc = useQueryClient()
@@ -848,477 +841,6 @@ function WeighModal({ spool, onClose }: { spool: Spool; onClose: () => void }) {
   )
 }
 
-// ── Spool Card ────────────────────────────────────────────────────────────────
-
-function SpoolCard({ spool, spools, onEdit, onWeigh, onLabel, onMoisture, onDuplicate, onHistory, onDelete, onArchive, onUnarchive, onAssignSlot }: {
-  spool: Spool; spools: Spool[]; onEdit: () => void; onWeigh: () => void; onLabel: () => void; onMoisture: () => void; onDuplicate: () => void; onHistory: () => void; onDelete: () => void
-  onArchive: () => void; onUnarchive: () => void; onAssignSlot: (slot: string | null) => void
-}) {
-  const { t } = useTranslation()
-  const fmtCurrency = useCurrencyFormatter()
-  const pct = spool.remaining_pct
-  const barColor = ringColor(pct)
-
-  return (
-    <div className={`card flex flex-col${spool.archived ? ' opacity-50' : ''}`}>
-      {/* Head: big colour disc with remaining-% ring, name gets the full width */}
-      <div className="flex items-start gap-3 mb-3">
-        <Ring spool={spool} pct={pct} size={48} />
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-white leading-snug break-words">
-            {spool.brand} {spool.material}
-            {spool.subtype ? ` ${spool.subtype}` : ''}
-            {spool.subtype2 ? ` · ${spool.subtype2}` : ''}
-          </p>
-          <p className="text-xs text-gray-400">{spool.color_name}</p>
-          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-              {spool.archived && (
-                <span className="text-xs text-gray-500 italic">{t('spools.archived')}</span>
-              )}
-              {spool.bambu_spool_id && (
-                <span className="inline-flex items-center gap-0.5 text-[10px] px-1 py-0.5 rounded bg-info/15 border border-info/40 text-info"
-                  title={t('spools.bambuLinked')}>
-                  <Cloud size={9} />{t('spools.bambuLinked')}
-                </span>
-              )}
-              {spool.is_refill_pack && (
-                <span className="inline-flex items-center gap-0.5 text-[10px] px-1 py-0.5 rounded bg-extra/15 border border-extra/40 text-extra"
-                  title={t('spools.refillBadge')}>
-                  <Recycle size={9} />{t('spools.refillBadge')}
-                </span>
-              )}
-          </div>
-        </div>
-        {!spool.archived && <MoistureBadge spool={spool} onClick={onMoisture} iconSize={16} />}
-      </div>
-      <div className="mb-2">
-        <div className="flex justify-between items-baseline mb-1">
-          <span>
-            <span className="text-xl font-semibold text-white">{fmtNum(spool.current_weight_g, 0)} g</span>
-            <span className="text-xs text-gray-400"> {t('spools.remaining')}</span>
-          </span>
-          <span className="text-sm font-medium text-gray-300">{fmtNum(pct, Number.isInteger(pct) ? 0 : 1)} %</span>
-        </div>
-        <div className="h-2 rounded-full bg-surface-3 overflow-hidden">
-          <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: barColor }} />
-        </div>
-        <p className="text-xs text-gray-500 mt-1">{t('spools.of')} {fmtNum(spool.initial_weight_g / 1000, 2)} kg</p>
-      </div>
-      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400 mt-3">
-        {spool.price_per_kg != null && <span>{fmtCurrency(spool.price_per_kg)}/kg</span>}
-        {spool.purchase_price != null && <span>{fmtCurrency(spool.purchase_price)}</span>}
-        {spool.purchased_at && <span>{formatDateOnly(spool.purchased_at)}</span>}
-        {spool.storage_location && <span className="text-ok">{spool.storage_location}</span>}
-      </div>
-      {!spool.archived && (
-        <div className="flex items-center gap-2 mt-3 text-xs">
-          <span className="text-gray-500 shrink-0">{t('spools.table.amsSlot')}</span>
-          <AmsSlotSelect
-            spoolId={spool.id}
-            value={spool.ams_slot}
-            onChange={onAssignSlot}
-            spools={spools}
-            className={`input text-xs py-1 flex-1 min-w-0 ${spool.ams_slot ? 'text-info' : 'text-gray-400'}`}
-          />
-        </div>
-      )}
-      {/* Action bar across the full card width: bigger icons and touch targets */}
-      <div className="flex-1 min-h-3" />
-      <div className="flex justify-between items-center pt-2 border-t border-surface-3 -mx-1">
-        <button onClick={onEdit} className="btn-ghost p-2" title={t('spools.actions.edit')} aria-label={t('spools.actions.edit')}><Pencil size={18} /></button>
-        <button onClick={onWeigh} className="btn-ghost p-2 text-ok" title={t('spools.actions.weigh')} aria-label={t('spools.actions.weigh')}><Scale size={18} /></button>
-        <button onClick={onLabel} className={`btn-ghost p-2 ${spool.label_printed_at ? 'text-ok' : 'text-gray-400'}`} title={t('labels.action')} aria-label={t('labels.action')}><QrCode size={18} /></button>
-        <button onClick={onDuplicate} className="btn-ghost p-2 text-info" title={t('spools.actions.duplicate')} aria-label={t('spools.actions.duplicate')}><Copy size={18} /></button>
-        <button onClick={onHistory} className="btn-ghost p-2 text-warn" title={t('spools.actions.history')} aria-label={t('spools.actions.history')}><History size={18} /></button>
-        {spool.archived
-          ? <button onClick={onUnarchive} className="btn-ghost p-2 text-ok hover:text-ok" title={t('spools.actions.unarchive')} aria-label={t('spools.actions.unarchive')}><ArchiveRestore size={18} /></button>
-          : <button onClick={onArchive} className="btn-ghost p-2 text-gray-400 hover:text-gray-200" title={t('spools.actions.archive')} aria-label={t('spools.actions.archive')}><Archive size={18} /></button>
-        }
-        <button onClick={onDelete} className="btn-ghost p-2 text-crit hover:text-crit" title={t('spools.actions.delete')} aria-label={t('spools.actions.delete')}><Trash2 size={18} /></button>
-      </div>
-    </div>
-  )
-}
-
-// ── Table View ────────────────────────────────────────────────────────────────
-
-type SortKey = 'custom_id' | 'brand' | 'material' | 'subtype' | 'color_name' | 'color2_hex' | 'color3_hex' | 'color4_hex' |
-               'article_number' | 'remaining_pct' |
-               'current_weight_g' | 'initial_weight_g' | 'purchase_price' |
-               'price_per_kg' | 'purchased_at' | 'purchase_location' | 'storage_location' | 'last_dried_at' | 'moisture' | 'ams_slot' | 'is_refill_pack'
-type SortDir = 'asc' | 'desc'
-
-type ColDef = { key: SortKey; label: string; width?: string; always?: boolean }
-
-function SortIcon({ col, sort }: { col: SortKey; sort: { key: SortKey; dir: SortDir } }) {
-  if (sort.key !== col) return <ChevronsUpDown size={12} className="text-gray-600" />
-  return sort.dir === 'asc'
-    ? <ChevronUp size={12} className="text-accent" />
-    : <ChevronDown size={12} className="text-accent" />
-}
-
-function SpoolTable({ spools, onEdit, onWeigh, onLabel, onMoisture, onDuplicate, onHistory, onDelete, onArchive, onUnarchive, onAssignSlot }: {
-  spools: Spool[]; onEdit: (s: Spool) => void; onWeigh: (s: Spool) => void; onLabel: (s: Spool) => void; onMoisture: (s: Spool) => void; onDuplicate: (s: Spool) => void; onHistory: (s: Spool) => void; onDelete: (s: Spool) => void
-  onArchive: (s: Spool) => void; onUnarchive: (s: Spool) => void; onAssignSlot: (s: Spool, slot: string | null) => void
-}) {
-  const { t } = useTranslation()
-  const slotLabel = useAmsSlotLabel()
-  const fmtCurrency = useCurrencyFormatter()
-  const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: 'ams_slot', dir: 'asc' })
-  const actionsLast = localStorage.getItem('fm_actions_last') === 'true'
-  const [filters, setFilters] = useState<Partial<Record<SortKey, string>>>({})
-  const [showColPicker, setShowColPicker] = useState(false)
-  const colPickerRef = useRef<HTMLDivElement>(null)
-
-  // Column visibility stored in localStorage; always-true cols can't be hidden
-  const [colVis, setColVis] = useState<Partial<Record<SortKey, boolean>>>(() => {
-    try {
-      const s = localStorage.getItem('fm_spool_columns')
-      return s ? JSON.parse(s) : {}
-    } catch { return {} }
-  })
-
-  useEffect(() => {
-    if (!showColPicker) return
-    const handler = (e: MouseEvent) => {
-      if (colPickerRef.current && !colPickerRef.current.contains(e.target as Node)) {
-        setShowColPicker(false)
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [showColPicker])
-
-  const toggleColVis = (key: SortKey) => {
-    setColVis(prev => {
-      const next = { ...prev, [key]: !(prev[key] !== false) }
-      localStorage.setItem('fm_spool_columns', JSON.stringify(next))
-      return next
-    })
-  }
-
-  const setFilter = (k: SortKey, v: string) =>
-    setFilters(f => ({ ...f, [k]: v }))
-
-  const toggleSort = (k: SortKey) =>
-    setSort(s => s.key === k ? { key: k, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key: k, dir: 'asc' })
-
-  const NUMERIC_COLS = new Set<SortKey>([
-    'custom_id', 'remaining_pct', 'current_weight_g', 'initial_weight_g', 'purchase_price', 'price_per_kg',
-  ])
-  const WEIGHT_COLS  = new Set<SortKey>(['current_weight_g', 'initial_weight_g'])
-  const PRICE_COLS   = new Set<SortKey>(['purchase_price', 'price_per_kg'])
-  const DATE_COLS    = new Set<SortKey>(['purchased_at', 'last_dried_at'])
-
-  const filterPlaceholder = (key: SortKey): string => {
-    if (key === 'moisture')    return t('spools.table.filterNumPct')
-    if (DATE_COLS.has(key))    return t('spools.table.filterDate')
-    if (WEIGHT_COLS.has(key))  return t('spools.table.filterNumKg')
-    if (PRICE_COLS.has(key))   return t('spools.table.filterNumEur')
-    if (NUMERIC_COLS.has(key)) return t('spools.table.filterNumPct')
-    return t('spools.table.filterText')
-  }
-
-  const processed = useMemo(() => {
-    let rows = [...spools]
-
-    for (const [k, raw] of Object.entries(filters)) {
-      if (!raw) continue
-      const v = raw as string
-      const key = k as SortKey
-
-      if (key === 'moisture') {
-        const op = v.startsWith('>=') ? '>=' : v.startsWith('<=') ? '<=' : v.startsWith('>') ? '>' : v.startsWith('<') ? '<' : '='
-        const threshold = parseFloat(v.replace(/^[><=]+/, '').trim().replace(',', '.'))
-        if (isNaN(threshold)) {
-          const lower = v.toLowerCase()
-          rows = rows.filter(s => t(`moisture.level.${s.moisture.level}`).toLowerCase().includes(lower))
-        } else {
-          rows = rows.filter(s => {
-            const num = s.moisture.pct
-            if (num == null) return false
-            if (op === '>=') return num >= threshold
-            if (op === '<=') return num <= threshold
-            if (op === '>')  return num >  threshold
-            if (op === '<')  return num <  threshold
-            return Math.round(num) === threshold
-          })
-        }
-      } else if (DATE_COLS.has(key)) {
-        // filter against the displayed formatted value (DD.MM.YYYY), not the raw ISO string
-        const lower = v.toLowerCase()
-        rows = rows.filter(s => {
-          const formatted = s.purchased_at ? formatDateOnly(s.purchased_at) : ''
-          return formatted.toLowerCase().includes(lower)
-        })
-      } else if (NUMERIC_COLS.has(key)) {
-        const op = v.startsWith('>=') ? '>=' : v.startsWith('<=') ? '<=' : v.startsWith('>') ? '>' : v.startsWith('<') ? '<' : '='
-        // normalise locale decimal separator to dot before parsing
-        const numStr = v.replace(/^[><=]+/, '').trim().replace(',', '.')
-        const threshold = parseFloat(numStr)
-        if (isNaN(threshold)) continue
-        rows = rows.filter(s => {
-          const raw = s[key as keyof Spool]
-          const num = typeof raw === 'number' ? raw : parseFloat(String(raw ?? ''))
-          if (isNaN(num)) return false
-          const cmpVal = WEIGHT_COLS.has(key) ? num / 1000 : num
-          if (op === '>=') return cmpVal >= threshold
-          if (op === '<=') return cmpVal <= threshold
-          if (op === '>')  return cmpVal >  threshold
-          if (op === '<')  return cmpVal <  threshold
-          return cmpVal === threshold
-        })
-      } else if (key === 'ams_slot') {
-        const lower = v.toLowerCase()
-        rows = rows.filter(s => s.ams_slot != null &&
-          (s.ams_slot.toLowerCase().includes(lower) || slotLabel(s.ams_slot).toLowerCase().includes(lower)))
-      } else {
-        const lower = v.toLowerCase()
-        rows = rows.filter(s => {
-          const val = s[key as keyof Spool]
-          if (val == null) return false
-          return String(val).toLowerCase().includes(lower)
-        })
-      }
-    }
-
-    rows.sort((a, b) => {
-      if (sort.key === 'ams_slot') {
-        const aHas = a.ams_slot != null ? 1 : 0
-        const bHas = b.ams_slot != null ? 1 : 0
-        if (aHas !== bHas) return bHas - aHas
-        const slotCmp = (a.ams_slot ?? '').localeCompare(b.ams_slot ?? '')
-        if (slotCmp !== 0) return sort.dir === 'asc' ? slotCmp : -slotCmp
-        return b.remaining_pct - a.remaining_pct
-      }
-      if (sort.key === 'moisture') {
-        const ap = a.moisture.pct ?? 999
-        const bp = b.moisture.pct ?? 999
-        return sort.dir === 'asc' ? ap - bp : bp - ap
-      }
-      const av = a[sort.key] ?? ''
-      const bv = b[sort.key] ?? ''
-      const cmp = typeof av === 'number' && typeof bv === 'number'
-        ? av - bv
-        : String(av).localeCompare(String(bv))
-      return sort.dir === 'asc' ? cmp : -cmp
-    })
-    return rows
-  }, [spools, sort, filters])
-
-  const COLUMN_DEFS: ColDef[] = [
-    { key: 'custom_id',         label: '#',                                 width: 'w-14' },
-    { key: 'brand',             label: t('spools.table.brand'),             width: 'w-24', always: true },
-    { key: 'material',          label: t('spools.table.material'),          width: 'w-20' },
-    { key: 'subtype',           label: t('spools.table.subtype'),           width: 'w-24' },
-    { key: 'color_name',        label: t('spools.table.color'),             width: 'w-32', always: true },
-    { key: 'color2_hex',        label: t('spools.table.color2'),            width: 'w-16' },
-    { key: 'color3_hex',        label: t('spools.table.color3'),            width: 'w-16' },
-    { key: 'color4_hex',        label: t('spools.table.color4'),            width: 'w-16' },
-    { key: 'article_number',    label: t('spools.table.articleNumber'),     width: 'w-28' },
-    { key: 'remaining_pct',     label: t('spools.table.remaining'),         width: 'w-28', always: true },
-    { key: 'current_weight_g',  label: t('spools.table.currentWeight'),     width: 'w-24' },
-    { key: 'initial_weight_g',  label: t('spools.table.initialWeight'),     width: 'w-20' },
-    { key: 'purchase_price',    label: t('spools.table.price'),             width: 'w-20' },
-    { key: 'price_per_kg',      label: t('spools.table.pricePerKg'),        width: 'w-20' },
-    { key: 'is_refill_pack',    label: t('spools.table.refill'),            width: 'w-16' },
-    { key: 'purchased_at',      label: t('spools.table.purchaseDate'),      width: 'w-24' },
-    { key: 'last_dried_at',     label: t('spools.table.lastDried'),         width: 'w-24' },
-    { key: 'moisture',          label: t('moisture.title'),                 width: 'w-20' },
-    { key: 'purchase_location', label: t('spools.table.location'),          width: 'w-24' },
-    { key: 'storage_location',  label: t('spools.table.storageLocation'),   width: 'w-24' },
-    { key: 'ams_slot',          label: t('spools.table.amsSlot'),           width: 'w-24' },
-  ]
-
-  const visibleCols = COLUMN_DEFS.filter(c => c.always || colVis[c.key] !== false)
-
-  const actionHeaderCell = <th className="sticky top-0 z-10 px-3 py-2 w-32 bg-surface-2" />
-  const actionFilterCell = (
-    <td className="sticky top-9 z-10 bg-surface-3 px-2 py-1">
-      <button
-        className="text-xs text-gray-500 hover:text-white"
-        onClick={() => setFilters({})}
-        title={t('spools.table.clearFilters')}
-      >
-        ✕
-      </button>
-    </td>
-  )
-  const actionDataCell = (s: Spool) => (
-    <td className="px-3 py-2 whitespace-nowrap">
-      <div className="flex items-center gap-0.5">
-        <button onClick={() => onEdit(s)} className="btn-ghost p-1" title={t('spools.actions.edit')}><Pencil size={12} /></button>
-        <button onClick={() => onWeigh(s)} className="btn-ghost p-1 text-ok" title={t('spools.actions.weigh')} aria-label={t('spools.actions.weigh')}><Scale size={12} /></button>
-        <button onClick={() => onLabel(s)} className={`btn-ghost p-1 ${s.label_printed_at ? 'text-ok' : 'text-gray-400'}`} title={t('labels.action')} aria-label={t('labels.action')}><QrCode size={12} /></button>
-        <button onClick={() => onDuplicate(s)} className="btn-ghost p-1 text-info" title={t('spools.actions.duplicate')}><Copy size={12} /></button>
-        <button onClick={() => onHistory(s)} className="btn-ghost p-1 text-warn" title={t('spools.actions.history')}><History size={12} /></button>
-        {s.archived
-          ? <button onClick={() => onUnarchive(s)} className="btn-ghost p-1 text-ok hover:text-ok" title={t('spools.actions.unarchive')}><ArchiveRestore size={12} /></button>
-          : <button onClick={() => onArchive(s)} className="btn-ghost p-1 text-gray-500 hover:text-gray-300" title={t('spools.actions.archive')}><Archive size={12} /></button>
-        }
-        <button onClick={() => onDelete(s)} className="btn-ghost p-1 text-crit" title={t('spools.actions.delete')}><Trash2 size={12} /></button>
-      </div>
-    </td>
-  )
-
-  const renderDataCell = (c: ColDef, s: Spool) => {
-    const pct = s.remaining_pct
-    const barColor = pct > 40 ? '#3b82f6' : pct > 15 ? '#f59e0b' : '#ef4444'
-    switch (c.key) {
-      case 'custom_id':        return <td key={c.key} className="px-3 py-2 whitespace-nowrap text-gray-400 font-mono">{s.custom_id ?? '—'}</td>
-      case 'brand':            return <td key={c.key} className="px-3 py-2 font-medium text-white whitespace-nowrap">{s.brand}</td>
-      case 'material':         return <td key={c.key} className="px-3 py-2 whitespace-nowrap">{s.material}</td>
-      case 'subtype':          return <td key={c.key} className="px-3 py-2 whitespace-nowrap text-gray-300">{[s.subtype, s.subtype2].filter(Boolean).join(' · ') || '—'}</td>
-      case 'color_name':       return <td key={c.key} className="px-3 py-2 whitespace-nowrap"><span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full shrink-0 ring-1 ring-white/10" style={{ background: s.color_hex }} />{s.color_name}{s.bambu_spool_id && <span title={t('spools.bambuLinked')}><Cloud size={10} className="text-info shrink-0" /></span>}</span></td>
-      case 'color2_hex':       return <td key={c.key} className="px-3 py-2">{s.color2_hex ? <span className="w-4 h-4 rounded-full block ring-1 ring-white/10" style={{ background: s.color2_hex }} /> : <span className="text-gray-600">—</span>}</td>
-      case 'color3_hex':       return <td key={c.key} className="px-3 py-2">{s.color3_hex ? <span className="w-4 h-4 rounded-full block ring-1 ring-white/10" style={{ background: s.color3_hex }} /> : <span className="text-gray-600">—</span>}</td>
-      case 'color4_hex':       return <td key={c.key} className="px-3 py-2">{s.color4_hex ? <span className="w-4 h-4 rounded-full block ring-1 ring-white/10" style={{ background: s.color4_hex }} /> : <span className="text-gray-600">—</span>}</td>
-      case 'article_number':   return <td key={c.key} className="px-3 py-2 whitespace-nowrap text-gray-400 font-mono">{s.article_number ?? '—'}</td>
-      case 'remaining_pct':    return <td key={c.key} className="px-3 py-2 whitespace-nowrap"><div className="flex items-center gap-2"><div className="w-16 h-1.5 rounded-full bg-surface-3 overflow-hidden"><div className="h-full rounded-full" style={{ width: `${pct}%`, background: barColor }} /></div><span style={{ color: barColor }}>{pct}%</span></div></td>
-      case 'current_weight_g': return <td key={c.key} className="px-3 py-2 whitespace-nowrap text-gray-300">{fmtNum((s.current_weight_g / 1000), 3)} kg</td>
-      case 'initial_weight_g': return <td key={c.key} className="px-3 py-2 whitespace-nowrap text-gray-400">{fmtNum((s.initial_weight_g / 1000), 2)} kg</td>
-      case 'purchase_price':   return <td key={c.key} className="px-3 py-2 whitespace-nowrap">{s.purchase_price != null ? fmtCurrency(s.purchase_price) : '—'}</td>
-      case 'price_per_kg':     return <td key={c.key} className="px-3 py-2 whitespace-nowrap text-gray-400">{s.price_per_kg != null ? fmtCurrency(s.price_per_kg) : '—'}</td>
-      case 'is_refill_pack':   return <td key={c.key} className="px-3 py-2 whitespace-nowrap">{s.is_refill_pack ? <span className="text-xs bg-extra/15 px-1.5 py-0.5 rounded text-extra">{t('spools.table.refill')}</span> : <span className="text-gray-600">—</span>}</td>
-      case 'purchased_at':     return <td key={c.key} className="px-3 py-2 whitespace-nowrap text-gray-400">{s.purchased_at ? formatDateOnly(s.purchased_at) : '—'}</td>
-      case 'last_dried_at':    return <td key={c.key} className="px-3 py-2 whitespace-nowrap text-gray-400">{s.last_dried_at ? formatDateOnly(s.last_dried_at) : '—'}</td>
-      case 'moisture':         return <td key={c.key} className="px-2 py-1 whitespace-nowrap">{s.archived ? <span className="text-gray-600">—</span> : <MoistureBadge spool={s} onClick={() => onMoisture(s)} />}</td>
-      case 'purchase_location':return <td key={c.key} className="px-3 py-2 whitespace-nowrap">{s.purchase_location ? <span className="text-xs bg-surface-3 px-1.5 py-0.5 rounded text-gray-400">{s.purchase_location}</span> : <span className="text-gray-600">—</span>}</td>
-      case 'storage_location': return <td key={c.key} className="px-3 py-2 whitespace-nowrap">{s.storage_location ? <span className="text-xs bg-surface-3 px-1.5 py-0.5 rounded text-ok">{s.storage_location}</span> : <span className="text-gray-600">—</span>}</td>
-      case 'ams_slot':         return (
-        <td key={c.key} className="px-2 py-1 whitespace-nowrap">
-          {s.archived
-            ? <span className="text-gray-600">{slotLabel(s.ams_slot)}</span>
-            : <AmsSlotSelect
-                spoolId={s.id}
-                value={s.ams_slot}
-                onChange={slot => onAssignSlot(s, slot)}
-                spools={spools}
-                className={`bg-transparent rounded px-1 py-0.5 text-xs max-w-[9rem] hover:bg-surface-3 focus:outline-none focus:ring-1 focus:ring-accent ${s.ams_slot ? 'text-info' : 'text-gray-600'}`}
-              />}
-        </td>
-      )
-      default:                 return <td key={c.key} />
-    }
-  }
-
-  const renderFootCell = (c: ColDef, idx: number) => {
-    const n = processed.length
-    const avgPct = processed.reduce((s, r) => s + r.remaining_pct, 0) / n
-    const totalRemKg = processed.reduce((s, r) => s + r.current_weight_g, 0) / 1000
-    const withPrice = processed.filter(r => r.purchase_price != null)
-    const avgPrice = withPrice.length ? withPrice.reduce((s, r) => s + r.purchase_price!, 0) / withPrice.length : null
-    const withPpkg = processed.filter(r => r.price_per_kg != null)
-    const avgPpkg = withPpkg.length ? withPpkg.reduce((s, r) => s + r.price_per_kg!, 0) / withPpkg.length : null
-    if (idx === 0) return <td key={c.key} className="px-3 py-2 text-xs text-gray-400">{n} {n !== 1 ? t('dashboard.chart.spools') : t('dashboard.chart.spool')}</td>
-    switch (c.key) {
-      case 'remaining_pct':    return <td key={c.key} className="px-3 py-2 whitespace-nowrap text-xs"><span className="text-gray-300">{fmtNum(avgPct, 1)}%</span></td>
-      case 'current_weight_g': return <td key={c.key} className="px-3 py-2 whitespace-nowrap text-xs">{fmtNum(totalRemKg, 3)} kg</td>
-      case 'initial_weight_g': return <td key={c.key} className="px-3 py-2 whitespace-nowrap text-xs text-gray-400">{fmtNum(processed.reduce((s, r) => s + r.initial_weight_g, 0) / 1000, 2)} kg</td>
-      case 'purchase_price':   return <td key={c.key} className="px-3 py-2 whitespace-nowrap text-xs">{avgPrice != null ? fmtCurrency(avgPrice) : '—'}</td>
-      case 'price_per_kg':     return <td key={c.key} className="px-3 py-2 whitespace-nowrap text-xs text-gray-400">{avgPpkg != null ? fmtCurrency(avgPpkg) : '—'}</td>
-      default:                 return <td key={c.key} />
-    }
-  }
-
-  return (
-    <div className="flex flex-col flex-1 min-h-0">
-      {/* Column picker — rendered OUTSIDE the overflow container so the popover is not clipped */}
-      <div className="relative flex justify-end mb-1" ref={colPickerRef}>
-        <button
-          className="btn-ghost px-2 py-1 text-xs flex items-center gap-1 text-gray-500 hover:text-white"
-          onClick={() => setShowColPicker(v => !v)}
-          title={t('spools.table.columns')}
-        >
-          <Columns3 size={13} />
-          {t('spools.table.columns')}
-        </button>
-        {showColPicker && (
-          <div className="absolute right-0 top-full mt-1 z-50 bg-surface-2 border border-surface-3 rounded-lg shadow-lg p-2 min-w-[180px]">
-            <p className="text-xs text-gray-400 font-medium mb-1.5 px-1">{t('spools.table.columns')}</p>
-            {COLUMN_DEFS.map(c => (
-              <label key={c.key} className={`flex items-center gap-2 px-1 py-0.5 rounded cursor-pointer text-xs ${c.always ? 'text-gray-600' : 'hover:bg-surface-3 text-gray-300'}`}>
-                <input
-                  type="checkbox"
-                  className="accent-accent"
-                  checked={!!(c.always || colVis[c.key] !== false)}
-                  disabled={!!c.always}
-                  onChange={() => !c.always && toggleColVis(c.key)}
-                />
-                {c.label}
-              </label>
-            ))}
-          </div>
-        )}
-      </div>
-    <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto rounded-xl border border-surface-3 bg-surface-2">
-      <table className="w-full text-xs text-left">
-        <thead>
-          <tr className="border-b border-surface-3">
-            {!actionsLast && actionHeaderCell}
-            {visibleCols.map(c => (
-              <th
-                key={c.key}
-                className={`sticky top-0 z-10 bg-surface-2 px-3 py-2 text-gray-400 font-medium whitespace-nowrap cursor-pointer select-none hover:text-white ${c.width ?? ''}`}
-                onClick={() => toggleSort(c.key)}
-              >
-                <span className="flex items-center gap-1">
-                  {c.label} <SortIcon col={c.key} sort={sort} />
-                </span>
-              </th>
-            ))}
-            {actionsLast && actionHeaderCell}
-          </tr>
-          <tr className="border-b border-surface-3">
-            {!actionsLast && actionFilterCell}
-            {visibleCols.map(c => (
-              <td key={c.key} className="sticky top-9 z-10 bg-surface-3 px-2 py-1">
-                <input
-                  className="w-full bg-surface-3 rounded px-2 py-0.5 text-xs text-gray-100 placeholder-gray-600
-                             focus:outline-none focus:ring-1 focus:ring-accent"
-                  placeholder={filterPlaceholder(c.key)}
-                  value={filters[c.key] ?? ''}
-                  onChange={e => setFilter(c.key, e.target.value)}
-                />
-              </td>
-            ))}
-            {actionsLast && actionFilterCell}
-          </tr>
-        </thead>
-        <tbody>
-          {processed.map(s => (
-            <tr
-              key={s.id}
-              className={`border-b border-surface-3/50 hover:bg-surface-3/40 transition-colors${s.archived ? ' opacity-40' : ''}`}
-            >
-              {!actionsLast && actionDataCell(s)}
-              {visibleCols.map(c => renderDataCell(c, s))}
-              {actionsLast && actionDataCell(s)}
-            </tr>
-          ))}
-          {processed.length === 0 && (
-            <tr>
-              <td colSpan={visibleCols.length + 1} className="px-3 py-6 text-center text-gray-500">
-                {t('spools.noMatch')}
-              </td>
-            </tr>
-          )}
-        </tbody>
-        {processed.length > 0 && (
-          <tfoot>
-            <tr className="border-t-2 border-surface-3 bg-surface-3/40 text-gray-300 font-medium">
-              {!actionsLast && <td />}
-              {visibleCols.map((c, i) => renderFootCell(c, i))}
-              {actionsLast && <td />}
-            </tr>
-          </tfoot>
-        )}
-      </table>
-    </div>
-    </div>
-  )
-}
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function Spools() {
@@ -1327,6 +849,8 @@ export default function Spools() {
   const { t, i18n } = useTranslation()
   const qc = useQueryClient()
   const currency = useHACurrency()
+  const fmtCurrency = useCurrencyFormatter()
+  const isLaptop = useMediaQuery('(min-width: 1024px)')
   const [inventoryBusy, setInventoryBusy] = useState(false)
   const downloadInventory = async () => {
     setInventoryBusy(true)
@@ -1343,34 +867,53 @@ export default function Spools() {
   const [editing, setEditing] = useState<Spool | null>(null)
   const [duplicating, setDuplicating] = useState<Spool | null>(null)
   const [auditSpool, setAuditSpool] = useState<Spool | null>(null)
-  // Chosen view is remembered per browser until the user switches it again
-  const [view, setViewState] = useState<'cards' | 'table'>(() => {
-    try { return localStorage.getItem('fm_spool_view') === 'cards' ? 'cards' : 'table' } catch { return 'table' }
+  // Chosen view is remembered per browser; without a choice the phone starts with the list
+  const [view, setViewState] = useState<SpoolView>(() => {
+    try {
+      const v = localStorage.getItem('fm_spool_view')
+      if (v === 'cards' || v === 'table') return v
+    } catch { /* private mode etc. */ }
+    return window.matchMedia('(min-width: 1024px)').matches ? 'cards' : 'table'
   })
-  const setView = (v: 'cards' | 'table') => {
+  const setView = (v: SpoolView) => {
     setViewState(v)
     try { localStorage.setItem('fm_spool_view', v) } catch { /* private mode etc. */ }
   }
-  const [showArchived, setShowArchived] = useState(false)
+  const [filter, setFilter] = useState<SpoolFilter>(EMPTY_FILTER)
+  const [sort, setSortState] = useState<SortState>(loadSort)
+  const setSort = (s: SortState) => { setSortState(s); saveSort(s) }
+  const [selectedId, setSelectedId] = useState<number | null>(null)
   // Label dialog: ids of the spools to print; labelPick = choose from the list
   const [labelIds, setLabelIds] = useState<number[] | null>(null)
   const [labelPick, setLabelPick] = useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
 
+  const includeArchived = filter.quick === 'archived'
   const { data: spools = [], isLoading } = useQuery<Spool[]>({
-    queryKey: ['spools', showArchived],
-    queryFn: () => api.getSpools(showArchived),
+    queryKey: ['spools', includeArchived],
+    queryFn: () => api.getSpools(includeArchived),
   })
+  const { data: prefs } = useQuery({ queryKey: ['user-prefs'], queryFn: api.getUserPrefs, staleTime: Infinity })
+  const lowPct = prefs?.low_stock_threshold_pct ?? 20
 
-  // Deep link from a spool label's QR code (#/spools?spool=12): open that spool
+  // Deep link from the Home Assistant buttons (#/spools?filter=wenig|feucht|ams|archiv)
+  useEffect(() => {
+    const raw = searchParams.get('filter')
+    if (!raw) return
+    const quick = FILTER_PARAM[raw.toLowerCase()]
+    if (quick) setFilter(f => ({ ...f, quick }))
+    const next = new URLSearchParams(searchParams); next.delete('filter'); setSearchParams(next, { replace: true })
+  }, [searchParams, setSearchParams])
+
+  // Deep link from a spool label's QR code (#/spools?spool=12): show that spool
   useEffect(() => {
     const id = Number(searchParams.get('spool'))
     if (!id || isLoading) return
     const hit = spools.find(s => s.id === id)
-    if (hit) setEditing(hit)
-    else if (!showArchived) { setShowArchived(true); return }
+    if (hit) { setFilter(f => ({ ...f, quick: hit.archived ? 'archived' : 'all' })); setSelectedId(hit.id) }
+    else if (!includeArchived) { setFilter(f => ({ ...f, quick: 'archived' })); return }
     const next = new URLSearchParams(searchParams); next.delete('spool'); setSearchParams(next, { replace: true })
-  }, [searchParams, spools, isLoading, showArchived, setSearchParams])
+  }, [searchParams, spools, isLoading, includeArchived, setSearchParams])
 
   // Deep link from the label dialog's "open in browser" (#/spools?labels=12,15)
   useEffect(() => {
@@ -1384,11 +927,20 @@ export default function Spools() {
   const invalidate = () => qc.invalidateQueries({ queryKey: ['spools'] })
   const [weighing, setWeighing] = useState<Spool | null>(null)
   const [moistureSpool, setMoistureSpool] = useState<Spool | null>(null)
-  const [onlyMoist, setOnlyMoist] = useState(false)
-  const shown = onlyMoist
-    ? spools.filter(s => !s.archived && (s.moisture.level === 'warning' || s.moisture.level === 'critical' || s.moisture.level === 'drying'))
-    : spools
-  const moistCount = spools.filter(s => !s.archived && (s.moisture.level === 'warning' || s.moisture.level === 'critical')).length
+
+  const active = useMemo(() => spools.filter(s => !s.archived), [spools])
+  const counts = useMemo(() => ({
+    all: active.length,
+    moist: active.filter(isMoist).length,
+    low: active.filter(s => isLow(s, lowPct)).length,
+    ams: active.filter(s => !!s.ams_slot).length,
+  }), [active, lowPct])
+  const materials = useMemo(() => [...new Set(spools.map(s => s.material).filter(Boolean))].sort((a, b) => a.localeCompare(b)), [spools])
+  const locations = useMemo(() => [...new Set(spools.map(s => s.storage_location).filter((l): l is string => !!l))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })), [spools])
+  const shown = useMemo(() => sortSpools(filterSpools(spools, filter, lowPct), sort), [spools, filter, lowPct, sort])
+  const totalKg = shown.reduce((sum, s) => sum + s.current_weight_g, 0) / 1000
+  const totalValue = shown.reduce((sum, s) => sum + (s.cost_per_gram ?? 0) * s.current_weight_g, 0)
+  const selected = selectedId != null ? spools.find(s => s.id === selectedId) ?? null : null
 
   const createMut = useMutation({ mutationFn: api.createSpool, onSuccess: invalidate })
   const updateMut = useMutation({
@@ -1396,8 +948,7 @@ export default function Spools() {
     onSuccess: () => { invalidate(); qc.invalidateQueries({ queryKey: ['printer-ams'] }); setEditing(null) },
   })
   const deleteMut = useMutation({ mutationFn: api.deleteSpool, onSuccess: invalidate })
-  // Direct AMS slot assignment from the list — the backend frees the slot on
-  // whichever spool held it before.
+  // Direct AMS slot assignment — the backend frees the slot on whichever spool held it before.
   const assignSlotMut = useMutation({
     mutationFn: ({ id, slot }: { id: number; slot: string | null }) => api.updateSpool(id, { ams_slot: slot }),
     onSuccess: () => { invalidate(); qc.invalidateQueries({ queryKey: ['printer-ams'] }) },
@@ -1405,7 +956,6 @@ export default function Spools() {
   })
   const archiveMut = useMutation({ mutationFn: (id: number) => api.archiveSpool(id), onSuccess: invalidate })
   const unarchiveMut = useMutation({ mutationFn: (id: number) => api.unarchiveSpool(id), onSuccess: invalidate })
-
   const buildPayload = (form: typeof EMPTY_FORM): Partial<Spool> => {
     // the form state is seeded with the whole spool: never send the moisture
     // state back (the dryer buttons own it; a stale copy would overwrite it)
@@ -1475,108 +1025,79 @@ export default function Spools() {
     else if (choice === 'alt') archiveSpool(spool)
   }
 
+  const anyModal = !!(showForm || editing || duplicating || auditSpool || weighing || moistureSpool || labelIds)
+  // Esc closes the detail column (the phone sheet handles Esc itself)
+  useEffect(() => {
+    if (!selected || !isLaptop || anyModal) return
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null
+      if (e.key === 'Escape' && !(el && ['INPUT', 'SELECT', 'TEXTAREA'].includes(el.tagName))) setSelectedId(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [selected, isLaptop, anyModal])
+
+  const viewActions: ViewActions = {
+    select: s => setSelectedId(s.id),
+    weigh: s => setWeighing(s),
+    moisture: s => setMoistureSpool(s),
+    label: s => setLabelIds([s.id]),
+  }
+  const detailActions: DetailActions = {
+    edit: s => setEditing(s),
+    weigh: s => setWeighing(s),
+    moisture: s => setMoistureSpool(s),
+    label: s => setLabelIds([s.id]),
+    history: s => setAuditSpool(s),
+    duplicate: s => setDuplicating(s),
+    remove: handleDelete,
+    archive: archiveSpool,
+    unarchive: unarchiveSpool,
+    assignSlot: (s, slot) => assignSlotMut.mutate({ id: s.id, slot }),
+  }
+  const toggleSortKey = (key: SortKey) =>
+    setSort(sort.key === key ? { key, dir: sort.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: defaultDir(key) })
+
   return (
-    <div className="flex flex-col gap-4 h-full">
-      {/* Toolbar */}
-      <div className="flex-none flex items-center justify-between flex-wrap gap-3">
-        <h2 className="text-lg font-bold">{t('spools.title')} ({spools.filter(s => !s.archived).length})</h2>
-        <div className="flex items-center gap-1.5 sm:gap-2 sm:flex-wrap max-w-full overflow-x-auto sm:overflow-visible" style={{ scrollbarWidth: 'none' }}>
-          <button
-            className={`btn-ghost shrink-0 px-2.5 py-1.5 text-xs flex items-center gap-1 transition-colors ${onlyMoist ? 'text-warn' : 'text-gray-400'}`}
-            onClick={() => setOnlyMoist(v => !v)}
-            title={t('moisture.onlyMoistHint')}
-          >
-            <Droplet size={13} />
-            <span className="hidden sm:inline">{t('moisture.onlyMoist')}</span>{moistCount > 0 ? ` (${moistCount})` : ''}
-          </button>
-          <button
-            className={`btn-ghost shrink-0 px-2.5 py-1.5 text-xs flex items-center gap-1 transition-colors ${showArchived ? 'text-warn' : 'text-gray-400'}`}
-            onClick={() => setShowArchived(v => !v)}
-            title={showArchived ? t('spools.hideArchived') : t('spools.showArchived')}
-          >
-            <Archive size={13} />
-            <span className="hidden sm:inline">{showArchived ? t('spools.hideArchived') : t('spools.showArchived')}</span>
-          </button>
-          <div className="flex shrink-0 rounded-lg border border-surface-3 overflow-hidden">
-            <button
-              className={`px-2.5 py-1.5 text-xs flex items-center gap-1 transition-colors ${view === 'cards' ? 'bg-accent text-white' : 'text-gray-400 hover:text-white hover:bg-surface-3'}`}
-              onClick={() => setView('cards')}
-              title={t('spools.viewGrid')}
-            >
-              <LayoutGrid size={13} />
-            </button>
-            <button
-              className={`px-2.5 py-1.5 text-xs flex items-center gap-1 transition-colors ${view === 'table' ? 'bg-accent text-white' : 'text-gray-400 hover:text-white hover:bg-surface-3'}`}
-              onClick={() => setView('table')}
-              title={t('spools.viewTable')}
-            >
-              <Table2 size={13} />
-            </button>
-          </div>
-
-          <button
-            className="btn-ghost shrink-0 px-2.5 py-1.5 text-xs flex items-center gap-1 text-gray-400"
-            onClick={downloadInventory}
-            disabled={inventoryBusy}
-            title={t('spools.inventoryPdfHint')}
-          >
-            {inventoryBusy ? <Loader2 size={13} className="animate-spin" /> : <FileDown size={13} />}
-            <span className="hidden sm:inline">{t('spools.inventoryPdf')}</span>
-          </button>
-
-          <button
-            className="btn-ghost shrink-0 px-2.5 py-1.5 text-xs flex items-center gap-1 text-gray-400"
-            onClick={() => { setLabelPick(true); setLabelIds([]) }}
-            title={t('labels.title')}
-          >
-            <QrCode size={13} />
-            <span className="hidden sm:inline">{t('labels.title')}</span>
-          </button>
-
-          <button className="btn-primary shrink-0 flex items-center gap-1.5" onClick={() => setShowForm(true)}>
-            <Plus size={14} /> {t('spools.addSpool')}
-          </button>
-        </div>
-      </div>
+    <div className="flex flex-col gap-3 h-full">
+      <SpoolToolbar
+        filter={filter}
+        onFilter={setFilter}
+        counts={counts}
+        materials={materials}
+        locations={locations}
+        view={view}
+        onView={setView}
+        sort={sort}
+        onSort={setSort}
+        onAdd={() => setShowForm(true)}
+        onInventory={downloadInventory}
+        inventoryBusy={inventoryBusy}
+        onLabels={() => { setLabelPick(true); setLabelIds([]) }}
+        total={shown.length}
+        kg={totalKg}
+        value={totalValue}
+        fmtCurrency={fmtCurrency}
+      />
 
       {isLoading && <p className="text-gray-500 text-sm">{t('common.loading')}</p>}
 
-      {view === 'cards' ? (
-        <div className="flex-1 min-h-0 overflow-y-auto">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {shown.map(spool => (
-              <SpoolCard
-                key={spool.id}
-                spool={spool}
-                spools={spools}
-                onAssignSlot={slot => assignSlotMut.mutate({ id: spool.id, slot })}
-                onEdit={() => setEditing(spool)}
-                onWeigh={() => setWeighing(spool)}
-                onLabel={() => setLabelIds([spool.id])}
-                onMoisture={() => setMoistureSpool(spool)}
-                onDuplicate={() => setDuplicating(spool)}
-                onHistory={() => setAuditSpool(spool)}
-                onDelete={() => handleDelete(spool)}
-                onArchive={() => archiveSpool(spool)}
-                onUnarchive={() => unarchiveSpool(spool)}
-              />
-            ))}
-          </div>
+      <div className="flex-1 min-h-0 flex gap-4">
+        <div className="flex-1 min-w-0 overflow-y-auto">
+          {!isLoading && shown.length === 0 ? (
+            <p className="text-gray-500 text-sm py-6 text-center">{spools.length === 0 ? t('spools.noSpools') : t('spools.noMatch')}</p>
+          ) : view === 'cards' ? (
+            <SpoolTiles spools={shown} selectedId={selectedId} lowPct={lowPct} actions={viewActions} />
+          ) : (
+            <SpoolList spools={shown} selectedId={selectedId} lowPct={lowPct} sort={sort} onSortKey={toggleSortKey} actions={viewActions} />
+          )}
         </div>
-      ) : (
-        <SpoolTable
-          spools={shown}
-          onEdit={s => setEditing(s)}
-          onWeigh={s => setWeighing(s)}
-          onLabel={s => setLabelIds([s.id])}
-          onMoisture={s => setMoistureSpool(s)}
-          onDuplicate={s => setDuplicating(s)}
-          onHistory={s => setAuditSpool(s)}
-          onDelete={handleDelete}
-          onArchive={archiveSpool}
-          onUnarchive={unarchiveSpool}
-          onAssignSlot={(s, slot) => assignSlotMut.mutate({ id: s.id, slot })}
-        />
+        {selected && isLaptop && (
+          <SpoolDetailColumn spool={selected} spools={spools} lowPct={lowPct} actions={detailActions} onClose={() => setSelectedId(null)} sheet={false} />
+        )}
+      </div>
+      {selected && !isLaptop && (
+        <SpoolDetailSheet spool={selected} spools={spools} lowPct={lowPct} actions={detailActions} onClose={() => setSelectedId(null)} />
       )}
 
       {labelIds && (

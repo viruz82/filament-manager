@@ -134,6 +134,8 @@ html:not(.dark) .placeholder-gray-500::placeholder { color: #9ca3af; }
 /* Primary / danger buttons keep white text on their coloured background */
 html:not(.dark) .btn-danger { color: white; }
 html:not(.dark) .btn-primary { color: rgb(var(--fm-on-accent)); }
+html:not(.dark) .chip-on,
+html:not(.dark) .chip-on:hover { color: rgb(var(--fm-on-accent)); }
 
 /* Text on accent surfaces (chips, selected buttons) follows --fm-on-accent;
    .text-white next to .bg-accent would otherwise turn dark in light mode. */
