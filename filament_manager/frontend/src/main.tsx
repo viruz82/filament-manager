@@ -6,19 +6,6 @@ import App from './App'
 import './index.css'
 import i18n, { applyDocLang } from './i18n'
 
-// A lazily loaded chunk can vanish when the add-on is updated while the panel is
-// open (file names carry a hash). Reload once to pick up the new index.html; the
-// time stamp prevents a reload loop if the chunk is missing for another reason.
-window.addEventListener('vite:preloadError', (event) => {
-  const KEY = 'fm_chunk_reload'
-  let last = 0
-  try { last = Number(sessionStorage.getItem(KEY) || 0) } catch { /* storage blocked */ }
-  if (Date.now() - last < 30_000) return   // already tried: let ChunkErrorBoundary show the message
-  try { sessionStorage.setItem(KEY, String(Date.now())) } catch { /* storage blocked */ }
-  event.preventDefault()
-  window.location.reload()
-})
-
 // Deep links: label QR code ".../spool-12" (or "?spool=12") → #/spools?spool=12,
 // label dialog "open in browser" "?labels=12,15" → #/spools?labels=12,15.
 // Inside Home Assistant the target is the add-on panel ("/<panel>/spool-12"),

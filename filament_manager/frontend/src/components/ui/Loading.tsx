@@ -24,14 +24,31 @@ function LoadFailed() {
   )
 }
 
-// Catches render errors of lazily loaded parts (typically a chunk that is gone
-// after an add-on update while the panel stayed open) so the app does not go blank.
+const RELOAD_KEY = 'fm_chunk_reload'
+const isChunkError = (e: unknown) =>
+  /dynamically imported module|module script failed|Importing a module script|Unable to preload/i.test(String((e as Error)?.message ?? e))
+
+// Catches render errors of lazily loaded parts so the app does not go blank.
+// Typical case: the add-on was updated while the panel stayed open, so the old
+// chunk file names are gone. Then reload once to pick up the new index.html; the
+// time stamp prevents a reload loop when the chunk is missing for another reason.
+// Only a part the user actually opens ends up here; the idle prefetch swallows
+// its own errors, so a network hiccup there never reloads the page.
 // `resetKey` (e.g. the route) clears the error when the user navigates elsewhere.
 export class ChunkErrorBoundary extends Component<{ children: ReactNode; resetKey?: string }, { failed: boolean }> {
   state = { failed: false }
 
   static getDerivedStateFromError() {
     return { failed: true }
+  }
+
+  componentDidCatch(error: unknown) {
+    if (!isChunkError(error)) return
+    let last = 0
+    try { last = Number(sessionStorage.getItem(RELOAD_KEY) || 0) } catch { /* storage blocked */ }
+    if (Date.now() - last < 30_000) return   // already tried once: show the message
+    try { sessionStorage.setItem(RELOAD_KEY, String(Date.now())) } catch { /* storage blocked */ }
+    window.location.reload()
   }
 
   componentDidUpdate(prev: { resetKey?: string }) {
