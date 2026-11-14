@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
+import { FeedbackProvider } from './components/ui/Feedback'
 import Dashboard from './pages/Dashboard'
 import Spools from './pages/Spools'
 import Prints from './pages/Prints'
@@ -9,6 +10,7 @@ import Settings from './pages/Settings'
 
 export default function App() {
   return (
+    <FeedbackProvider>
     <Layout>
       <Routes>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -20,5 +22,6 @@ export default function App() {
         <Route path="/settings" element={<Settings />} />
       </Routes>
     </Layout>
+    </FeedbackProvider>
   )
 }

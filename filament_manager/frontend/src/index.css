@@ -150,3 +150,9 @@ html:not(.dark) .input::placeholder { color: #9ca3af; }
 
 /* label */
 html:not(.dark) .label { color: #6b7280; }
+
+/* ── Toast countdown bar ─────────────────────────────────────────────────────*/
+@keyframes fm-shrink {
+  from { width: 100%; }
+  to   { width: 0; }
+}

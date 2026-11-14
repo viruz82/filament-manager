@@ -1,5 +1,6 @@
 {
   "nav": {
+    "more": "More",
     "dashboard": "Dashboard",
     "spools": "Spools",
     "prints": "Prints",
@@ -17,6 +18,8 @@
   "common": {
     "save": "Save",
     "cancel": "Cancel",
+    "close": "Close",
+    "undo": "Undo",
     "delete": "Delete",
     "edit": "Edit",
     "add": "Add",
@@ -104,6 +107,9 @@
     "of": "of",
     "noMatch": "No spools match the current filters.",
     "confirmDelete": "Delete spool \"{{brand}} {{color}}\"?",
+    "deleteHint": "History, weighings and assignments are lost. Archive empty spools instead.",
+    "archivedToast": "“{{name}}” archived",
+    "unarchivedToast": "“{{name}}” restored",
     "form": {
       "customId": "# (Reference)",
       "brand": "Brand",

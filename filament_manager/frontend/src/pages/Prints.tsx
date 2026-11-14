@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { useConfirm } from '../components/ui/Feedback'
 import { api } from '../api'
 import type { PrintJob, Spool, AMSTray, PrinterConfig, SuggestedUsage, PrinterStatus, Project } from '../types'
 import { Plus, Pencil, Trash2, X, CheckCircle, XCircle, Zap, Scale, FileText, Download, Search, CalendarDays, FolderOpen, ExternalLink, RefreshCw } from 'lucide-react'
@@ -868,6 +869,7 @@ function PrintRow({ job, printer, onEdit, onDelete, onLogUsage }: {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function Prints() {
+  const { confirm } = useConfirm()
   const { t } = useTranslation()
   const fmtCurrency = useCurrencyFormatter()
   const qc = useQueryClient()
@@ -1089,7 +1091,7 @@ export default function Prints() {
             job={job}
             printer={printers.find(p => p.name === job.printer_name) ?? null}
             onEdit={() => setEditing(job)}
-            onDelete={() => { if (confirm(t('prints.confirmDelete', { name: job.name }))) deleteMut.mutate(job.id) }}
+            onDelete={async () => { if (await confirm({ title: t('prints.confirmDelete', { name: job.name }), danger: true })) deleteMut.mutate(job.id) }}
             onLogUsage={() => setLoggingUsage(job)}
           />
         ))}

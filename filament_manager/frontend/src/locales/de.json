@@ -1,5 +1,6 @@
 {
   "nav": {
+    "more": "Mehr",
     "dashboard": "Übersicht",
     "spools": "Spulen",
     "prints": "Drucke",
@@ -17,6 +18,8 @@
   "common": {
     "save": "Speichern",
     "cancel": "Abbrechen",
+    "close": "Schließen",
+    "undo": "Rückgängig",
     "delete": "Löschen",
     "edit": "Bearbeiten",
     "add": "Hinzufügen",
@@ -104,6 +107,9 @@
     "of": "von",
     "noMatch": "Keine Spulen entsprechen den aktuellen Filtern.",
     "confirmDelete": "Spule \"{{brand}} {{color}}\" löschen?",
+    "deleteHint": "Verlauf, Wiegungen und Zuordnungen gehen verloren. Leere Spulen besser archivieren.",
+    "archivedToast": "„{{name}}“ archiviert",
+    "unarchivedToast": "„{{name}}“ wiederhergestellt",
     "form": {
       "customId": "# (Referenz)",
       "brand": "Marke",

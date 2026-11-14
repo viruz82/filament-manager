@@ -1,6 +1,8 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { useConfirm, useToast } from '../components/ui/Feedback'
+import Ring, { ringColor } from '../components/ui/Ring'
 import { api } from '../api'
 import type { Spool, BrandSpoolWeight, FilamentCatalog, SpoolAuditEntry, Packaging } from '../types'
 import { PACKAGING_TYPES } from '../types'
@@ -512,6 +514,7 @@ function SpoolForm({
 // ── Spool Audit Modal ─────────────────────────────────────────────────────────
 
 function SpoolAuditModal({ spool, onClose }: { spool: Spool; onClose: () => void }) {
+  const { confirm } = useConfirm()
   const { t } = useTranslation()
   const qc = useQueryClient()
 
@@ -532,13 +535,13 @@ function SpoolAuditModal({ spool, onClose }: { spool: Spool; onClose: () => void
 
   const actionLabel = (action: string) => t(`spools.audit.action_${action}`, action)
 
-  const handleCorrect = (e: SpoolAuditEntry) => {
+  const handleCorrect = async (e: SpoolAuditEntry) => {
     const sign = e.delta_g < 0 ? '' : '+'
     const msg = t('spools.audit.correctConfirm', {
       delta: `${sign}${fmtNum(e.delta_g, 1)}`,
       reverse: `${e.delta_g < 0 ? '+' : ''}${fmtNum((-e.delta_g), 1)}`,
     })
-    if (confirm(msg)) correctMut.mutate(e.id)
+    if (await confirm({ title: msg })) correctMut.mutate(e.id)
   }
 
   return (
@@ -854,24 +857,13 @@ function SpoolCard({ spool, spools, onEdit, onWeigh, onLabel, onMoisture, onDupl
   const { t } = useTranslation()
   const fmtCurrency = useCurrencyFormatter()
   const pct = spool.remaining_pct
-  const barColor = pct > 40 ? '#3b82f6' : pct > 15 ? '#f59e0b' : '#ef4444'
-  // Multi-colour spools: split the disc into equal slices
-  const colors = [spool.color_hex, spool.color2_hex, spool.color3_hex, spool.color4_hex].filter(Boolean) as string[]
-  const discBg = colors.length > 1
-    ? `conic-gradient(${colors.map((c, i) => `${c} ${(i * 360) / colors.length}deg ${((i + 1) * 360) / colors.length}deg`).join(', ')})`
-    : colors[0] ?? '#2a2a2e'
+  const barColor = ringColor(pct)
 
   return (
     <div className={`card flex flex-col${spool.archived ? ' opacity-50' : ''}`}>
       {/* Head: big colour disc with remaining-% ring, name gets the full width */}
       <div className="flex items-start gap-3 mb-3">
-        <div
-          className="w-12 h-12 rounded-full shrink-0 grid place-items-center"
-          style={{ background: `conic-gradient(${barColor} ${pct * 3.6}deg, rgba(255,255,255,0.12) 0)` }}
-          title={`${pct}%`}
-        >
-          <span className="w-[38px] h-[38px] rounded-full border border-black/30" style={{ background: discBg }} />
-        </div>
+        <Ring spool={spool} pct={pct} size={48} />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-white leading-snug break-words">
             {spool.brand} {spool.material}
@@ -1330,6 +1322,8 @@ function SpoolTable({ spools, onEdit, onWeigh, onLabel, onMoisture, onDuplicate,
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function Spools() {
+  const { choose } = useConfirm()
+  const toast = useToast()
   const { t, i18n } = useTranslation()
   const qc = useQueryClient()
   const currency = useHACurrency()
@@ -1340,7 +1334,7 @@ export default function Spools() {
       const blob = await api.inventoryReportPdf(i18n.resolvedLanguage ?? i18n.language ?? 'en', currency)
       saveBlob(blob, `${t('spools.inventoryPdf')}_${new Date().toISOString().slice(0, 10)}.pdf`)
     } catch (e: unknown) {
-      alert(t('common.pdfFailed') + ': ' + (e instanceof Error ? e.message : String(e)))
+      toast.error(t('common.pdfFailed') + ': ' + (e instanceof Error ? e.message : String(e)))
     } finally {
       setInventoryBusy(false)
     }
@@ -1407,7 +1401,7 @@ export default function Spools() {
   const assignSlotMut = useMutation({
     mutationFn: ({ id, slot }: { id: number; slot: string | null }) => api.updateSpool(id, { ams_slot: slot }),
     onSuccess: () => { invalidate(); qc.invalidateQueries({ queryKey: ['printer-ams'] }) },
-    onError: (err) => alert(err instanceof Error ? err.message : 'Saving failed'),
+    onError: (err) => toast.error(err instanceof Error ? err.message : 'Saving failed'),
   })
   const archiveMut = useMutation({ mutationFn: (id: number) => api.archiveSpool(id), onSuccess: invalidate })
   const unarchiveMut = useMutation({ mutationFn: (id: number) => api.unarchiveSpool(id), onSuccess: invalidate })
@@ -1454,10 +1448,31 @@ export default function Spools() {
     }
   }
 
-  const handleDelete = (spool: Spool) => {
-    if (confirm(t('spools.confirmDelete', { brand: spool.brand, color: spool.color_name }))) {
-      deleteMut.mutate(spool.id)
-    }
+  const spoolLabel = (s: Spool) => `${s.brand} ${s.material}${s.color_name ? ` · ${s.color_name}` : ''}`
+  // Archive / restore without a prompt, but with an undo message (8 s).
+  const archiveSpool = (s: Spool) => archiveMut.mutate(s.id, {
+    onSuccess: () => toast({
+      message: t('spools.archivedToast', { name: spoolLabel(s) }),
+      actionLabel: t('common.undo'),
+      onAction: () => unarchiveMut.mutate(s.id),
+    }),
+  })
+  const unarchiveSpool = (s: Spool) => unarchiveMut.mutate(s.id, {
+    onSuccess: () => toast({
+      message: t('spools.unarchivedToast', { name: spoolLabel(s) }),
+      actionLabel: t('common.undo'),
+      onAction: () => archiveMut.mutate(s.id),
+    }),
+  })
+  const handleDelete = async (spool: Spool) => {
+    const choice = await choose({
+      title: t('spools.confirmDelete', { brand: spool.brand, color: spool.color_name }),
+      message: t('spools.deleteHint'),
+      danger: true,
+      altLabel: spool.archived ? undefined : t('spools.actions.archive'),
+    })
+    if (choice === 'confirm') deleteMut.mutate(spool.id)
+    else if (choice === 'alt') archiveSpool(spool)
   }
 
   return (
@@ -1542,8 +1557,8 @@ export default function Spools() {
                 onDuplicate={() => setDuplicating(spool)}
                 onHistory={() => setAuditSpool(spool)}
                 onDelete={() => handleDelete(spool)}
-                onArchive={() => archiveMut.mutate(spool.id)}
-                onUnarchive={() => unarchiveMut.mutate(spool.id)}
+                onArchive={() => archiveSpool(spool)}
+                onUnarchive={() => unarchiveSpool(spool)}
               />
             ))}
           </div>
@@ -1558,8 +1573,8 @@ export default function Spools() {
           onDuplicate={s => setDuplicating(s)}
           onHistory={s => setAuditSpool(s)}
           onDelete={handleDelete}
-          onArchive={s => archiveMut.mutate(s.id)}
-          onUnarchive={s => unarchiveMut.mutate(s.id)}
+          onArchive={archiveSpool}
+          onUnarchive={unarchiveSpool}
           onAssignSlot={(s, slot) => assignSlotMut.mutate({ id: s.id, slot })}
         />
       )}

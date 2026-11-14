@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useConfirm } from './ui/Feedback'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Bluetooth, BluetoothOff, ChevronLeft, ChevronRight, Copy, ExternalLink, FileDown, Grid3x3, Image as ImageIcon,
@@ -42,6 +43,7 @@ export default function LabelModal({ spools, initialIds, onClose }: {
   initialIds: number[]     // preselected
   onClose: () => void
 }) {
+  const { confirm } = useConfirm()
   const { t } = useTranslation()
   const qc = useQueryClient()
   const tz = useHATZ()
@@ -108,7 +110,7 @@ export default function LabelModal({ spools, initialIds, onClose }: {
     await saveProfiles(profiles.map(p => p.name === settings.profile ? { ...p, settings: profileSettings(settings) } : p))
   }
   const deleteProfile = async () => {
-    if (!settings.profile || !confirm(t('labels.profileDeleteConfirm', { name: settings.profile }))) return
+    if (!settings.profile || !(await confirm({ title: t('labels.profileDeleteConfirm', { name: settings.profile }), danger: true }))) return
     if (await saveProfiles(profiles.filter(p => p.name !== settings.profile))) update({ profile: '' })
   }
   const activeProfile = profiles.find(p => p.name === settings.profile)

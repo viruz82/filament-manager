@@ -1,5 +1,6 @@
 {
   "nav": {
+    "more": "Más",
     "dashboard": "Panel",
     "spools": "Bobinas",
     "prints": "Impresiones",
@@ -17,6 +18,8 @@
   "common": {
     "save": "Guardar",
     "cancel": "Cancelar",
+    "close": "Cerrar",
+    "undo": "Deshacer",
     "delete": "Eliminar",
     "edit": "Editar",
     "add": "Añadir",
@@ -104,6 +107,9 @@
     "of": "de",
     "noMatch": "Ninguna bobina coincide con los filtros actuales.",
     "confirmDelete": "¿Eliminar bobina \"{{brand}} {{color}}\"?",
+    "deleteHint": "Se pierden el historial, los pesajes y las asignaciones. Mejor archiva las bobinas vacías.",
+    "archivedToast": "«{{name}}» archivada",
+    "unarchivedToast": "«{{name}}» restaurada",
     "form": {
       "customId": "# (Referencia)",
       "brand": "Marca",

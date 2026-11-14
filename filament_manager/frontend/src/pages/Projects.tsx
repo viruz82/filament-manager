@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { useToast } from '../components/ui/Feedback'
 import { api } from '../api'
 import type { Project, ProjectDetail, PrintJob, ProjectReportOptions, ProjectReportSummary, ReportExtra } from '../types'
 import { Plus, Pencil, Trash2, X, FolderOpen, ChevronDown, ChevronRight, Layers, FlaskConical, ExternalLink, FileDown, Loader2 } from 'lucide-react'
@@ -119,6 +120,7 @@ const parseAmount = (s: string) => {
 }
 
 function CostReportModal({ project, onClose }: { project: Project; onClose: () => void }) {
+  const toast = useToast()
   const { t, i18n } = useTranslation()
   const fmtCurrency = useCurrencyFormatter()
   const currency = useHACurrency()
@@ -158,7 +160,7 @@ function CostReportModal({ project, onClose }: { project: Project; onClose: () =
       saveBlob(blob, `${fileSlug(project.name)}_${new Date().toISOString().slice(0, 10)}.pdf`)
       onClose()
     } catch (e: unknown) {
-      alert(t('common.pdfFailed') + ': ' + (e instanceof Error ? e.message : String(e)))
+      toast.error(t('common.pdfFailed') + ': ' + (e instanceof Error ? e.message : String(e)))
     } finally {
       setBusy(false)
     }
@@ -524,6 +526,7 @@ function ProjectCard({
 }
 
 function PrintJobRow({ job, projectId }: { job: PrintJob; projectId: number }) {
+  const toast = useToast()
   const { t } = useTranslation()
   const tz = useHATZ()
   const fmtCurrency = useCurrencyFormatter()
@@ -535,7 +538,7 @@ function PrintJobRow({ job, projectId }: { job: PrintJob; projectId: number }) {
       qc.invalidateQueries({ queryKey: ['projects', projectId] })
       qc.invalidateQueries({ queryKey: ['projects'] })
     },
-    onError: (err) => alert(err instanceof Error ? err.message : 'Failed to update test print flag'),
+    onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to update test print flag'),
   })
 
   return (

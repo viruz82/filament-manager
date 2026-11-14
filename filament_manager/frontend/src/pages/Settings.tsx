@@ -1,6 +1,7 @@
 import { useState, useRef, useMemo, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { useConfirm, useToast } from '../components/ui/Feedback'
 import { api } from '../api'
 import type { PrinterConfig, AMSTray, Spool, BrandSpoolWeight, FilamentSubtype, BambuCloudStatus, BambuCloudDevice, FilamentCatalog } from '../types'
 import { Plus, Trash2, X, RefreshCw, CheckCircle, AlertCircle, Pencil, ChevronDown, ChevronUp, ChevronsUpDown, Download, Upload, Wifi, WifiOff, Sparkles, ArrowDownToLine } from 'lucide-react'
@@ -361,6 +362,7 @@ function PrinterFormModal({
 // ── AMS Tray Panel ────────────────────────────────────────────────────────────
 
 function AMSTrayPanel({ printer }: { printer: PrinterConfig }) {
+  const toast = useToast()
   const { t } = useTranslation()
   const qc = useQueryClient()
   const [activeUnit, setActiveUnit] = useState(1)
@@ -395,7 +397,7 @@ function AMSTrayPanel({ printer }: { printer: PrinterConfig }) {
         const [prevPrinter, prevSlot] = parts.length === 2 ? parts : ['', parts[0]]
         const slotLabel = prevSlot.replace(/ams(\d+)_tray(\d+)/, 'AMS $1 Tray $2')
         const location = prevPrinter ? `${prevPrinter} / ${slotLabel}` : slotLabel
-        alert(`Spool was already assigned to ${location} — it has been moved here.`)
+        toast(`Spool was already assigned to ${location} — it has been moved here.`)
       }
     },
   })
@@ -409,10 +411,10 @@ function AMSTrayPanel({ printer }: { printer: PrinterConfig }) {
     onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: ['spools'] })
       qc.invalidateQueries({ queryKey: ['dashboard'] })
-      alert(`Updated ${result.spool_name}: ${result.remaining_pct}% → ${result.new_weight_g} g`)
+      toast(`Updated ${result.spool_name}: ${result.remaining_pct}% → ${result.new_weight_g} g`)
     },
     onError: (err) => {
-      alert(err instanceof Error ? err.message : 'Sync failed — no valid HA data for this tray')
+      toast.error(err instanceof Error ? err.message : 'Sync failed — no valid HA data for this tray')
     },
   })
 
@@ -422,10 +424,10 @@ function AMSTrayPanel({ printer }: { printer: PrinterConfig }) {
       qc.invalidateQueries({ queryKey: ['spools'] })
       qc.invalidateQueries({ queryKey: ['dashboard'] })
       const n = result.updated.length
-      alert(n > 0 ? `Synced ${n} Bambu Lab spool${n > 1 ? 's' : ''}` : 'No Bambu Lab spools to sync')
+      toast(n > 0 ? `Synced ${n} Bambu Lab spool${n > 1 ? 's' : ''}` : 'No Bambu Lab spools to sync')
     },
     onError: (err) => {
-      alert(err instanceof Error ? err.message : 'Sync all failed')
+      toast.error(err instanceof Error ? err.message : 'Sync all failed')
     },
   })
 
@@ -452,12 +454,12 @@ function AMSTrayPanel({ printer }: { printer: PrinterConfig }) {
     onSuccess: (matched) => {
       qc.invalidateQueries({ queryKey: ['printer-ams'] })
       qc.invalidateQueries({ queryKey: ['spools'] })
-      alert(matched > 0
+      toast(matched > 0
         ? `${t('settings.printers.autoMatchResult', { count: matched })}`
         : t('settings.printers.autoMatchNone'))
     },
     onError: (err) => {
-      alert(err instanceof Error ? err.message : 'Auto-match failed')
+      toast.error(err instanceof Error ? err.message : 'Auto-match failed')
     },
   })
 
@@ -769,6 +771,7 @@ function EnergyConfigSection({ printer }: { printer: PrinterConfig }) {
 // ── Wear Section (inside PrinterCard) ────────────────────────────────────────
 
 function WearSection({ printer, onEdit }: { printer: PrinterConfig; onEdit?: () => void }) {
+  const { confirm } = useConfirm()
   const { t } = useTranslation()
   const qc = useQueryClient()
   const fmtCurrency = useCurrencyFormatter()
@@ -806,8 +809,8 @@ function WearSection({ printer, onEdit }: { printer: PrinterConfig; onEdit?: () 
           )}
           <button
             className="btn-ghost text-xs px-3 py-1.5"
-            onClick={() => {
-              if (window.confirm(t('settings.printers.wearRecalcConfirm', { name: printer.name }))) recalcMut.mutate()
+            onClick={async () => {
+              if (await confirm({ title: t('settings.printers.wearRecalcConfirm', { name: printer.name }) })) recalcMut.mutate()
             }}
             disabled={recalcMut.isPending}
             title={t('settings.printers.wearRecalcHint')}
@@ -906,6 +909,7 @@ function PrinterCard({ printer, onEdit, onDelete }: {
 // ── Brand Spool Weights ───────────────────────────────────────────────────────
 
 function BrandWeightsSection({ actionsLast }: { actionsLast: boolean }) {
+  const { confirm } = useConfirm()
   const { t } = useTranslation()
   const qc = useQueryClient()
   const [newBrand, setNewBrand] = useState('')
@@ -942,8 +946,8 @@ function BrandWeightsSection({ actionsLast }: { actionsLast: boolean }) {
     mutationFn: (id: number) => api.applyBrandWeight(id),
     onSuccess: (data, id) => { setApplied({ id, updated: data.updated }); qc.invalidateQueries({ queryKey: ['spools'] }) },
   })
-  const confirmApply = (e: BrandSpoolWeight) => {
-    if (window.confirm(t('settings.brandWeights.applyConfirm', { brand: e.brand, g: fmtNum(e.spool_weight_g, 0) }))) {
+  const confirmApply = async (e: BrandSpoolWeight) => {
+    if (await confirm({ title: t('settings.brandWeights.applyConfirm', { brand: e.brand, g: fmtNum(e.spool_weight_g, 0) }) })) {
       applyMut.mutate(e.id)
     }
   }
@@ -1184,6 +1188,7 @@ function NameListSection({
 // ── Data Transfer ─────────────────────────────────────────────────────────────
 
 function DataTransferSection() {
+  const toast = useToast()
   const { t } = useTranslation()
   const qc = useQueryClient()
   const fileRef = useRef<HTMLInputElement>(null)
@@ -1222,7 +1227,7 @@ function DataTransferSection() {
       a.click()
       URL.revokeObjectURL(url)
     } catch (e: unknown) {
-      alert('Export failed: ' + (e instanceof Error ? e.message : String(e)))
+      toast.error('Export failed: ' + (e instanceof Error ? e.message : String(e)))
     } finally {
       setExporting(false)
     }
@@ -1239,7 +1244,7 @@ function DataTransferSection() {
       a.click()
       URL.revokeObjectURL(url)
     } catch (e: unknown) {
-      alert('Export failed: ' + (e instanceof Error ? e.message : String(e)))
+      toast.error('Export failed: ' + (e instanceof Error ? e.message : String(e)))
     } finally {
       setExportingSpoolsCsv(false)
     }
@@ -1274,7 +1279,7 @@ function DataTransferSection() {
       a.click()
       URL.revokeObjectURL(url)
     } catch (e: unknown) {
-      alert('Export failed: ' + (e instanceof Error ? e.message : String(e)))
+      toast.error('Export failed: ' + (e instanceof Error ? e.message : String(e)))
     } finally {
       setExportingSpoolman(false)
     }
@@ -1635,6 +1640,7 @@ function CatalogEditRow({ entry, editForm, setEditForm, onSave, onCancel, brands
 }
 
 function FilamentDataSection({ actionsLast }: { actionsLast: boolean }) {
+  const toast = useToast()
   const { t } = useTranslation()
   const qc = useQueryClient()
   const [showAdd, setShowAdd] = useState(false)
@@ -1755,7 +1761,7 @@ function FilamentDataSection({ actionsLast }: { actionsLast: boolean }) {
       if (rows.length > 0) {
         importMut.mutate(rows)
       } else {
-        alert(t('settings.filamentCatalog.importNoRows'))
+        toast.error(t('settings.filamentCatalog.importNoRows'))
       }
     }
     reader.readAsText(file, 'UTF-8')
@@ -2470,6 +2476,7 @@ function MoistureFactorsSection() {
 }
 
 export default function Settings() {
+  const { confirm } = useConfirm()
   const { t } = useTranslation()
   const qc = useQueryClient()
   const [mainTab, setMainTab] = useState<MainTab>('printers')
@@ -2649,8 +2656,8 @@ export default function Settings() {
                 <PrinterCard
                   printer={activePrinter}
                   onEdit={() => setEditing(activePrinter)}
-                  onDelete={() => {
-                    if (confirm(t('settings.printers.confirmDelete', { name: activePrinter.name })))
+                  onDelete={async () => {
+                    if (await confirm({ title: t('settings.printers.confirmDelete', { name: activePrinter.name }), danger: true }))
                       deleteMut.mutate(activePrinter.id)
                   }}
                 />

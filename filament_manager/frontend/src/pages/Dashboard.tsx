@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { useConfirm } from '../components/ui/Feedback'
 import { api } from '../api'
 import type { DashboardStats, PrintJob, PrinterConfig, PrinterStatus, AMSTray, Spool, PrinterEnergy } from '../types'
 import { AlertTriangle, Printer, Zap, CheckCircle2 } from 'lucide-react'
@@ -115,6 +116,7 @@ const LIVE_UNITS: Record<string, string> = {
 const LIVE_KEYS = ['print_stage', 'print_progress', 'remaining_time', 'print_weight', 'ams_active', 'active_tray'] as const
 
 function RunningJobCard({ job, printers }: { job: PrintJob; printers: PrinterConfig[] }) {
+  const { confirm } = useConfirm()
   const { t, i18n } = useTranslation()
   const liveLabels: Record<string, string> = {
     print_stage:    t('settings.bambuCloud.statusStage'),
@@ -145,8 +147,8 @@ function RunningJobCard({ job, printers }: { job: PrintJob; printers: PrinterCon
     onSuccess: () => qc.invalidateQueries({ queryKey: ['dashboard'] }),
   })
 
-  const handleForceFinish = () => {
-    if (!window.confirm(t('dashboard.forceFinishConfirm'))) return
+  const handleForceFinish = async () => {
+    if (!(await confirm({ title: t('dashboard.forceFinishConfirm') }))) return
     forceFinishMut.mutate()
   }
 
