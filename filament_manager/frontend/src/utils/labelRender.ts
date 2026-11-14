@@ -19,11 +19,14 @@ export const LABEL_FIELDS = [
 export type LabelField = typeof LABEL_FIELDS[number]
 export type LabelFontSize = 'auto' | 'small' | 'medium' | 'large'
 export type LabelLayout = 'single' | 'grid'
+export type LabelAlign = 'left' | 'center' | 'right'
+export const LABEL_ALIGNS: LabelAlign[] = ['left', 'center', 'right']
 
 export type LabelSettings = {
   fields: LabelField[]
   showText: boolean
   fontSize: LabelFontSize
+  align: LabelAlign    // position of QR code + text block along the label
   customText: string
   widthMm: number      // along the feed (label length)
   heightMm: number     // across the printhead
@@ -38,6 +41,7 @@ export const DEFAULT_LABEL_SETTINGS: LabelSettings = {
   fields: ['qr', 'number', 'material', 'brand', 'color'],
   showText: true,
   fontSize: 'auto',
+  align: 'center',
   customText: '',
   widthMm: 30,
   heightMm: 15,
@@ -62,6 +66,7 @@ export function normalizeSettings(v: Record<string, unknown> | null | undefined,
     : [...base.fields]
   if (!['auto', 'small', 'medium', 'large'].includes(out.fontSize)) out.fontSize = 'auto'
   if (!['single', 'grid'].includes(out.layout)) out.layout = 'single'
+  if (!LABEL_ALIGNS.includes(out.align)) out.align = base.align
   out.customText = String(out.customText ?? '').slice(0, 100)
   return out
 }
@@ -155,34 +160,32 @@ export function renderLabel(spool: Spool, settings: LabelSettings, tx: LabelText
 
   const lines = labelLines(spool, settings, tx)
   const pad = 3
-  let x0 = pad
+  const gap = 6
+
+  // QR code: low error correction keeps it small enough for 2–3 dot modules
+  let qr: ReturnType<typeof QRCode.create> | null = null
+  let mod = 0
+  let qrSize = 0
   if (settings.fields.includes('qr')) {
-    // Low error correction keeps the code small enough for 2–3 dot modules
-    const qr = QRCode.create(spoolLink(settings.baseUrl, spool), { errorCorrectionLevel: 'L' })
-    const n = qr.modules.size
-    const mod = Math.max(1, Math.floor((H - 2 * pad) / n))
-    const size = n * mod
-    const top = Math.floor((H - size) / 2)
-    // without text the code sits in the middle of the label
-    const left = lines.length ? pad : Math.floor((W - size) / 2)
-    for (let r = 0; r < n; r++) {
-      for (let c = 0; c < n; c++) {
-        if (qr.modules.get(r, c)) ctx.fillRect(left + c * mod, top + r * mod, mod, mod)
-      }
-    }
-    x0 = left + size + 6
+    qr = QRCode.create(spoolLink(settings.baseUrl, spool), { errorCorrectionLevel: 'L' })
+    mod = Math.max(1, Math.floor((H - 2 * pad) / qr.modules.size))
+    qrSize = qr.modules.size * mod
   }
 
-  const maxW = W - x0 - pad
+  // Text: fit every line first, so the whole block can be aligned
+  const maxW = W - 2 * pad - (qr ? qrSize + gap : 0)
+  const fitted: { text: string; font: string }[] = []
+  let textW = 0
+  let y0 = 0
+  let step = 0
   if (lines.length && maxW >= 20) {
     const slot = (H - 2 * pad) / lines.length
     const fit = Math.max(10, Math.min(30, Math.floor(slot * 0.82)))
     const base = settings.fontSize === 'auto' ? fit : Math.max(10, Math.min(FIXED_SIZE[settings.fontSize], Math.floor(slot * 0.95)))
     const blockH = settings.fontSize === 'auto' ? H - 2 * pad : Math.min(H - 2 * pad, lines.length * base * 1.15)
-    const y0 = pad + (H - 2 * pad - blockH) / 2
-    const step = blockH / lines.length
-    ctx.textBaseline = 'middle'
-    lines.forEach((ln, i) => {
+    y0 = pad + (H - 2 * pad - blockH) / 2
+    step = blockH / lines.length
+    lines.forEach(ln => {
       let size = ln.bold ? base : Math.max(10, Math.floor(base * 0.9))
       const font = (sz: number) => `${ln.bold ? 'bold ' : ''}${sz}px ${FONT}`
       ctx.font = font(size)
@@ -192,9 +195,33 @@ export function renderLabel(spool: Spool, settings: LabelSettings, tx: LabelText
         while (text.length > 1 && ctx.measureText(text + '…').width > maxW) text = text.slice(0, -1)
         text += '…'
       }
-      ctx.fillText(text, x0, y0 + step * i + step / 2)
+      fitted.push({ text, font: font(size) })
+      textW = Math.max(textW, ctx.measureText(text).width)
     })
   }
+
+  // Alignment of the block (QR code + text) along the label
+  const contentW = Math.ceil((qr ? qrSize : 0) + (qr && fitted.length ? gap : 0) + textW)
+  const align = settings.align ?? 'center'
+  const left = align === 'left' ? pad
+    : align === 'right' ? Math.max(pad, W - pad - contentW)
+    : Math.max(pad, Math.floor((W - contentW) / 2))
+
+  if (qr) {
+    const n = qr.modules.size
+    const top = Math.floor((H - qrSize) / 2)
+    for (let r = 0; r < n; r++) {
+      for (let c = 0; c < n; c++) {
+        if (qr.modules.get(r, c)) ctx.fillRect(left + c * mod, top + r * mod, mod, mod)
+      }
+    }
+  }
+  const x0 = left + (qr ? qrSize + gap : 0)
+  ctx.textBaseline = 'middle'
+  fitted.forEach((ln, i) => {
+    ctx.font = ln.font
+    ctx.fillText(ln.text, x0, y0 + step * i + step / 2)
+  })
 
   // Thermal printers have no grey: snap anti-aliased pixels to black/white
   const img = ctx.getImageData(0, 0, W, H)

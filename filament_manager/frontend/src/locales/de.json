@@ -799,6 +799,8 @@
       "large": "Groß"
     },
     "fontSizeHint": "Auto füllt das Etikett aus; feste Größen für einheitliche Etiketten.",
+    "align": "Ausrichtung",
+    "alignOpt": { "left": "Links", "center": "Mittig", "right": "Rechts" },
     "customText": "Eigener Text",
     "customTextPlaceholder": "z. B. Nur für Gehäuse, trocken lagern",
     "resetFields": "Felder auf Standard zurücksetzen",

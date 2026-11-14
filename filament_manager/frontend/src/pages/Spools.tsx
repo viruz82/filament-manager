@@ -1368,6 +1368,15 @@ export default function Spools() {
     const next = new URLSearchParams(searchParams); next.delete('spool'); setSearchParams(next, { replace: true })
   }, [searchParams, spools, isLoading, showArchived, setSearchParams])
 
+  // Deep link from the label dialog's "open in browser" (#/spools?labels=12,15)
+  useEffect(() => {
+    const raw = searchParams.get('labels')
+    if (!raw || isLoading) return
+    const ids = raw.split(',').map(Number).filter(id => spools.some(s => s.id === id))
+    if (ids.length) { setLabelPick(false); setLabelIds(ids) }
+    const next = new URLSearchParams(searchParams); next.delete('labels'); setSearchParams(next, { replace: true })
+  }, [searchParams, spools, isLoading, setSearchParams])
+
   const invalidate = () => qc.invalidateQueries({ queryKey: ['spools'] })
   const [weighing, setWeighing] = useState<Spool | null>(null)
   const [moistureSpool, setMoistureSpool] = useState<Spool | null>(null)

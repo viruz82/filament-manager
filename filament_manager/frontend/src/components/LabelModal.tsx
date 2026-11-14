@@ -14,7 +14,7 @@ import { useCurrencyFormatter, useHATZ } from '../hooks/useHATZ'
 import {
   A4, DEFAULT_LABEL_SETTINGS, LABEL_FIELD_GROUPS, LABEL_FIELDS,
   type LabelField, type LabelFontSize, type LabelGroup, type LabelSettings, type LabelTexts,
-  autoBaseUrl, browserPrint, gridDims, loadLabelSettings, normalizeSettings, profileSettings,
+  LABEL_ALIGNS, autoBaseUrl, browserPrint, gridDims, loadLabelSettings, normalizeSettings, profileSettings,
   renderLabel, saveLabelSettings,
 } from '../utils/labelRender'
 import { bluetoothAvailable, connectPrinter, disconnectPrinter, printCanvases, printerState, type PrinterState } from '../utils/niimbot'
@@ -179,7 +179,15 @@ export default function LabelModal({ spools, initialIds, onClose }: {
   const disconnect = async () => { await disconnectPrinter(); setPrinter(printerState()) }
 
   const printNiimbot = async () => {
-    setBusy('print'); setError(''); setProgress(0)
+    setError(''); setProgress(0)
+    // not connected yet: open the Bluetooth chooser first, then print
+    if (!printerState().connected) {
+      setBusy('connect')
+      try { setPrinter(await connectPrinter()) } catch (e) {
+        setError(e instanceof Error ? e.message : String(e)); setBusy(''); return
+      }
+    }
+    setBusy('print')
     try {
       await printCanvases(printerCanvases(), density, setProgress)
       await markPrinted(chosen.map(s => s.id))
@@ -215,7 +223,8 @@ export default function LabelModal({ spools, initialIds, onClose }: {
     markPrinted(chosen.map(s => s.id))
   }
 
-  const openUrl = autoBaseUrl()
+  // "open in browser": straight back into this dialog with the same spools
+  const openUrl = selected.length ? `${autoBaseUrl()}?labels=${selected.join(',')}` : autoBaseUrl()
   const copyLink = async () => {
     try { await navigator.clipboard.writeText(openUrl); setCopied(true); setTimeout(() => setCopied(false), 2000) } catch { /* ignore */ }
   }
@@ -473,6 +482,18 @@ export default function LabelModal({ spools, initialIds, onClose }: {
               <p className="text-[11px] text-gray-500">{t('labels.fontSizeHint')}</p>
             </section>
 
+            <section className="space-y-1.5">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-400">{t('labels.align')}</h3>
+              <div className="flex rounded-lg border border-surface-3 overflow-hidden w-fit">
+                {LABEL_ALIGNS.map(a => (
+                  <button key={a} onClick={() => update({ align: a })}
+                    className={`px-3 py-1.5 text-xs ${settings.align === a ? 'bg-accent text-white' : 'text-gray-400 hover:text-white hover:bg-surface-3'}`}>
+                    {t(`labels.alignOpt.${a}`)}
+                  </button>
+                ))}
+              </div>
+            </section>
+
             <section className="space-y-1">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-400">{t('labels.customText')}</h3>
@@ -535,11 +556,12 @@ export default function LabelModal({ spools, initialIds, onClose }: {
           <button className="btn-ghost px-3 py-1.5 text-sm flex items-center gap-1.5" onClick={printBrowser} disabled={nothing}>
             <Printer size={14} /> {t('labels.printBrowser')}
           </button>
-          <button className="btn-primary flex items-center gap-1.5" onClick={printNiimbot} disabled={nothing || !printer.connected || busy !== ''}
-            title={!printer.connected ? t('labels.connectFirst') : undefined}>
-            {busy === 'print' ? <Loader2 size={14} className="animate-spin" /> : <Bluetooth size={14} />}
+          {hasBt && (
+          <button className="btn-primary flex items-center gap-1.5" onClick={printNiimbot} disabled={nothing || busy !== ''}>
+            {busy === 'print' || busy === 'connect' ? <Loader2 size={14} className="animate-spin" /> : <Bluetooth size={14} />}
             {busy === 'print' ? `${progress}/${total}` : t('labels.printNiimbot', { n: total })}
           </button>
+          )}
         </div>
       </div>
     </div>

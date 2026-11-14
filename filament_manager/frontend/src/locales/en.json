@@ -799,6 +799,8 @@
       "large": "Large"
     },
     "fontSizeHint": "Auto fills the label; fixed sizes give uniform labels.",
+    "align": "Alignment",
+    "alignOpt": { "left": "Left", "center": "Center", "right": "Right" },
     "customText": "Custom text",
     "customTextPlaceholder": "e.g. enclosures only, keep dry",
     "resetFields": "Reset fields to default",

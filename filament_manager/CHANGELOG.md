@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.9.2
+
+- Label dialog: **"Print on Niimbot" connects by itself** — the button was disabled until "Connect printer" had been used, but looked active; it now opens the Bluetooth chooser when needed and prints right after. Disabled buttons are shown dimmed everywhere.
+- Label dialog: **"Open in browser" / "Copy link" open this dialog again** with the same spools (`?labels=12,15`) instead of the add-on's overview
+- Label dialog: **alignment left / center / right** for the QR code + text block (default center), part of print profiles
+
 ## 1.9.1
 
 - Fix: the label QR code (`<HA address>/<add-on panel>/spool-<id>`) only opened the overview — Home Assistant keeps the sub-path in its own address but does not pass it on to the ingress iframe; the add-on now also reads the parent window's address and resets it to the panel afterwards
