@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.10.1
+
+- Prints → Edit → "Edit usage": the **AMS slot is now a dropdown** instead of free text. It lists the trays of the print's printer (live, falling back to AMS units × 4 when the printer is offline); the stored value stays the plain key (`ams1_tray2`), older free-text values remain selectable.
+- Print list and edit form show the slot as "Tray N" ("Fach N") instead of the raw key.
+
 ## 1.10.0
 
 - Spools, card view: **actions in a bar across the bottom of the card** with bigger icons and touch targets (18 px icons, about 36 px buttons) instead of a narrow column of 13 px icons in the top right corner; the name now uses the full card width and wraps instead of being cut off.

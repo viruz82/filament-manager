@@ -6,6 +6,7 @@ import type { PrintJob, Spool, AMSTray, PrinterConfig, SuggestedUsage, PrinterSt
 import { Plus, Pencil, Trash2, X, CheckCircle, XCircle, Zap, Scale, FileText, Download, Search, CalendarDays, FolderOpen, ExternalLink, RefreshCw } from 'lucide-react'
 import Modal from '../components/Modal'
 import { useHATZ, useCurrencyFormatter } from '../hooks/useHATZ'
+import { useAmsSlotLabel } from '../hooks/useAmsSlots'
 import { formatDateTimeTZ, nowInTZ, utcToLocalInput, localInputToUTC } from '../utils/time'
 
 const PAGE_SIZE = 50
@@ -166,6 +167,23 @@ function PrintForm({
   }, [printers, initial?.printer_name])
 
   const selectedPrinter = printers.find(p => p.id === printerId) ?? null
+  const slotLabel = useAmsSlotLabel()
+
+  // Selectable AMS slots of the print's printer: live trays, else ams_unit_count × 4.
+  // Stored value stays the bare key (ams<unit>_tray<n>); unknown old values stay selectable.
+  const { data: printerTrays = [] } = useQuery<AMSTray[]>({
+    queryKey: ['printer-ams', selectedPrinter?.id],
+    queryFn: () => api.getPrinterAMS(selectedPrinter!.id),
+    enabled: !!selectedPrinter && usageEditMode,
+    staleTime: 30_000,
+    retry: false,
+  })
+  const slotKeys: string[] = printerTrays.length
+    ? printerTrays.map(tr => tr.slot_key)
+    : Array.from({ length: Math.max(1, selectedPrinter?.ams_unit_count || 1) }, (_, u) =>
+        [1, 2, 3, 4].map(n => `ams${u + 1}_tray${n}`)).flat()
+  const slotOptionsFor = (current: string) =>
+    current && !slotKeys.includes(current) ? [...slotKeys, current] : slotKeys
 
   // Spools visible in dropdowns: non-empty always shown; empty only when checkbox is on.
   // Always include spools already selected in a usage row so existing rows don't go blank.
@@ -411,7 +429,7 @@ function PrintForm({
                           : `Spool #${u.spool_id}`}
                       </span>
                       <span className="text-gray-300">{u.grams_used.toFixed(1)}g</span>
-                      {u.ams_slot && <span className="text-blue-400">{u.ams_slot}</span>}
+                      {u.ams_slot && <span className="text-blue-400">{slotLabel(u.ams_slot)}</span>}
                     </div>
                   )
                 })
@@ -447,12 +465,16 @@ function PrintForm({
                       placeholder="g"
                     />
                     <span className="text-xs text-gray-500">g</span>
-                    <input
-                      className="input w-24 text-xs py-1"
+                    <select
+                      className="input w-28 text-xs py-1"
                       value={u.ams_slot}
                       onChange={e => updateUsage(i, 'ams_slot', e.target.value)}
-                      placeholder="slot"
-                    />
+                    >
+                      <option value="">{t('spools.amsNone')}</option>
+                      {slotOptionsFor(u.ams_slot).map(k => (
+                        <option key={k} value={k}>{slotLabel(k)}</option>
+                      ))}
+                    </select>
                     <button onClick={() => removeUsage(i)} className="text-red-400 hover:text-red-300"><X size={14} /></button>
                   </div>
                 ))}
@@ -723,6 +745,7 @@ function PrintRow({ job, printer, onEdit, onDelete, onLogUsage }: {
   const { t } = useTranslation()
   const tz = useHATZ()
   const fmtCurrency = useCurrencyFormatter()
+  const slotLabel = useAmsSlotLabel()
   const [expanded, setExpanded] = useState(false)
   const needsUsage = job.source === 'auto' && job.finished_at && job.total_grams === 0 && job.suggested_usages !== null
   const showModel = job.model_name && job.model_name !== job.name
@@ -832,7 +855,7 @@ function PrintRow({ job, printer, onEdit, onDelete, onLogUsage }: {
               </span>
               <span>{u.grams_used.toFixed(1)}g</span>
               {u.cost && <span className="text-gray-500">{fmtCurrency(u.cost)}</span>}
-              {u.ams_slot && <span className="text-blue-400">{u.ams_slot}</span>}
+              {u.ams_slot && <span className="text-blue-400">{slotLabel(u.ams_slot)}</span>}
             </div>
           ))}
         </div>
