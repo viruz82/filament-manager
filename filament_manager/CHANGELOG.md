@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.12.0
+
+- **Spools page redone** (tiles + list share one bar): search over number, brand, material, colour and location; filter chips Active / Moist / Low / In AMS / Archived (with counts), material and location filters, sort menu and a summary line (spools, kg, remaining value). Search and filters stay when you switch between tiles and list.
+- **Tiles**: smaller, one status line (pills for low stock, drying need, AMS slot) and a "⋯" menu with Weigh, Dry and Label.
+- **List** replaces the 21-column table: one dense row per spool (colour ring, name, material, remaining bar, grams, status), sortable header. Column picker and per-column filters are gone; all fields are in the detail view.
+- **Detail**: click a tile or row. Laptop: column on the right (Esc or ✕ closes it); phone and tablet: sheet from the bottom. Shows all fields and every action (Dry, Weigh, Edit, Label, History, Archive, AMS slot); **Delete** and Duplicate are behind "More" (delete asks first, as before).
+- Phone: the list is the default view when nothing was chosen before.
+- Deep link `#/spools?filter=low|moist|ams|archived`; a spool label's QR code (`?spool=`) now opens the detail view instead of the edit form.
+- Light theme: active filter chips use the accent text colour.
+
 ## 1.11.0
 
 - New look: Home-Assistant blue accent, softer surfaces, rounder cards and pill buttons; status colours (ok / warning / critical / info) are now theme tokens that work in light and dark mode.
