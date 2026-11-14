@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.9.4
+
+- Labels: "Open in browser" in the **Home Assistant Android app** now really opens Chrome (`intent:` link with the HTTPS address as fallback) — the app loads links to its own server inside the app, where there is no Web Bluetooth
+
 ## 1.9.3
 
 - Labels: the QR code, "Open in browser" and "Copy link" use Home Assistant's **external HTTPS address** (Settings → Network) instead of the address the add-on happens to be open on. Opened via the local IP (http), browsers switch Web Bluetooth off, so "Print on Niimbot" was missing there; the dialog now says so ("Bluetooth only works over HTTPS") and the link leads to a page where printing works. QR codes also work away from home.

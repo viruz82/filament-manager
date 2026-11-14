@@ -225,6 +225,16 @@ export default function LabelModal({ spools, initialIds, onClose }: {
 
   // "open in browser": straight back into this dialog with the same spools
   const openUrl = selected.length ? `${autoBaseUrl()}?labels=${selected.join(',')}` : autoBaseUrl()
+  // The Home Assistant Android app opens links to its own server inside the app;
+  // only "intent:" links are handed to Android, so Chrome is started explicitly.
+  const browserUrl = (() => {
+    if (!/Android/i.test(navigator.userAgent)) return openUrl
+    try {
+      const u = new URL(openUrl)
+      return `intent://${u.host}${u.pathname}${u.search}#Intent;scheme=${u.protocol.replace(':', '')};`
+        + `package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(openUrl)};end`
+    } catch { return openUrl }
+  })()
   const copyLink = async () => {
     try { await navigator.clipboard.writeText(openUrl); setCopied(true); setTimeout(() => setCopied(false), 2000) } catch { /* ignore */ }
   }
@@ -346,7 +356,7 @@ export default function LabelModal({ spools, initialIds, onClose }: {
                 <div className="rounded-lg border border-amber-700/60 bg-amber-900/20 p-3 text-xs text-amber-300 space-y-2">
                   <p className="flex items-start gap-1.5"><BluetoothOff size={14} className="shrink-0 mt-0.5" /> {t(window.isSecureContext ? 'labels.noBluetooth' : 'labels.noBluetoothHttp')}</p>
                   <div className="flex flex-wrap gap-2">
-                    <a className="btn-ghost px-2.5 py-1.5 text-xs flex items-center gap-1 text-amber-200" href={openUrl} target="_blank" rel="noopener noreferrer">
+                    <a className="btn-ghost px-2.5 py-1.5 text-xs flex items-center gap-1 text-amber-200" href={browserUrl} target="_blank" rel="noopener noreferrer">
                       <ExternalLink size={13} /> {t('labels.openInBrowser')}
                     </a>
                     <button className="btn-ghost px-2.5 py-1.5 text-xs flex items-center gap-1 text-amber-200" onClick={copyLink}>
