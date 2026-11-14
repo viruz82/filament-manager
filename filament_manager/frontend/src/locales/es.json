@@ -124,7 +124,7 @@
     "unarchivedToast": "«{{name}}» restaurada",
     "filter": { "all": "Activas", "moist": "Húmedas", "low": "Pocas", "ams": "En AMS", "archived": "Archivadas" },
     "filterLocation": "Todas las ubicaciones",
-    "sort": { "label": "Orden", "ams": "AMS primero", "number": "Número", "name": "Nombre", "rest": "Restante (menos primero)", "weight": "Peso" },
+    "sort": { "label": "Orden", "ams": "AMS primero", "number": "Número", "name": "Nombre", "material": "Material", "rest": "Restante (menos primero)", "weight": "Peso" },
     "viewList": "Vista de lista",
     "viewGridShort": "Mosaico",
     "viewListShort": "Lista",

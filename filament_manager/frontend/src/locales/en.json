@@ -124,7 +124,7 @@
     "unarchivedToast": "“{{name}}” restored",
     "filter": { "all": "Active", "moist": "Moist", "low": "Low", "ams": "In AMS", "archived": "Archived" },
     "filterLocation": "All locations",
-    "sort": { "label": "Sort", "ams": "AMS first", "number": "Number", "name": "Name", "rest": "Remaining (lowest first)", "weight": "Weight" },
+    "sort": { "label": "Sort", "ams": "AMS first", "number": "Number", "name": "Name", "material": "Material", "rest": "Remaining (lowest first)", "weight": "Weight" },
     "viewList": "List view",
     "viewGridShort": "Tiles",
     "viewListShort": "List",

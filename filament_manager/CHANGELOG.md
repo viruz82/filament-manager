@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.14.1
+
+- Fix: the sort menu on the spools page showed the raw key "spools.sort.material" instead of "Material" (missing translation in de/en/es).
+
 ## 1.14.0
 
 - **Faster start**: the app is split into chunks that load on demand. The start bundle shrank from 1.31 MB to about 0.46 MB; the remaining pages are fetched in the background once the first page is up, so switching tabs does not wait.
