@@ -88,7 +88,13 @@ function syncHATheme() {
     const accent = cs.getPropertyValue('--primary-color').trim()
     if (accent) {
       const rgb = hexToRgb(accent)
-      if (rgb) document.documentElement.style.setProperty('--fm-accent', rgb)
+      if (rgb) {
+        document.documentElement.style.setProperty('--fm-accent', rgb)
+        // readable text on accent surfaces: white on dark accents, near-black on light ones
+        const [r, g, b] = rgb.split(' ').map(Number)
+        const lum = (r * 299 + g * 587 + b * 114) / 1000
+        document.documentElement.style.setProperty('--fm-on-accent', lum < 150 ? '255 255 255' : '4 18 26')
+      }
     }
   } catch {
     // Cross-origin or security error — leave theme as-is

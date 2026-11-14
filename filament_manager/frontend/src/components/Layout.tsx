@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import {
   LayoutDashboard, Layers, Printer, Settings, FolderOpen, Wrench,
-  ChevronLeft, ChevronRight, Menu, X, Globe,
+  ChevronLeft, ChevronRight, Ellipsis, X, Globe,
 } from 'lucide-react'
 import { api } from '../api'
 
@@ -139,7 +139,7 @@ function VersionButton({ collapsed }: { collapsed?: boolean }) {
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation()
   const [collapsed, setCollapsed] = useState(false)
-  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
   const location = useLocation()
 
   const nav = [
@@ -150,22 +150,26 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { to: '/maintenance', icon: Wrench,        label: t('nav.maintenance') },
     { to: '/settings',  icon: Settings,        label: t('nav.settings') },
   ]
+  // Phone: the first four stay in the bottom bar, the rest lives under "More".
+  const mainNav = nav.slice(0, 4)
+  const moreNav = nav.slice(4)
+  const moreActive = moreNav.some(n => location.pathname.startsWith(n.to))
+  const pageTitle = nav.find(n => location.pathname.startsWith(n.to))?.label ?? t('nav.appName')
 
   useEffect(() => {
-    setDrawerOpen(false)
+    setMoreOpen(false)
   }, [location.pathname])
 
   return (
-    <div className="flex h-screen overflow-hidden bg-surface text-gray-100">
+    <div className="flex h-screen overflow-hidden bg-surface text-gray-100" style={{ height: '100dvh' }}>
 
       {/* ── Desktop sidebar (≥768px) ─────────────────────────────────────────── */}
       <aside
-        style={{ width: collapsed ? 56 : 208 }}
-        className="hidden md:flex flex-col shrink-0 bg-surface-2 border-r border-surface-3 transition-all duration-200"
+        style={{ width: collapsed ? 56 : 192 }}
+        className="hidden md:flex flex-col shrink-0 bg-surface-2 transition-all duration-200"
       >
         {/* Logo */}
-        <div className={`border-b border-surface-3 py-4 flex items-center
-                         ${collapsed ? 'justify-center px-2' : 'px-4 gap-2'}`}>
+        <div className={`py-4 flex items-center ${collapsed ? 'justify-center px-2' : 'px-4 gap-2'}`}>
           {collapsed ? (
             <span className="text-accent" title={t('nav.appName')}>
               <AppIcon size={22} />
@@ -192,7 +196,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 `flex items-center gap-3 rounded-lg text-sm transition-colors
                  ${collapsed ? 'justify-center px-2 py-2.5' : 'px-3 py-2.5'}
                  ${isActive
-                   ? 'bg-accent text-white'
+                   ? 'bg-accent/15 text-accent font-semibold'
                    : 'text-gray-400 hover:text-white hover:bg-surface-3'
                  }`
               }
@@ -220,79 +224,99 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </button>
       </aside>
 
-      {/* ── Mobile overlay + drawer (<768px) ─────────────────────────────────── */}
-      {drawerOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-40 bg-black/60"
-            onClick={() => setDrawerOpen(false)}
-          />
-          <aside className="fixed inset-y-0 left-0 z-50 flex flex-col w-64
-                            bg-surface-2 border-r border-surface-3 shadow-xl">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-surface-3 shrink-0">
-              <div className="flex items-center gap-2">
-                <span className="text-accent shrink-0"><AppIcon size={20} /></span>
-                <div>
-                  <p className="text-sm font-bold text-white leading-tight">{t('nav.appName')}</p>
-                  <p className="text-xs text-gray-500">{t('nav.appSub')}</p>
-                </div>
-              </div>
-              <button
-                className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-surface-3 transition-colors"
-                onClick={() => setDrawerOpen(false)}
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
-              {nav.map(({ to, icon: Icon, label }) => (
-                <NavLink
-                  key={to}
-                  to={to}
-                  onClick={() => setDrawerOpen(false)}
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 rounded-lg text-sm px-3 py-2.5 transition-colors
-                     ${isActive
-                       ? 'bg-accent text-white'
-                       : 'text-gray-400 hover:text-white hover:bg-surface-3'
-                     }`
-                  }
-                >
-                  <Icon size={16} className="shrink-0" />
-                  <span>{label}</span>
-                </NavLink>
-              ))}
-            </nav>
-
-            <div className="border-t border-surface-3 px-3 py-2 flex items-center justify-between">
-              <LanguageSwitcher />
-              <VersionButton />
-            </div>
-          </aside>
-        </>
-      )}
-
       {/* ── Main content area ────────────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
-        {/* Mobile top bar */}
-        <header className="flex items-center gap-3 px-4 py-3
-                           bg-surface-2 border-b border-surface-3 shrink-0 md:hidden">
-          <button
-            className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-surface-3 transition-colors"
-            onClick={() => setDrawerOpen(true)}
-            aria-label="Open menu"
-          >
-            <Menu size={20} />
-          </button>
-          <p className="text-sm font-bold text-white">{t('nav.appName')}</p>
+        {/* Phone top bar: just the page title */}
+        <header className="flex items-center gap-2 px-4 py-3 bg-surface-2 shrink-0 md:hidden">
+          <span className="text-accent shrink-0"><AppIcon size={18} /></span>
+          <p className="text-base font-semibold text-white truncate">{pageTitle}</p>
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           {children}
         </main>
+
+        {/* Phone bottom navigation (<768px) */}
+        <nav
+          className="md:hidden shrink-0 grid grid-cols-5 bg-surface-2 border-t border-surface-3"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+          aria-label={t('nav.appName')}
+        >
+          {mainNav.map(({ to, icon: Icon, label }) => (
+            <NavLink
+              key={to}
+              to={to}
+              className={({ isActive }) =>
+                `flex flex-col items-center gap-0.5 pt-2 pb-1.5 min-w-0 text-[10.5px] transition-colors
+                 ${isActive ? 'text-accent font-semibold' : 'text-gray-400'}`
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <span className={`rounded-full px-4 py-1 transition-colors ${isActive ? 'bg-accent/15' : ''}`}>
+                    <Icon size={18} />
+                  </span>
+                  <span className="max-w-full truncate px-1">{label}</span>
+                </>
+              )}
+            </NavLink>
+          ))}
+          <button
+            onClick={() => setMoreOpen(true)}
+            aria-haspopup="dialog"
+            className={`flex flex-col items-center gap-0.5 pt-2 pb-1.5 min-w-0 text-[10.5px] transition-colors
+              ${moreActive ? 'text-accent font-semibold' : 'text-gray-400'}`}
+          >
+            <span className={`rounded-full px-4 py-1 transition-colors ${moreActive ? 'bg-accent/15' : ''}`}>
+              <Ellipsis size={18} />
+            </span>
+            <span className="max-w-full truncate px-1">{t('nav.more')}</span>
+          </button>
+        </nav>
       </div>
+
+      {/* ── Phone "More" sheet ───────────────────────────────────────────────── */}
+      {moreOpen && (
+        <div className="md:hidden fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label={t('nav.more')}>
+          <div className="absolute inset-0 bg-black/60" onClick={() => setMoreOpen(false)} />
+          <div
+            className="absolute inset-x-0 bottom-0 bg-surface-2 rounded-t-2xl shadow-2xl px-3 pt-2"
+            style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
+          >
+            <div className="w-9 h-1 rounded-full bg-surface-4 mx-auto mb-2" />
+            <div className="flex items-center justify-between px-2 pb-1">
+              <p className="text-sm font-semibold text-white">{t('nav.more')}</p>
+              <button
+                className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-surface-3 transition-colors"
+                onClick={() => setMoreOpen(false)}
+                aria-label={t('common.close')}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="space-y-0.5">
+              {moreNav.map(({ to, icon: Icon, label }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 rounded-xl text-sm px-3 py-3 transition-colors
+                     ${isActive ? 'bg-accent/15 text-accent font-semibold' : 'text-gray-300 hover:bg-surface-3'}`
+                  }
+                >
+                  <Icon size={18} className="shrink-0" />
+                  <span>{label}</span>
+                </NavLink>
+              ))}
+            </div>
+            <div className="border-t border-surface-3 mt-2 pt-2 px-1 flex items-center justify-between">
+              <LanguageSwitcher />
+              <VersionButton />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
