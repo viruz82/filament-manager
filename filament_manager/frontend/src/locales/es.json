@@ -24,6 +24,8 @@
     "edit": "Editar",
     "add": "Añadir",
     "loading": "Cargando…",
+    "loadFailed": "No se pudo cargar esta parte de la aplicación. Probablemente el complemento se acaba de actualizar.",
+    "reload": "Recargar",
     "noData": "Sin datos todavía.",
     "kg": "kg",
     "g": "g",

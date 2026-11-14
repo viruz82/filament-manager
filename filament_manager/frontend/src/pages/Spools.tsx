@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect, useRef, lazy, Suspense } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useConfirm, useToast } from '../components/ui/Feedback'
@@ -8,7 +8,7 @@ import { PACKAGING_TYPES } from '../types'
 import { Plus, Trash2, X, RotateCcw, Droplet, Flame, Scale } from 'lucide-react'
 import Modal from '../components/Modal'
 import Section from '../components/ui/Section'
-import LabelModal from '../components/LabelModal'
+import { Spinner } from '../components/ui/Loading'
 import { useSearchParams } from 'react-router-dom'
 import { formatDateOnly, formatDateTimeTZ } from '../utils/time'
 import { useHATZ, useCurrencyFormatter, useCurrencySymbol, useHACurrency } from '../hooks/useHATZ'
@@ -26,6 +26,9 @@ import {
   EMPTY_FILTER, FILTER_PARAM, defaultDir, filterSpools, isLow, isMoist, loadSort, saveSort, sortSpools,
 } from '../components/spools/spoolFilters'
 import type { SortKey, SortState, SpoolFilter } from '../components/spools/spoolFilters'
+
+// Label dialog pulls in niimbluelib + qrcode; only load it when it is opened.
+const LabelModal = lazy(() => import('../components/LabelModal'))
 
 // ── Spool Form ────────────────────────────────────────────────────────────────
 
@@ -1132,11 +1135,15 @@ export default function Spools() {
 
       {labelIds && (
         <Modal>
+          <Suspense fallback={
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"><Spinner className="" /></div>
+          }>
           <LabelModal
             spools={labelPick ? shown : spools.filter(s => labelIds.includes(s.id))}
             initialIds={labelIds}
             onClose={() => { setLabelIds(null); setLabelPick(false) }}
           />
+          </Suspense>
         </Modal>
       )}
 

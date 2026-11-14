@@ -24,6 +24,8 @@
     "edit": "Edit",
     "add": "Add",
     "loading": "Loading…",
+    "loadFailed": "This part of the app could not be loaded. The add-on was probably just updated.",
+    "reload": "Reload",
     "noData": "No data yet.",
     "kg": "kg",
     "g": "g",
