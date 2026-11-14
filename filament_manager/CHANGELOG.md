@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.10.0
+
+- Spools, card view: **actions in a bar across the bottom of the card** with bigger icons and touch targets (18 px icons, about 36 px buttons) instead of a narrow column of 13 px icons in the top right corner; the name now uses the full card width and wraps instead of being cut off.
+- Card head: **large colour disc with a ring for the remaining percentage** (multi-colour spools are shown as slices), remaining weight **large in grams** ("432 g" instead of "0.43200 kg"), percentages and "of 1.00 kg" with the decimal separator of the UI language, bigger moisture icon.
+
 ## 1.9.5
 
 - Labels: **margin left/right** (mm, default 1 mm instead of 0.4 mm) so text in "auto" size no longer runs to the label edge, and **Niimbot offset** (−3 … +3 mm) that shifts only the printer output to compensate the feed position of the printer (D110 test: about 1 mm to the right). Both are part of print profiles.

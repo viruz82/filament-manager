@@ -11,7 +11,7 @@ import { useSearchParams } from 'react-router-dom'
 import { formatDateOnly, formatDateTimeTZ } from '../utils/time'
 import { useHATZ, useCurrencyFormatter, useCurrencySymbol, useHACurrency } from '../hooks/useHATZ'
 import { saveBlob } from '../utils/download'
-import { parseDecimal } from '../utils/number'
+import { parseDecimal, fmtNum } from '../utils/number'
 import { AmsSlotSelect, useAmsSlotLabel } from '../hooks/useAmsSlots'
 
 // ── Spool Form ────────────────────────────────────────────────────────────────
@@ -631,7 +631,7 @@ const MOISTURE_BAR: Record<string, string> = {
   dry: '#4ade80', good: '#38bdf8', warning: '#fbbf24', critical: '#f87171', drying: '#fb923c', unknown: '#6b7280',
 }
 
-function MoistureBadge({ spool, onClick, showPct = true }: { spool: Spool; onClick: () => void; showPct?: boolean }) {
+function MoistureBadge({ spool, onClick, showPct = true, iconSize = 12 }: { spool: Spool; onClick: () => void; showPct?: boolean; iconSize?: number }) {
   const { t } = useTranslation()
   const m = spool.moisture
   const label = t(`moisture.level.${m.level}`)
@@ -642,7 +642,7 @@ function MoistureBadge({ spool, onClick, showPct = true }: { spool: Spool; onCli
       title={`${t('moisture.title')}: ${label}${m.pct != null ? ` (${Math.round(m.pct)} %)` : ''}`}
       aria-label={`${t('moisture.title')}: ${label}`}
     >
-      {m.level === 'drying' ? <Flame size={12} /> : <Droplet size={12} />}
+      {m.level === 'drying' ? <Flame size={iconSize} /> : <Droplet size={iconSize} />}
       {showPct && (m.pct != null ? <span>{Math.round(m.pct)}%</span> : m.level === 'drying' ? <span>{label}</span> : null)}
     </button>
   )
@@ -855,23 +855,31 @@ function SpoolCard({ spool, spools, onEdit, onWeigh, onLabel, onMoisture, onDupl
   const fmtCurrency = useCurrencyFormatter()
   const pct = spool.remaining_pct
   const barColor = pct > 40 ? '#3b82f6' : pct > 15 ? '#f59e0b' : '#ef4444'
+  // Multi-colour spools: split the disc into equal slices
+  const colors = [spool.color_hex, spool.color2_hex, spool.color3_hex, spool.color4_hex].filter(Boolean) as string[]
+  const discBg = colors.length > 1
+    ? `conic-gradient(${colors.map((c, i) => `${c} ${(i * 360) / colors.length}deg ${((i + 1) * 360) / colors.length}deg`).join(', ')})`
+    : colors[0] ?? '#2a2a2e'
 
   return (
-    <div className={`card${spool.archived ? ' opacity-50' : ''}`}>
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <span className="w-4 h-4 rounded-full shrink-0 ring-1 ring-white/10" style={{ background: spool.color_hex }} />
-          {[spool.color2_hex, spool.color3_hex, spool.color4_hex].filter(Boolean).map((h, i) => (
-            <span key={i} className="w-3.5 h-3.5 rounded-full shrink-0 ring-1 ring-white/10" style={{ background: h! }} />
-          ))}
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-white truncate">
-              {spool.brand} {spool.material}
-              {spool.subtype ? ` ${spool.subtype}` : ''}
-              {spool.subtype2 ? ` · ${spool.subtype2}` : ''}
-            </p>
-            <p className="text-xs text-gray-400">{spool.color_name}</p>
-            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+    <div className={`card flex flex-col${spool.archived ? ' opacity-50' : ''}`}>
+      {/* Head: big colour disc with remaining-% ring, name gets the full width */}
+      <div className="flex items-start gap-3 mb-3">
+        <div
+          className="w-12 h-12 rounded-full shrink-0 grid place-items-center"
+          style={{ background: `conic-gradient(${barColor} ${pct * 3.6}deg, rgba(255,255,255,0.12) 0)` }}
+          title={`${pct}%`}
+        >
+          <span className="w-[38px] h-[38px] rounded-full border border-black/30" style={{ background: discBg }} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-white leading-snug break-words">
+            {spool.brand} {spool.material}
+            {spool.subtype ? ` ${spool.subtype}` : ''}
+            {spool.subtype2 ? ` · ${spool.subtype2}` : ''}
+          </p>
+          <p className="text-xs text-gray-400">{spool.color_name}</p>
+          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
               {spool.archived && (
                 <span className="text-xs text-gray-500 italic">{t('spools.archived')}</span>
               )}
@@ -887,34 +895,22 @@ function SpoolCard({ spool, spools, onEdit, onWeigh, onLabel, onMoisture, onDupl
                   <Recycle size={9} />{t('spools.refillBadge')}
                 </span>
               )}
-            </div>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-0.5 shrink-0 ml-2 content-start">
-          <button onClick={onEdit} className="btn-ghost p-1" title={t('spools.actions.edit')}><Pencil size={13} /></button>
-          <button onClick={onWeigh} className="btn-ghost p-1 text-emerald-400" title={t('spools.actions.weigh')} aria-label={t('spools.actions.weigh')}><Scale size={13} /></button>
-          <button onClick={onLabel} className={`btn-ghost p-1 ${spool.label_printed_at ? 'text-emerald-400' : 'text-gray-400'}`} title={t('labels.action')} aria-label={t('labels.action')}><QrCode size={13} /></button>
-          <button onClick={onDuplicate} className="btn-ghost p-1 text-blue-400" title={t('spools.actions.duplicate')}><Copy size={13} /></button>
-          <button onClick={onHistory} className="btn-ghost p-1 text-amber-400" title={t('spools.actions.history')}><History size={13} /></button>
-          {spool.archived
-            ? <button onClick={onUnarchive} className="btn-ghost p-1 text-green-400 hover:text-green-300" title={t('spools.actions.unarchive')}><ArchiveRestore size={13} /></button>
-            : <button onClick={onArchive} className="btn-ghost p-1 text-gray-400 hover:text-gray-200" title={t('spools.actions.archive')}><Archive size={13} /></button>
-          }
-          <button onClick={onDelete} className="btn-ghost p-1 text-red-400 hover:text-red-300" title={t('spools.actions.delete')}><Trash2 size={13} /></button>
-        </div>
+        {!spool.archived && <MoistureBadge spool={spool} onClick={onMoisture} iconSize={16} />}
       </div>
       <div className="mb-2">
-        <div className="flex justify-between items-center text-xs text-gray-400 mb-1">
-          <span>{(spool.current_weight_g / 1000).toFixed(5)} kg {t('spools.remaining')}</span>
-          <span className="flex items-center gap-1">
-            {!spool.archived && <MoistureBadge spool={spool} onClick={onMoisture} />}
-            <span>{pct}%</span>
+        <div className="flex justify-between items-baseline mb-1">
+          <span>
+            <span className="text-xl font-semibold text-white">{fmtNum(spool.current_weight_g, 0)} g</span>
+            <span className="text-xs text-gray-400"> {t('spools.remaining')}</span>
           </span>
+          <span className="text-sm font-medium text-gray-300">{fmtNum(pct, Number.isInteger(pct) ? 0 : 1)} %</span>
         </div>
-        <div className="h-1.5 rounded-full bg-surface-3 overflow-hidden">
+        <div className="h-2 rounded-full bg-surface-3 overflow-hidden">
           <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: barColor }} />
         </div>
-        <p className="text-xs text-gray-500 mt-1">{t('spools.of')} {(spool.initial_weight_g / 1000).toFixed(2)} kg</p>
+        <p className="text-xs text-gray-500 mt-1">{t('spools.of')} {fmtNum(spool.initial_weight_g / 1000, 2)} kg</p>
       </div>
       <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400 mt-3">
         {spool.price_per_kg != null && <span>{fmtCurrency(spool.price_per_kg)}/kg</span>}
@@ -934,6 +930,20 @@ function SpoolCard({ spool, spools, onEdit, onWeigh, onLabel, onMoisture, onDupl
           />
         </div>
       )}
+      {/* Action bar across the full card width: bigger icons and touch targets */}
+      <div className="flex-1 min-h-3" />
+      <div className="flex justify-between items-center pt-2 border-t border-surface-3 -mx-1">
+        <button onClick={onEdit} className="btn-ghost p-2" title={t('spools.actions.edit')} aria-label={t('spools.actions.edit')}><Pencil size={18} /></button>
+        <button onClick={onWeigh} className="btn-ghost p-2 text-emerald-400" title={t('spools.actions.weigh')} aria-label={t('spools.actions.weigh')}><Scale size={18} /></button>
+        <button onClick={onLabel} className={`btn-ghost p-2 ${spool.label_printed_at ? 'text-emerald-400' : 'text-gray-400'}`} title={t('labels.action')} aria-label={t('labels.action')}><QrCode size={18} /></button>
+        <button onClick={onDuplicate} className="btn-ghost p-2 text-blue-400" title={t('spools.actions.duplicate')} aria-label={t('spools.actions.duplicate')}><Copy size={18} /></button>
+        <button onClick={onHistory} className="btn-ghost p-2 text-amber-400" title={t('spools.actions.history')} aria-label={t('spools.actions.history')}><History size={18} /></button>
+        {spool.archived
+          ? <button onClick={onUnarchive} className="btn-ghost p-2 text-green-400 hover:text-green-300" title={t('spools.actions.unarchive')} aria-label={t('spools.actions.unarchive')}><ArchiveRestore size={18} /></button>
+          : <button onClick={onArchive} className="btn-ghost p-2 text-gray-400 hover:text-gray-200" title={t('spools.actions.archive')} aria-label={t('spools.actions.archive')}><Archive size={18} /></button>
+        }
+        <button onClick={onDelete} className="btn-ghost p-2 text-red-400 hover:text-red-300" title={t('spools.actions.delete')} aria-label={t('spools.actions.delete')}><Trash2 size={18} /></button>
+      </div>
     </div>
   )
 }
